@@ -1,0 +1,806 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: #1a1a1a;
+  color: #e0e0e0;
+}
+
+.container {
+  max-width: 1000px;
+  margin: 20px auto;
+  padding: 0 20px;
+}
+
+.card {
+  background-color: #2d2d2d;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+  color: #b8b8b8;
+}
+
+.form-group textarea,
+.form-group select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #404040;
+  border-radius: 4px;
+  background-color: #363636;
+  color: #e0e0e0;
+  font-family: monospace;
+}
+
+.form-group textarea {
+  height: 120px;
+  resize: vertical;
+}
+
+.button-group {
+  margin-bottom: 15px;
+}
+
+button {
+  background-color: #4d7c4d;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  margin-right: 10px;
+}
+
+button:disabled {
+  background-color: #666;
+  cursor: not-allowed;
+}
+
+#cancelButton {
+  background-color: #7c4d4d;
+}
+
+#error {
+  background-color: #7c4d4d;
+  color: white;
+  padding: 10px;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  display: none;
+}
+
+#loading {
+  text-align: center;
+  padding: 20px;
+  font-size: 18px;
+  display: none;
+}
+
+
+/* Добавить к существующим стилям */
+
+.input-with-button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.expand-button {
+  background-color: #404040;
+  color: #e0e0e0;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 14px;
+  margin: 0;
+}
+
+.expand-button:hover {
+  background-color: #505050;
+}
+
+/* Модальные окна */
+.modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.7);
+  z-index: 1000;
+}
+
+.modal-content {
+  position: relative;
+  background-color: #2d2d2d;
+  margin: 50px auto;
+  padding: 0;
+  width: 80%;
+  max-width: 800px;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.modal-header {
+  padding: 15px;
+  background-color: #404040;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: move;
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: #e0e0e0;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: #e0e0e0;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0 5px;
+}
+
+.modal-textarea {
+  width: 100%;
+  height: calc(80vh - 200px);
+  padding: 15px;
+  border: none;
+  background-color: #363636;
+  color: #e0e0e0;
+  font-family: monospace;
+  resize: none;
+  box-sizing: border-box;
+}
+
+.modal-footer {
+  padding: 15px;
+  text-align: right;
+  border-top: 1px solid #404040;
+}
+
+.modal-footer button {
+  margin-left: 10px;
+}
+
+/* Стили для кнопок в футере модального окна */
+.modal-save {
+  background-color: #4d7c4d;
+}
+
+.modal-cancel {
+  background-color: #666;
+}
+
+/* Стили для кнопок и контейнеров */
+.input-with-button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.expand-button {
+  background-color: #404040;
+  color: #e0e0e0;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 14px;
+  margin: 0;
+}
+
+.expand-button:hover {
+  background-color: #505050;
+}
+
+/* Диалоговые окна */
+.dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1000;
+}
+
+.dialog-content {
+  background-color: #2d2d2d;
+  width: 80vw;
+  max-width: 800px;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.dialog-header {
+  padding: 15px;
+  background-color: #404040;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: move;
+}
+
+.dialog-header h3 {
+  margin: 0;
+  color: #e0e0e0;
+  user-select: none; /* Предотвращает выделение текста при перетаскивании */
+}
+
+.dialog-close {
+  background: none;
+  border: none;
+  color: #e0e0e0;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0 5px;
+}
+
+.dialog-textarea {
+  width: 100%;
+  height: 60vh;
+  padding: 15px;
+  border: none;
+  background-color: #363636;
+  color: #e0e0e0;
+  font-family: monospace;
+  resize: none;
+  box-sizing: border-box;
+}
+
+.dialog-footer {
+  padding: 15px;
+  text-align: right;
+  border-top: 1px solid #404040;
+}
+
+.dialog-footer button {
+  margin-left: 10px;
+}
+
+/* Стили для кнопок в футере диалогового окна */
+.dialog-save {
+  background-color: #4d7c4d;
+}
+
+.dialog-cancel {
+  background-color: #666;
+}
+
+/* Стили для кнопок и контейнеров */
+.input-with-button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.expand-button {
+  background-color: #404040;
+  color: #e0e0e0;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 14px;
+  margin: 0;
+}
+
+.expand-button:hover {
+  background-color: #505050;
+}
+
+/* Диалоговые окна */
+.dialog {
+  position: fixed;
+  z-index: 1000;
+}
+
+.dialog-content {
+  position: absolute;
+  background-color: #2d2d2d;
+  width: 80vw;
+  max-width: 800px;
+  height: 80vh;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+}
+
+.dialog-header {
+  padding: 15px;
+  background-color: #404040;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: move;
+  flex-shrink: 0;
+}
+
+.dialog-header h3 {
+  margin: 0;
+  color: #e0e0e0;
+  user-select: none;
+}
+
+.dialog-close {
+  background: none;
+  border: none;
+  color: #e0e0e0;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0 5px;
+}
+
+.dialog-body {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+.dialog-textarea {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  padding: 15px;
+  border: none;
+  background-color: #363636;
+  color: #e0e0e0;
+  font-family: monospace;
+  resize: none;
+  box-sizing: border-box;
+}
+
+.dialog-footer {
+  padding: 15px;
+  text-align: right;
+  border-top: 1px solid #404040;
+  flex-shrink: 0;
+}
+
+.dialog-footer button {
+  margin-left: 10px;
+}
+
+/* Стили для кнопок в футере диалогового окна */
+.dialog-save {
+  background-color: #4d7c4d;
+}
+
+.dialog-cancel {
+  background-color: #666;
+}
+
+/* Элемент для изменения размера */
+.resize-handle {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 15px;
+  height: 15px;
+  cursor: se-resize;
+  background: linear-gradient(135deg, transparent 50%, #666 50%);
+  border-bottom-right-radius: 8px;
+}
+
+
+/* Add to styles.css */
+
+.prompt-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+#promptSelect {
+  flex: 1;
+  min-width: 200px;
+}
+
+.modal-input {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 15px;
+  border: 1px solid #404040;
+  border-radius: 4px;
+  background-color: #363636;
+  color: #e0e0e0;
+}
+
+.resizable {
+  min-width: 300px;
+  min-height: 200px;
+  max-width: 95vw;
+  max-height: 95vh;
+}
+
+.resize-handle {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 15px;
+  height: 15px;
+  cursor: se-resize;
+  background: linear-gradient(135deg, transparent 50%, #666 50%);
+  border-bottom-right-radius: 8px;
+}
+
+.modal-content {
+  resize: both;
+  overflow: auto;
+}
+
+/* Add to styles.css */
+
+.prompt-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+#promptSelect {
+  flex: 1;
+  min-width: 200px;
+}
+
+.modal-input {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 15px;
+  border: 1px solid #404040;
+  border-radius: 4px;
+  background-color: #363636;
+  color: #e0e0e0;
+}
+
+.resizable {
+  min-width: 300px;
+  min-height: 200px;
+  max-width: 95vw;
+  max-height: 95vh;
+  overflow: hidden; /* Prevents scrollbars when resizing */
+}
+
+.resize-handle {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 15px;
+  height: 15px;
+  cursor: se-resize;
+  background: linear-gradient(135deg, transparent 50%, #666 50%);
+  border-bottom-right-radius: 8px;
+}
+
+.modal-content {
+  resize: both;
+  overflow: auto;
+}
+
+
+/* Стили для элементов истории запросов */
+.history-modal-body {
+  display: flex;
+  flex-direction: column;
+  height: calc(100% - 100px); /* учитываем высоту header и footer */
+  padding: 15px;
+  overflow: hidden;
+}
+
+.history-filters {
+  background-color: #333;
+  padding: 10px;
+  border-radius: 4px;
+  margin-bottom: 15px;
+}
+
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.filter-row:last-child {
+  margin-bottom: 0;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  min-width: 150px;
+}
+
+.filter-group label {
+  margin-bottom: 5px;
+  font-size: 12px;
+  color: #b8b8b8;
+}
+
+.filter-input {
+  padding: 6px;
+  border: 1px solid #404040;
+  border-radius: 4px;
+  background-color: #363636;
+  color: #e0e0e0;
+}
+
+.filter-button {
+  margin-top: 22px;
+  padding: 6px 12px;
+  background-color: #4d7c4d;
+}
+
+.history-table-container {
+  flex: 1;
+  overflow: auto;
+  border: 1px solid #404040;
+  border-radius: 4px;
+}
+
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.history-table th,
+.history-table td {
+  padding: 10px;
+  text-align: left;
+  border-bottom: 1px solid #404040;
+}
+
+.history-table th {
+  background-color: #404040;
+  position: sticky;
+  top: 0;
+}
+
+.history-table tbody tr:hover {
+  background-color: #3a3a3a;
+}
+
+.table-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.table-action-button {
+  background-color: #505050;
+  color: #e0e0e0;
+  border: none;
+  border-radius: 4px;
+  padding: 3px 8px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.table-action-button:hover {
+  background-color: #606060;
+}
+
+.table-action-button.view {
+  background-color: #4d7c4d;
+}
+
+.table-action-button.delete {
+  background-color: #7c4d4d;
+}
+
+.table-action-button.reload {
+  background-color: #4d4d7c;
+}
+
+/* Стили для модального окна деталей */
+.details-section {
+  margin-bottom: 15px;
+}
+
+.details-section h4 {
+  margin: 0 0 5px 0;
+  color: #b8b8b8;
+  border-bottom: 1px solid #404040;
+  padding-bottom: 5px;
+}
+
+.details-content {
+  background-color: #363636;
+  padding: 10px;
+  border-radius: 4px;
+  overflow: auto;
+  max-height: 200px;
+}
+
+pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+#saveResponseButton, #viewHistoryButton {
+  background-color: #4d4d7c;
+}
+
+#saveResponseButton:disabled {
+  background-color: #666;
+  cursor: not-allowed;
+}
+
+
+/* Стили для вкладок и Markdown */
+.tab-buttons {
+  display: flex;
+  gap: 5px;
+  margin: 0 20px;
+}
+
+.tab-button {
+  background-color: #404040;
+  color: #b8b8b8;
+  border: none;
+  border-radius: 4px 4px 0 0;
+  padding: 5px 10px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.tab-button.active {
+  background-color: #4d7c4d;
+  color: #ffffff;
+}
+
+.tab-content {
+  display: none;
+  height: 100%;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+.markdown-preview {
+  background-color: #363636;
+  color: #e0e0e0;
+  padding: 15px;
+  overflow: auto;
+  height: calc(80vh - 200px);
+  border-radius: 4px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Стили для markdown-контента */
+.markdown-preview h1, 
+.markdown-preview h2, 
+.markdown-preview h3, 
+.markdown-preview h4, 
+.markdown-preview h5, 
+.markdown-preview h6 {
+  color: #4d7c4d;
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+  font-weight: 600;
+}
+
+.markdown-preview h1 {
+  font-size: 1.8em;
+  border-bottom: 1px solid #404040;
+  padding-bottom: 0.3em;
+}
+
+.markdown-preview h2 {
+  font-size: 1.5em;
+  border-bottom: 1px solid #404040;
+  padding-bottom: 0.3em;
+}
+
+.markdown-preview h3 {
+  font-size: 1.3em;
+}
+
+.markdown-preview p {
+  margin: 0.8em 0;
+  line-height: 1.6;
+}
+
+.markdown-preview a {
+  color: #6a9eff;
+  text-decoration: none;
+}
+
+.markdown-preview a:hover {
+  text-decoration: underline;
+}
+
+.markdown-preview code {
+  font-family: 'Courier New', Courier, monospace;
+  background-color: #2a2a2a;
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+
+.markdown-preview pre {
+  background-color: #2a2a2a;
+  padding: 1em;
+  border-radius: 5px;
+  overflow-x: auto;
+  margin: 1em 0;
+}
+
+.markdown-preview pre code {
+  background-color: transparent;
+  padding: 0;
+}
+
+.markdown-preview ul, 
+.markdown-preview ol {
+  padding-left: 2em;
+  margin: 0.8em 0;
+}
+
+.markdown-preview blockquote {
+  border-left: 3px solid #4d7c4d;
+  margin: 1em 0;
+  padding: 0.5em 1em;
+  background-color: #333333;
+}
+
+.markdown-preview img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 1em auto;
+}
+
+.markdown-preview table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1em 0;
+}
+
+.markdown-preview table th,
+.markdown-preview table td {
+  border: 1px solid #404040;
+  padding: 0.5em;
+}
+
+.markdown-preview table th {
+  background-color: #404040;
+  font-weight: bold;
+}
+
+.markdown-preview table tr:nth-child(even) {
+  background-color: #333333;
+}
+
+/* Стили для вкладок в деталях */
+.details-section .tab-buttons {
+  margin: 5px 0;
+}
+
+#detailsMarkdownPreview {
+  height: 200px;
+}

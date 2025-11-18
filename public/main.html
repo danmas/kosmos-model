@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Главная</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Главная страница</h1>
+        <div class="menu">
+            <a href="/index.html" class="button">Перейти к AI-Analytics</a>
+            
+            <div class="file-selector">
+                <h2>Просмотр Markdown файла с сервера</h2>
+                <p>Выберите файл для просмотра:</p>
+                <select id="md-file-select">
+                    <option value="">Загрузка списка файлов...</option>
+                </select>
+                <button id="view-md-button" class="button" disabled>Показать</button>
+            </div>
+
+            <div class="file-selector">
+                <h2>Просмотр локального Markdown файла</h2>
+                <p>Выберите файл с вашего компьютера:</p>
+                <input type="file" id="local-md-input" accept=".md,.markdown,text/markdown">
+                <button id="view-local-md-button" class="button" disabled>Показать</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- Server file selector logic ---
+            const select = document.getElementById('md-file-select');
+            const viewButton = document.getElementById('view-md-button');
+
+            fetch('/api/markdown_files')
+                .then(response => response.json())
+                .then(files => {
+                    select.innerHTML = '<option value="">-- Выберите файл --</option>'; // Clear loading message
+                    if (files.length > 0) {
+                        files.forEach(file => {
+                            const option = document.createElement('option');
+                            option.value = file;
+                            option.textContent = file;
+                            select.appendChild(option);
+                        });
+                    } else {
+                        select.innerHTML = '<option value="">Нет доступных .md файлов</option>';
+                        select.disabled = true;
+                    }
+                })
+                .catch(error => {
+                    console.error('Ошибка при загрузке списка файлов:', error);
+                    select.innerHTML = '<option value="">Ошибка загрузки</option>';
+                    select.disabled = true;
+                });
+
+            select.addEventListener('change', () => {
+                viewButton.disabled = !select.value;
+            });
+
+            viewButton.addEventListener('click', () => {
+                const selectedFile = select.value;
+                if (selectedFile) {
+                    window.location.href = `/show_md?file=${selectedFile}`;
+                }
+            });
+
+            // --- Local file selector logic ---
+            const localInput = document.getElementById('local-md-input');
+            const localViewButton = document.getElementById('view-local-md-button');
+
+            localInput.addEventListener('change', () => {
+                localViewButton.disabled = !localInput.files || localInput.files.length === 0;
+            });
+
+            localViewButton.addEventListener('click', () => {
+                const file = localInput.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const content = e.target.result;
+                        sessionStorage.setItem('markdownContent', content);
+                        window.location.href = '/show_md?source=local';
+                    };
+                    reader.onerror = () => {
+                        console.error('Error reading file.');
+                        alert('Не удалось прочитать файл.');
+                    };
+                    reader.readAsText(file);
+                }
+            });
+        });
+    </script>
+</body>
+</html> 

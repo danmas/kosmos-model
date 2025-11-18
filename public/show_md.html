@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-g">
+    <title>Markdown Viewer</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+    <div id="content"></div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const source = urlParams.get('source');
+            const filename = urlParams.get('file');
+            const contentDiv = document.getElementById('content');
+
+            if (source === 'local') {
+                const markdownContent = sessionStorage.getItem('markdownContent');
+                if (markdownContent) {
+                    contentDiv.innerHTML = marked.parse(markdownContent);
+                    // Clean up sessionStorage
+                    sessionStorage.removeItem('markdownContent');
+                } else {
+                    contentDiv.innerText = 'Ошибка: не найдено содержимое локального файла. Пожалуйста, вернитесь и выберите файл снова.';
+                }
+            } else if (filename) {
+                fetch(`/get_md_content?file=${filename}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.error) {
+                            contentDiv.innerText = `Ошибка: ${data.error}`;
+                        } else {
+                            contentDiv.innerHTML = marked.parse(data.content);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Ошибка при загрузке markdown файла:', error);
+                        contentDiv.innerText = 'Ошибка при загрузке файла.';
+                    });
+            } else {
+                contentDiv.innerText = 'Файл не указан. Используйте ?file=filename.md или выберите локальный файл.';
+            }
+        });
+    </script>
+</body>
+</html> 

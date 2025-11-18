@@ -1,0 +1,1336 @@
+openapi: 3.0.3
+info:
+  title: AI Analytics Interface API
+  description: |
+    REST API для управления промптами, историей ответов и взаимодействия с AI моделями.
+    
+    Поддерживает два провайдера:
+    - **GROQ API** - высокоскоростной inference (в 5-10 раз быстрее)
+    - **OpenRouter API** - большое разнообразие моделей (20+ моделей)
+    
+    Система автоматически определяет провайдера по имени модели или позволяет принудительный выбор.
+    Поддерживает RAG (Retrieval-Augmented Generation) для обоих провайдеров.
+  version: 1.0.0
+  contact:
+    name: AIAN-MODEL Project
+  license:
+    name: MIT
+servers:
+  - url: http://localhost:3002
+    description: Локальный сервер разработки
+  - url: http://localhost:3000
+    description: Альтернативный порт
+
+tags:
+  - name: AI Models
+    description: Операции с AI моделями и отправка запросов
+  - name: Prompts
+    description: Управление промптами
+  - name: Responses
+    description: Управление историей ответов
+  - name: RAG
+    description: Retrieval-Augmented Generation
+  - name: Files
+    description: Работа с файлами
+  - name: Configuration
+    description: Конфигурация и информация о сервере
+
+paths:
+  /api/send-request:
+    post:
+      tags:
+        - AI Models
+      summary: Отправка запроса к AI модели
+      description: |
+        Отправляет запрос к модели AI и возвращает ответ.
+        Поддерживает автоматический выбор провайдера или принудительное указание.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendRequestBody'
+            examples:
+              groq_auto:
+                summary: Автоматический выбор GROQ
+                value:
+                  model: "llama-3.3-70b-versatile"
+                  prompt: "Ты полезный помощник AI. Отвечай кратко и по делу."
+                  inputText: "Объясни что такое машинное обучение"
+              openrouter_force:
+                summary: Принудительный OpenRouter
+                value:
+                  model: "deepseek/deepseek-chat:free"
+                  prompt: "Ты помощник по анализу данных"
+                  inputText: "Как очистить данные от выбросов?"
+                  provider: "openroute"
+              with_rag:
+                summary: С использованием RAG
+                value:
+                  model: "llama-3.3-70b-versatile"
+                  prompt: "Отвечай на основе предоставленного контекста"
+                  inputText: "Как настроить GROQ API?"
+                  useRag: true
+                  contextCode: "documentation"
+                  saveResponse: true
+              preset_fast:
+                summary: Использование предустановленного типа FAST
+                value:
+                  model: "FAST"
+                  prompt: "Ты аналитик данных, отвечай мгновенно и кратко"
+                  inputText: "Сформируй сводку по продажам за квартал"
+                  saveResponse: true
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIResponse'
+        '400':
+          description: Некорректный запрос
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseDetailed'
+
+  /api/send-request-sys:
+    post:
+      tags:
+        - AI Models
+      summary: Отправка запроса с использованием сохраненного промпта
+      description: |
+        Отправляет запрос к модели AI, используя промпт по имени из хранилища промптов.
+        Автоматически сохраняет ответ в историю (если не отключено).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendRequestSysBody'
+            example:
+              model: "llama-3.3-70b-versatile"
+              prompt_name: "Анализ кода"
+              inputText: "function add(a, b) { return a + b; }"
+              provider: "groq"
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIResponseWithPrompt'
+        '400':
+          description: Некорректный запрос
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Промпт не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /analyze:
+    post:
+      tags:
+        - AI Models
+      summary: Альтернативный маршрут для анализа
+      description: Альтернативный маршрут для отправки запросов к AI моделям с поддержкой RAG
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnalyzeRequestBody'
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIResponse'
+        '400':
+          description: Некорректный запрос
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/check-api-key:
+    get:
+      tags:
+        - Configuration
+      summary: Проверка доступности API-ключа
+      description: Проверяет доступность и валидность настроенного API-ключа
+      responses:
+        '200':
+          description: Информация о доступности API-ключа
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKeyStatus'
+
+  /api/config:
+    get:
+      tags:
+        - Configuration
+      summary: Получение конфигурации сервера
+      description: Возвращает текущую конфигурацию сервера
+      responses:
+        '200':
+          description: Конфигурация сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerConfig'
+
+  /api/available-models:
+    get:
+      tags:
+        - AI Models
+      summary: Получение списка доступных моделей
+      description: |
+        Возвращает массив строк с именами всех доступных моделей, 
+        которые отмечены как showInApi: true
+      responses:
+        '200':
+          description: Список названий моделей
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                example:
+                  - "llama-3.3-70b-versatile"
+                  - "llama3-8b-8192"
+                  - "mixtral-8x7b-32768"
+                  - "google/gemini-2.0-flash-exp:free"
+                  - "deepseek/deepseek-chat:free"
+
+  /api/all-models:
+    get:
+      tags:
+        - AI Models
+      summary: Получение полной информации о моделях
+      description: |
+        Возвращает массив объектов с полной информацией о всех доступных моделях,
+        включая провайдера, настройки и метаданные
+      responses:
+        '200':
+          description: Полная информация о моделях
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ModelInfo'
+
+  /api/default-models:
+    get:
+      tags:
+        - AI Models
+      summary: Получение моделей по умолчанию
+      description: |
+        Возвращает предустановленные профили моделей (`CHEAP`, `FAST`, `RICH`),
+        которые можно использовать в API вместо полного имени модели.
+      responses:
+        '200':
+          description: Информация о моделях по умолчанию
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DefaultModelsResponse'
+    post:
+      tags:
+        - AI Models
+      summary: Обновление модели по умолчанию
+      description: Устанавливает новую модель и провайдера для выбранного профиля.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DefaultModelUpdateBody'
+            example:
+              type: "fast"
+              model: "mixtral-8x7b-32768"
+              provider: "groq"
+      responses:
+        '200':
+          description: Модель по умолчанию обновлена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DefaultModelUpdateResult'
+        '400':
+          description: Некорректные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseDetailed'
+
+  /api/default-models/{type}:
+    get:
+      tags:
+        - AI Models
+      summary: Получение модели по умолчанию по типу
+      description: Возвращает конфигурацию конкретного профиля (`cheap`, `fast`, `rich`).
+      parameters:
+        - $ref: '#/components/parameters/DefaultModelType'
+      responses:
+        '200':
+          description: Информация о выбранной модели по умолчанию
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DefaultModelResponse'
+        '400':
+          description: Некорректный тип модели
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/prompts:
+    get:
+      tags:
+        - Prompts
+      summary: Получение списка всех промптов
+      description: Возвращает список всех сохраненных промптов
+      responses:
+        '200':
+          description: Список промптов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Prompt'
+    post:
+      tags:
+        - Prompts
+      summary: Добавление нового промпта
+      description: Создает новый промпт в хранилище
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PromptCreateBody'
+      responses:
+        '200':
+          description: Промпт успешно добавлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+        '400':
+          description: Некорректные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/prompts/{name}:
+    put:
+      tags:
+        - Prompts
+      summary: Обновление существующего промпта
+      description: Обновляет содержимое промпта по имени
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: Имя промпта для обновления
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PromptUpdateBody'
+      responses:
+        '200':
+          description: Промпт успешно обновлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+        '404':
+          description: Промпт не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - Prompts
+      summary: Удаление промпта
+      description: Удаляет промпт из хранилища по имени
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: Имя промпта для удаления
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Промпт успешно удален
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+        '404':
+          description: Промпт не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/available-prompts:
+    get:
+      tags:
+        - Prompts
+      summary: Получение списка доступных промптов
+      description: Возвращает список всех доступных промптов (алиас для /api/prompts)
+      responses:
+        '200':
+          description: Список доступных промптов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Prompt'
+
+  /api/responses:
+    get:
+      tags:
+        - Responses
+      summary: Получение истории ответов
+      description: |
+        Возвращает историю сохраненных ответов с возможностью фильтрации и сортировки
+      parameters:
+        - name: sortBy
+          in: query
+          description: Поле для сортировки
+          schema:
+            type: string
+        - name: sortOrder
+          in: query
+          description: Порядок сортировки
+          schema:
+            type: string
+            enum: [asc, desc]
+        - name: model
+          in: query
+          description: Фильтр по модели
+          schema:
+            type: string
+        - name: prompt
+          in: query
+          description: Фильтр по имени промпта
+          schema:
+            type: string
+        - name: dateFrom
+          in: query
+          description: Фильтр по начальной дате
+          schema:
+            type: string
+            format: date-time
+        - name: dateTo
+          in: query
+          description: Фильтр по конечной дате
+          schema:
+            type: string
+            format: date-time
+        - name: limit
+          in: query
+          description: Ограничение количества результатов
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: История ответов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ResponseRecord'
+    post:
+      tags:
+        - Responses
+      summary: Сохранение нового ответа
+      description: Сохраняет новый ответ в историю
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResponseCreateBody'
+      responses:
+        '200':
+          description: Ответ успешно сохранен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseCreateResult'
+
+  /api/responses/{id}:
+    delete:
+      tags:
+        - Responses
+      summary: Удаление записи из истории
+      description: Удаляет запись из истории ответов по ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Идентификатор записи для удаления
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Запись успешно удалена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+        '404':
+          description: Запись не найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/rag/context-codes:
+    get:
+      tags:
+        - RAG
+      summary: Получение списка контекстных кодов
+      description: Возвращает список доступных контекстных кодов для RAG
+      responses:
+        '200':
+          description: Список контекстных кодов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                example: ["code1", "code2", "code3"]
+
+  /api/rag/documents:
+    get:
+      tags:
+        - RAG
+      summary: Получение списка документов
+      description: Возвращает список документов в базе знаний RAG
+      responses:
+        '200':
+          description: Список документов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RagDocument'
+
+  /api/rag/ask:
+    post:
+      tags:
+        - RAG
+      summary: Запрос к RAG с использованием контекстного кода
+      description: Выполняет запрос к базе знаний RAG
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RagAskBody'
+      responses:
+        '200':
+          description: Ответ от RAG системы
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RagResponse'
+
+  /api/rag/debug-info:
+    get:
+      tags:
+        - RAG
+      summary: Получение отладочной информации RAG
+      description: Возвращает отладочную информацию о состоянии RAG системы
+      responses:
+        '200':
+          description: Отладочная информация RAG
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RagDebugInfo'
+
+  /api/save-markdown:
+    post:
+      tags:
+        - Files
+      summary: Сохранение файла markdown
+      description: Сохраняет содержимое в markdown файл
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveMarkdownBody'
+      responses:
+        '200':
+          description: Файл успешно сохранен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SaveMarkdownResult'
+
+  /api/output-dir-info:
+    get:
+      tags:
+        - Files
+      summary: Получение информации о директории документов
+      description: Возвращает информацию о директории вывода документов
+      responses:
+        '200':
+          description: Информация о директории
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OutputDirInfo'
+
+  /server-info:
+    get:
+      tags:
+        - Configuration
+      summary: Получение информации о сервере
+      description: Возвращает базовую информацию о сервере
+      responses:
+        '200':
+          description: Информация о сервере
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerInfo'
+
+components:
+  schemas:
+    SendRequestBody:
+      type: object
+      required:
+        - model
+        - prompt
+        - inputText
+      properties:
+        model:
+          type: string
+          description: |
+            Идентификатор модели AI для использования.
+            Вместо полного имени можно указать ключевые слова `CHEAP`, `FAST` или `RICH`
+            для использования предустановленных моделей по умолчанию.
+            Если поле не указано или пустое, используется профиль `CHEAP`.
+          example: "llama-3.3-70b-versatile"
+        prompt:
+          type: string
+          description: Системный промпт для модели
+          example: "Ты полезный помощник AI. Отвечай кратко и по делу."
+        inputText:
+          type: string
+          description: Запрос пользователя
+          example: "Объясни что такое машинное обучение"
+        provider:
+          type: string
+          enum: [groq, openroute]
+          description: |
+            Принудительный выбор провайдера:
+            - groq: GROQ API (быстрый inference)
+            - openroute: OpenRouter API (больше моделей)
+            - Не указан: автоматическое определение по модели
+          example: "groq"
+        saveResponse:
+          type: boolean
+          default: false
+          description: Сохранять ли ответ в историю
+        useRag:
+          type: boolean
+          default: false
+          description: Использовать ли RAG для обогащения контекста
+        contextCode:
+          type: string
+          description: Код контекста для RAG (если useRag=true)
+          example: "documentation"
+
+    SendRequestSysBody:
+      type: object
+      required:
+        - model
+        - prompt_name
+        - inputText
+      properties:
+        model:
+          type: string
+          description: |
+            Идентификатор модели AI для использования. Поддерживаются ключевые слова
+            `CHEAP`, `FAST`, `RICH`, а также пустое значение (эквивалентно `CHEAP`).
+          example: "llama-3.3-70b-versatile"
+        prompt_name:
+          type: string
+          description: Имя системного промпта из хранилища
+          example: "Анализ кода"
+        inputText:
+          type: string
+          description: Запрос пользователя
+          example: "function add(a, b) { return a + b; }"
+        provider:
+          type: string
+          enum: [groq, openroute]
+          description: Принудительный выбор провайдера
+        saveResponse:
+          type: boolean
+          default: true
+          description: Сохранять ли ответ в историю
+
+    AnalyzeRequestBody:
+      type: object
+      required:
+        - model
+        - prompt
+        - inputText
+      properties:
+        model:
+          type: string
+          description: |
+            Идентификатор модели AI.
+            Можно использовать ключевые слова `CHEAP`, `FAST`, `RICH` или оставить поле пустым
+            для выбора соответствующей предустановленной модели.
+        prompt:
+          type: string
+          description: Системный промпт
+        inputText:
+          type: string
+          description: Входной текст
+        provider:
+          type: string
+          enum: [groq, openroute]
+          description: Принудительный выбор провайдера
+        useRag:
+          type: boolean
+          default: false
+          description: Использовать RAG
+        contextCode:
+          type: string
+          description: Код контекста для RAG
+
+    AIResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        content:
+          type: string
+          description: Ответ от AI модели
+          example: "Машинное обучение - это подобласть искусственного интеллекта..."
+        model:
+          type: string
+          description: Использованная модель
+          example: "llama-3.3-70b-versatile"
+        provider:
+          type: string
+          description: Использованный провайдер
+          example: "groq"
+        usage:
+          $ref: '#/components/schemas/TokenUsage'
+        rag:
+          $ref: '#/components/schemas/RagInfo'
+
+    AIResponseWithPrompt:
+      allOf:
+        - $ref: '#/components/schemas/AIResponse'
+        - type: object
+          properties:
+            prompt_used:
+              $ref: '#/components/schemas/PromptUsed'
+
+    TokenUsage:
+      type: object
+      properties:
+        prompt_tokens:
+          type: integer
+          example: 42
+        completion_tokens:
+          type: integer
+          example: 128
+        total_tokens:
+          type: integer
+          example: 170
+
+    RagInfo:
+      type: object
+      nullable: true
+      properties:
+        used:
+          type: boolean
+          description: Был ли использован RAG
+        contextCode:
+          type: string
+          description: Код контекста
+        documentsCount:
+          type: integer
+          description: Количество найденных документов
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/RagSource'
+
+    RagSource:
+      type: object
+      properties:
+        filename:
+          type: string
+        source:
+          type: string
+        contextCode:
+          type: string
+
+    PromptUsed:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Имя использованного промпта
+        text:
+          type: string
+          description: Текст промпта
+
+    ModelInfo:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Внутреннее имя модели для API
+          example: "llama-3.3-70b-versatile"
+        visible_name:
+          type: string
+          description: Отображаемое имя в UI
+          example: "🚀 GROQ: Llama 3.3 70B (Versatile)"
+        provider:
+          type: string
+          enum: [groq, openroute]
+          description: Провайдер API
+        context:
+          type: integer
+          description: Размер контекстного окна (только для GROQ)
+          example: 8192
+        fast:
+          type: boolean
+          description: Флаг быстрой модели
+        showInApi:
+          type: boolean
+          description: Доступность через API
+        use_in_ui:
+          type: boolean
+          description: Отображение в UI
+
+    DefaultModelEntry:
+      type: object
+      properties:
+        model:
+          type: string
+          description: Полное имя модели
+        provider:
+          type: string
+          enum: [groq, openroute]
+          description: Провайдер модели
+        description:
+          type: string
+          description: Назначение профиля
+
+    DefaultModelsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        defaultModels:
+          type: object
+          required:
+            - cheap
+            - fast
+            - rich
+          properties:
+            cheap:
+              $ref: '#/components/schemas/DefaultModelEntry'
+            fast:
+              $ref: '#/components/schemas/DefaultModelEntry'
+            rich:
+              $ref: '#/components/schemas/DefaultModelEntry'
+
+    DefaultModelUpdateBody:
+      type: object
+      required:
+        - type
+        - model
+        - provider
+      properties:
+        type:
+          type: string
+          enum: [cheap, fast, rich]
+          description: Профиль для обновления
+        model:
+          type: string
+          description: Полное имя модели, которая станет дефолтной
+        provider:
+          type: string
+          enum: [groq, openroute]
+          description: Провайдер выбранной модели
+
+    DefaultModelUpdateResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Модель fast успешно обновлена"
+        updatedModel:
+          $ref: '#/components/schemas/DefaultModelEntry'
+
+    DefaultModelResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        type:
+          type: string
+          enum: [cheap, fast, rich]
+        model:
+          $ref: '#/components/schemas/DefaultModelEntry'
+
+    ApiKeyStatus:
+      type: object
+      properties:
+        isAvailable:
+          type: boolean
+          example: true
+        serviceProvider:
+          type: string
+          example: "OpenRouter"
+
+    ServerConfig:
+      type: object
+      properties:
+        server:
+          type: object
+          properties:
+            port:
+              type: string
+              example: "3000"
+            nodeEnv:
+              type: string
+              example: "development"
+            isTestMode:
+              type: boolean
+              example: false
+        n8n:
+          type: object
+          properties:
+            webhookUrl:
+              type: string
+              example: "https://example.com/webhook"
+        apiKey:
+          type: string
+          description: Замаскированный API ключ
+        logging:
+          type: object
+          properties:
+            level:
+              type: string
+              example: "info"
+            filename:
+              type: string
+              example: "combined.log"
+            errorFilename:
+              type: string
+              example: "error.log"
+
+    Prompt:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Имя промпта
+          example: "Анализ текста"
+        text:
+          type: string
+          description: Содержимое промпта
+          example: "Проанализируй следующий текст: {{text}}"
+
+    PromptCreateBody:
+      type: object
+      required:
+        - name
+        - text
+      properties:
+        name:
+          type: string
+          description: Имя нового промпта
+        text:
+          type: string
+          description: Содержимое промпта
+
+    PromptUpdateBody:
+      type: object
+      required:
+        - text
+      properties:
+        text:
+          type: string
+          description: Новое содержимое промпта
+
+    ResponseRecord:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Уникальный идентификатор записи
+          example: "1615293487123"
+        timestamp:
+          type: string
+          format: date-time
+          description: Время создания записи
+          example: "2023-03-09T12:31:27.123Z"
+        model:
+          type: string
+          description: Использованная модель
+          example: "gpt-3.5-turbo"
+        promptName:
+          type: string
+          description: Имя промпта
+          example: "Анализ текста"
+        prompt:
+          type: string
+          description: Текст промпта
+          example: "Проанализируй следующий текст: {{text}}"
+        inputText:
+          type: string
+          description: Входной текст пользователя
+          example: "Пример текста для анализа"
+        response:
+          type: string
+          description: Ответ модели
+          example: "Ответ модели на запрос"
+
+    ResponseCreateBody:
+      type: object
+      required:
+        - model
+        - promptName
+        - prompt
+        - inputText
+        - response
+      properties:
+        model:
+          type: string
+          description: Использованная модель
+        promptName:
+          type: string
+          description: Имя промпта
+        prompt:
+          type: string
+          description: Текст промпта
+        inputText:
+          type: string
+          description: Входной текст
+        response:
+          type: string
+          description: Ответ модели
+
+    ResponseCreateResult:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Response saved successfully"
+        id:
+          type: string
+          description: ID созданной записи
+          example: "1615293487123"
+
+    RagDocument:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "1"
+        filename:
+          type: string
+          example: "document1.txt"
+        contextCode:
+          type: string
+          example: "code1"
+        source:
+          type: string
+          example: "source1"
+
+    RagAskBody:
+      type: object
+      required:
+        - question
+      properties:
+        question:
+          type: string
+          description: Вопрос для запроса к базе знаний
+          example: "Вопрос пользователя"
+        contextCode:
+          type: string
+          description: Фильтр по коду контекста
+          example: "code1"
+        showDetails:
+          type: boolean
+          default: false
+          description: Показывать детальную информацию
+
+    RagResponse:
+      type: object
+      properties:
+        answer:
+          type: string
+          description: Ответ, основанный на документах
+        documents:
+          type: array
+          items:
+            type: object
+            properties:
+              pageContent:
+                type: string
+                description: Содержимое документа
+              metadata:
+                type: object
+                properties:
+                  filename:
+                    type: string
+                  source:
+                    type: string
+                  contextCode:
+                    type: string
+        contextCode:
+          type: string
+
+    RagDebugInfo:
+      type: object
+      properties:
+        ragEnabled:
+          type: boolean
+          example: true
+        finalInputText:
+          type: string
+          description: Финальный входной текст с контекстом
+        ragInfo:
+          $ref: '#/components/schemas/RagInfo'
+        timestamp:
+          type: string
+          format: date-time
+
+    SaveMarkdownBody:
+      type: object
+      required:
+        - content
+      properties:
+        content:
+          type: string
+          description: Содержимое markdown файла
+          example: "# Markdown содержимое\n\nТекст документа"
+        filename:
+          type: string
+          description: Имя файла (если не указано, генерируется автоматически)
+          example: "document.md"
+        directory:
+          type: string
+          description: Директория для сохранения
+          example: "path/to/directory"
+
+    SaveMarkdownResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        filePath:
+          type: string
+          description: Путь к сохраненному файлу
+          example: "path/to/directory/document.md"
+        message:
+          type: string
+          example: "Файл успешно сохранен: path/to/directory/document.md"
+
+    OutputDirInfo:
+      type: object
+      properties:
+        outputDir:
+          type: string
+          description: Путь к директории вывода
+          example: "output_docs"
+        exists:
+          type: boolean
+          description: Существует ли директория
+          example: true
+        files:
+          type: array
+          description: Список файлов в директории
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                description: Имя файла
+                example: "document1.md"
+              path:
+                type: string
+                description: Полный путь к файлу
+                example: "output_docs/document1.md"
+              size:
+                type: integer
+                description: Размер файла в байтах
+                example: 1024
+
+    ServerInfo:
+      type: object
+      properties:
+        hostname:
+          type: string
+          example: "server-name"
+        platform:
+          type: string
+          example: "win32"
+        arch:
+          type: string
+          example: "x64"
+        nodeVersion:
+          type: string
+          example: "v18.16.0"
+        uptime:
+          type: integer
+          description: Время работы сервера в секундах
+          example: 3600
+        baseUrl:
+          type: string
+          example: "http://localhost:3002"
+        port:
+          type: string
+          example: "3002"
+        appName:
+          type: string
+          example: "AI Analytics Interface"
+        timestamp:
+          type: string
+          format: date-time
+
+    SuccessMessage:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Сообщение об успешном выполнении операции
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Описание ошибки
+          example: "Описание ошибки"
+
+    ErrorResponseDetailed:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Описание ошибки
+        data:
+          type: object
+          description: Полные данные ответа от API при некорректной структуре
+        details:
+          type: object
+          description: Дополнительная информация об ошибке
+
+  parameters:
+    PromptName:
+      name: name
+      in: path
+      required: true
+      description: Имя промпта
+      schema:
+        type: string
+
+    ResponseId:
+      name: id
+      in: path
+      required: true
+      description: Идентификатор записи ответа
+      schema:
+        type: string
+
+    DefaultModelType:
+      name: type
+      in: path
+      required: true
+      description: Тип модели по умолчанию (cheap, fast, rich)
+      schema:
+        type: string
+        enum: [cheap, fast, rich]
+
+  examples:
+    GroqRequest:
+      summary: Запрос к GROQ модели
+      value:
+        model: "llama-3.3-70b-versatile"
+        prompt: "Ты полезный помощник AI. Отвечай кратко и по делу."
+        inputText: "Объясни что такое машинное обучение"
+        provider: "groq"
+
+    OpenRouterRequest:
+      summary: Запрос к OpenRouter модели
+      value:
+        model: "deepseek/deepseek-chat:free"
+        prompt: "Ты помощник по анализу данных"
+        inputText: "Как очистить данные от выбросов?"
+        provider: "openroute"
+
+    RagRequest:
+      summary: Запрос с использованием RAG
+      value:
+        model: "llama-3.3-70b-versatile"
+        prompt: "Отвечай на основе предоставленного контекста"
+        inputText: "Как настроить GROQ API?"
+        useRag: true
+        contextCode: "documentation"
+        saveResponse: true
+
+security: []

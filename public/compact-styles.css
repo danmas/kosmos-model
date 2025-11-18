@@ -1,0 +1,281 @@
+/* Компактные стили для формы */
+
+body {
+  font-size: 14px; /* Уменьшенный базовый размер шрифта */
+}
+
+.container {
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: 0 10px !important;
+  height: 100vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.card {
+  padding: 10px !important;
+  border-radius: 4px !important;
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+h2 {
+  margin: 5px 0 10px !important;
+  font-size: 18px !important; /* Уменьшенный размер заголовка */
+}
+
+.form-group {
+  margin-bottom: 5px !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.form-group:nth-child(3), 
+.form-group:nth-child(4), 
+.form-group:nth-child(6) {
+  flex: 1 !important;
+  /* min-height: 0 !important; */
+}
+
+.form-group label {
+  margin-bottom: 2px !important;
+  font-weight: bold !important;
+  font-size: 12px !important; /* Уменьшенный размер текста меток */
+}
+
+.form-group textarea {
+  flex: 1 !important;
+  min-height: 80px !important;
+}
+
+.button-group {
+  margin-bottom: 8px !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 5px !important;
+  flex: 0 0 auto !important;
+}
+
+button {
+  padding: 5px 10px !important;
+  border-radius: 3px !important;
+  font-size: 12px !important;
+  margin-right: 5px !important;
+}
+
+.input-with-button {
+  margin-bottom: 2px !important;
+}
+
+.expand-button {
+  border-radius: 3px !important;
+  padding: 2px 4px !important;
+  font-size: 11px !important;
+}
+
+/* Модальные окна */
+.modal-content {
+  margin: 25px auto !important;
+  border-radius: 4px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  height: 80vh !important;
+  width: 85vw !important;
+}
+
+.modal-header {
+  padding: 8px 10px !important;
+  border-top-left-radius: 4px !important;
+  border-top-right-radius: 4px !important;
+  flex: 0 0 auto !important;
+}
+
+.modal-header h3 {
+  font-size: 14px !important;
+}
+
+.modal-close {
+  font-size: 18px !important;
+  padding: 0 3px !important;
+}
+
+.modal-body {
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+.modal-textarea {
+  flex: 1 !important;
+  width: 100% !important;
+  height: auto !important;
+  min-height: 0 !important;
+  padding: 8px !important;
+  box-sizing: border-box !important;
+  resize: none !important;
+}
+
+.modal-footer {
+  padding: 8px !important;
+  flex: 0 0 auto !important;
+}
+
+.modal-footer button {
+  margin-left: 5px !important;
+}
+
+.tab-content {
+  flex: 1 !important;
+  display: none !important;
+  height: 100% !important;
+  overflow: auto !important;
+}
+
+.tab-content.active {
+  display: flex !important;
+}
+
+/* История запросов */
+.history-modal-body {
+  height: calc(100% - 80px) !important;
+  padding: 8px !important;
+}
+
+.history-filters {
+  padding: 6px !important;
+  border-radius: 3px !important;
+  margin-bottom: 8px !important;
+}
+
+.filter-row {
+  gap: 5px !important;
+  margin-bottom: 5px !important;
+}
+
+.filter-group {
+  min-width: 120px !important;
+}
+
+.filter-group label {
+  margin-bottom: 2px !important;
+  font-size: 11px !important;
+}
+
+.filter-input {
+  padding: 4px !important;
+  border-radius: 3px !important;
+  font-size: 12px !important;
+}
+
+.filter-button {
+  margin-top: 17px !important;
+  padding: 4px 8px !important;
+  font-size: 11px !important;
+}
+
+.history-table {
+  font-size: 12px !important;
+}
+
+.history-table th,
+.history-table td {
+  padding: 5px !important;
+}
+
+.history-table th {
+  font-size: 11px !important;
+}
+
+.table-action-button {
+  border-radius: 3px !important;
+  padding: 2px 5px !important;
+  font-size: 10px !important;
+}
+
+/* Markdown */
+.tab-buttons {
+  gap: 3px !important;
+  margin: 0 10px !important;
+}
+
+.tab-button {
+  border-radius: 3px 3px 0 0 !important;
+  padding: 3px 6px !important;
+  font-size: 11px !important;
+}
+
+.markdown-preview {
+  padding: 8px !important;
+  border-radius: 3px !important;
+  font-size: 12px !important;
+  flex: 1 !important;
+  max-height: none !important;
+  height: auto !important;
+  overflow: auto !important;
+}
+
+/* Детали */
+.details-section {
+  margin-bottom: 8px !important;
+}
+
+.details-section h4 {
+  margin: 0 0 3px 0 !important;
+  padding-bottom: 3px !important;
+  font-size: 12px !important;
+}
+
+.details-content {
+  padding: 5px !important;
+  border-radius: 3px !important;
+  max-height: 150px !important;
+  font-size: 12px !important;
+}
+
+#detailsMarkdownPreview {
+  height: auto !important;
+  max-height: none !important;
+  flex: 1 !important;
+}
+
+/* Элемент для изменения размера */
+.resize-handle {
+  width: 10px !important;
+  height: 10px !important;
+  border-bottom-right-radius: 4px !important;
+}
+
+/* Дополнительные стили для модальных окон */
+#responseModal .modal-content,
+#promptModal .modal-content,
+#inputModal .modal-content,
+#newPromptModal .modal-content,
+#historyModal .modal-content,
+#responseDetailsModal .modal-content {
+  max-width: 90vw !important;
+  max-height: 90vh !important;
+}
+
+#newPromptModal .modal-textarea {
+  height: 100% !important;
+  min-height: 250px !important;
+}
+
+/* Исправление для правильного отображения вкладок в модальных окнах */
+#responseModal .modal-body, 
+#responseDetailsModal .modal-body {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 !important;
+  overflow: hidden !important;
+}
+
+#textTab, #markdownTab, 
+#detailsTextTab, #detailsMarkdownTab {
+  height: 100% !important;
+  flex: 1 !important;
+  overflow: auto !important;
+}

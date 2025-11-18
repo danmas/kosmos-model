@@ -1,0 +1,1109 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: #1a1a1a;
+  color: #e0e0e0;
+  font-size: 14px; /* Уменьшенный базовый размер шрифта */
+}
+
+.container {
+  max-width: 100%;
+  margin: 0;
+  padding: 0 10px;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.card {
+  background-color: #2d2d2d;
+  padding: 10px;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+h2 {
+  margin: 5px 0 10px;
+  font-size: 18px; /* Уменьшенный размер заголовка */
+}
+
+/* Стили для навигационной панели */
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #404040;
+}
+
+.nav-links {
+  display: flex;
+  gap: 15px;
+}
+
+.nav-link {
+  color: #4a9eff;
+  text-decoration: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  transition: all 0.3s ease;
+  border: 1px solid transparent;
+}
+
+.nav-link:hover {
+  background-color: #404040;
+  border-color: #4a9eff;
+  text-decoration: none;
+}
+
+.nav-link i {
+  margin-right: 5px;
+}
+
+.form-group {
+  margin-bottom: 5px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 2px;
+  font-weight: bold;
+  color: #b8b8b8;
+  font-size: 12px; /* Уменьшенный размер текста меток */
+}
+
+.form-group textarea,
+.form-group select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #404040;
+  border-radius: 4px;
+  background-color: #363636;
+  color: #e0e0e0;
+  font-family: monospace;
+}
+
+.form-group textarea {
+  height: 120px;
+  resize: vertical;
+  flex: 1;
+}
+
+.button-group {
+  margin-bottom: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+button {
+  background-color: #4d7c4d;
+  color: white;
+  padding: 5px 10px;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+  margin-right: 5px;
+}
+
+button:disabled {
+  background-color: #666;
+  cursor: not-allowed;
+}
+
+#cancelButton {
+  background-color: #7c4d4d;
+}
+
+#error {
+  background-color: #7c4d4d;
+  color: white;
+  padding: 5px;
+  border-radius: 3px;
+  margin-bottom: 5px;
+  display: none;
+  font-size: 12px;
+}
+
+#loading {
+  text-align: center;
+  padding: 10px;
+  font-size: 14px;
+  display: none;
+}
+
+/* Добавить к существующим стилям */
+.input-with-button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2px;
+}
+
+.expand-button {
+  background-color: #404040;
+  color: #e0e0e0;
+  border: none;
+  border-radius: 3px;
+  padding: 2px 4px;
+  cursor: pointer;
+  font-size: 11px;
+  margin: 0;
+}
+
+.expand-button:hover {
+  background-color: #505050;
+}
+
+/* Модальные окна */
+.modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.7);
+  z-index: 1000;
+}
+
+.modal-content {
+  position: relative;
+  background-color: #2d2d2d;
+  margin: 25px auto;
+  padding: 0;
+  width: 80%;
+  max-width: 800px;
+  border-radius: 4px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.modal-header {
+  padding: 8px 10px;
+  background-color: #404040;
+  border-top-left-radius: 4px;
+  border-top-right-radius: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: move;
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: #e0e0e0;
+  font-size: 14px;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: #e0e0e0;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0 3px;
+}
+
+.modal-textarea {
+  width: 100%;
+  height: calc(80vh - 150px);
+  padding: 10px;
+  border: none;
+  background-color: #363636;
+  color: #e0e0e0;
+  font-family: monospace;
+  resize: none;
+  box-sizing: border-box;
+}
+
+.modal-footer {
+  padding: 8px;
+  text-align: right;
+  border-top: 1px solid #404040;
+}
+
+.modal-footer button {
+  margin-left: 5px;
+}
+
+/* Стили для кнопок в футере модального окна */
+.modal-save {
+  background-color: #4CAF50;
+  color: white;
+  margin-right: 10px;
+}
+
+/* Стиль для кнопки Save as markdown */
+#saveAsMarkdownBtn {
+  background-color: #2196F3;
+  color: white;
+  margin-right: 10px;
+}
+
+#saveAsMarkdownBtn:hover {
+  background-color: #0b7dda;
+}
+
+.modal-cancel {
+  background-color: #666;
+}
+
+/* Диалоговые окна */
+.dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1000;
+}
+
+.dialog-content {
+  background-color: #2d2d2d;
+  width: 80vw;
+  max-width: 800px;
+  border-radius: 4px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.dialog-header {
+  padding: 8px;
+  background-color: #404040;
+  border-top-left-radius: 4px;
+  border-top-right-radius: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: move;
+}
+
+.dialog-header h3 {
+  margin: 0;
+  color: #e0e0e0;
+  user-select: none;
+  font-size: 14px;
+}
+
+.dialog-close {
+  background: none;
+  border: none;
+  color: #e0e0e0;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0 3px;
+}
+
+.dialog-textarea {
+  width: 100%;
+  height: 60vh;
+  padding: 10px;
+  border: none;
+  background-color: #363636;
+  color: #e0e0e0;
+  font-family: monospace;
+  resize: none;
+  box-sizing: border-box;
+}
+
+.dialog-footer {
+  padding: 8px;
+  text-align: right;
+  border-top: 1px solid #404040;
+}
+
+.dialog-footer button {
+  margin-left: 5px;
+}
+
+/* Стили для кнопок в футере диалогового окна */
+.dialog-save {
+  background-color: #4d7c4d;
+}
+
+.dialog-cancel {
+  background-color: #666;
+}
+
+.dialog-body {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+/* Элемент для изменения размера */
+.resize-handle {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 10px;
+  height: 10px;
+  cursor: se-resize;
+  background: linear-gradient(135deg, transparent 50%, #666 50%);
+  border-bottom-right-radius: 4px;
+}
+
+.prompt-controls {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+
+#promptSelect {
+  flex: 1;
+  min-width: 150px;
+}
+
+.modal-input {
+  width: 100%;
+  padding: 6px;
+  margin-bottom: 8px;
+  border: 1px solid #404040;
+  border-radius: 3px;
+  background-color: #363636;
+  color: #e0e0e0;
+}
+
+.resizable {
+  min-width: 300px;
+  min-height: 200px;
+  max-width: 95vw;
+  max-height: 95vh;
+  overflow: hidden; /* Prevents scrollbars when resizing */
+}
+
+.modal-content {
+  resize: both;
+  overflow: auto;
+}
+
+/* Стили для элементов истории запросов */
+.history-modal-body {
+  display: flex;
+  flex-direction: column;
+  height: calc(100% - 80px); /* учитываем высоту header и footer */
+  padding: 8px;
+  overflow: hidden;
+}
+
+.history-filters {
+  background-color: #333;
+  padding: 6px;
+  border-radius: 3px;
+  margin-bottom: 8px;
+}
+
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 5px;
+}
+
+.filter-row:last-child {
+  margin-bottom: 0;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  min-width: 120px;
+}
+
+.filter-group label {
+  margin-bottom: 2px;
+  font-size: 11px;
+  color: #b8b8b8;
+}
+
+.filter-input {
+  padding: 4px;
+  border: 1px solid #404040;
+  border-radius: 3px;
+  background-color: #363636;
+  color: #e0e0e0;
+  font-size: 12px;
+}
+
+.filter-button {
+  margin-top: 17px;
+  padding: 4px 8px;
+  background-color: #4d7c4d;
+  font-size: 11px;
+}
+
+.history-table-container {
+  flex: 1;
+  overflow: auto;
+  border: 1px solid #404040;
+  border-radius: 3px;
+}
+
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.history-table th,
+.history-table td {
+  padding: 5px;
+  text-align: left;
+  border-bottom: 1px solid #404040;
+}
+
+.history-table th {
+  background-color: #404040;
+  position: sticky;
+  top: 0;
+  font-size: 11px;
+}
+
+.history-table tbody tr:hover {
+  background-color: #3a3a3a;
+}
+
+.table-actions {
+  display: flex;
+  gap: 3px;
+}
+
+.table-action-button {
+  background-color: #505050;
+  color: #e0e0e0;
+  border: none;
+  border-radius: 3px;
+  padding: 2px 5px;
+  cursor: pointer;
+  font-size: 10px;
+}
+
+.table-action-button:hover {
+  background-color: #606060;
+}
+
+.table-action-button.view {
+  background-color: #4d7c4d;
+}
+
+.table-action-button.delete {
+  background-color: #7c4d4d;
+}
+
+.table-action-button.reload {
+  background-color: #4d4d7c;
+}
+
+/* Стили для модального окна деталей */
+.details-section {
+  margin-bottom: 8px;
+}
+
+.details-section h4 {
+  margin: 0 0 3px 0;
+  color: #b8b8b8;
+  border-bottom: 1px solid #404040;
+  padding-bottom: 3px;
+  font-size: 12px;
+}
+
+.details-content {
+  background-color: #363636;
+  padding: 5px;
+  border-radius: 3px;
+  overflow: auto;
+  max-height: 150px;
+  font-size: 12px;
+}
+
+pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+#saveResponseButton, #viewHistoryButton {
+  background-color: #4d4d7c;
+}
+
+#saveResponseButton:disabled {
+  background-color: #666;
+  cursor: not-allowed;
+}
+
+/* Стили для вкладок и Markdown */
+.tab-buttons {
+  display: flex;
+  gap: 3px;
+  margin: 0 10px;
+}
+
+.tab-button {
+  background-color: #404040;
+  color: #b8b8b8;
+  border: none;
+  border-radius: 3px 3px 0 0;
+  padding: 3px 6px;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.tab-button.active {
+  background-color: #4d7c4d;
+  color: #ffffff;
+}
+
+.tab-content {
+  display: none;
+  height: 100%;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+.markdown-preview {
+  background-color: #363636;
+  color: #e0e0e0;
+  padding: 8px;
+  overflow: auto;
+  height: calc(80vh - 150px);
+  border-radius: 3px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 12px;
+}
+
+/* Стили для markdown-контента */
+.markdown-preview h1, 
+.markdown-preview h2, 
+.markdown-preview h3, 
+.markdown-preview h4, 
+.markdown-preview h5, 
+.markdown-preview h6 {
+  color: #4d7c4d;
+  margin-top: 0.8em;
+  margin-bottom: 0.3em;
+  font-weight: 600;
+}
+
+.markdown-preview h1 {
+  font-size: 1.4em;
+  border-bottom: 1px solid #404040;
+  padding-bottom: 0.2em;
+}
+
+.markdown-preview h2 {
+  font-size: 1.2em;
+  border-bottom: 1px solid #404040;
+  padding-bottom: 0.2em;
+}
+
+.markdown-preview h3 {
+  font-size: 1.1em;
+}
+
+.markdown-preview p {
+  margin: 0.5em 0;
+  line-height: 1.4;
+}
+
+.markdown-preview a {
+  color: #6a9eff;
+  text-decoration: none;
+}
+
+.markdown-preview a:hover {
+  text-decoration: underline;
+}
+
+.markdown-preview code {
+  font-family: 'Courier New', Courier, monospace;
+  background-color: #2a2a2a;
+  padding: 0.1em 0.3em;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+
+.markdown-preview pre {
+  background-color: #2a2a2a;
+  padding: 0.6em;
+  border-radius: 3px;
+  overflow-x: auto;
+  margin: 0.6em 0;
+}
+
+.markdown-preview pre code {
+  background-color: transparent;
+  padding: 0;
+}
+
+.markdown-preview ul, 
+.markdown-preview ol {
+  padding-left: 1.5em;
+  margin: 0.5em 0;
+}
+
+.markdown-preview blockquote {
+  border-left: 2px solid #4d7c4d;
+  margin: 0.6em 0;
+  padding: 0.3em 0.6em;
+  background-color: #333333;
+}
+
+.markdown-preview img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0.6em auto;
+}
+
+.markdown-preview table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.6em 0;
+  font-size: 11px;
+}
+
+.markdown-preview table th,
+.markdown-preview table td {
+  border: 1px solid #404040;
+  padding: 0.3em;
+}
+
+.markdown-preview table th {
+  background-color: #404040;
+  font-weight: bold;
+}
+
+.markdown-preview table tr:nth-child(even) {
+  background-color: #333333;
+}
+
+/* Стили для вкладок в деталях */
+.details-section .tab-buttons {
+  margin: 3px 0;
+}
+
+#detailsMarkdownPreview {
+  height: 150px;
+}
+
+/* Стили для RAG - компактный интерфейс */
+.rag-controls {
+  margin-bottom: 5px;
+  border: 1px solid #404040;
+  padding: 2px 5px;
+  border-radius: 5px;
+  background-color: #333333;
+  display: flex;
+  align-items: center;
+  height: auto;
+}
+
+/* Минимизация высоты для контейнера RAG-элементов */
+.form-group.rag-controls {
+  min-height: 0 !important; 
+  margin-bottom: 5px !important;
+  padding: 0 !important;
+  height: auto !important;
+  display: flex !important;
+  align-items: flex-start !important;
+}
+
+.rag-toggle {
+  margin-bottom: 0 !important;
+  display: flex;
+  align-items: center;
+}
+
+.rag-toggle label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  color: #e0e0e0;
+  margin: 0;
+  font-size: 0.9em;
+  line-height: 1;
+  padding: 0;
+  height: auto;
+}
+
+.rag-toggle input[type="checkbox"] {
+  margin-right: 5px;
+}
+
+.rag-options {
+  padding-left: 8px;
+  border-left: 2px solid #4d7c4d;
+  margin-top: 0 !important;
+  display: flex;
+  align-items: center;
+  height: auto;
+}
+
+.rag-options label {
+  display: inline-block;
+  margin: 0 5px 0 0;
+  font-weight: bold;
+  color: #b8b8b8;
+  font-size: 0.85em;
+  line-height: 1;
+  padding: 0;
+}
+
+.rag-options select {
+  width: auto;
+  padding: 0 4px;
+  border-radius: 4px;
+  border: 1px solid #404040;
+  background-color: #363636;
+  color: #e0e0e0;
+  height: 22px;
+  min-height: 22px;
+  font-size: 0.85em;
+  line-height: 20px;
+  margin: 0;
+  vertical-align: middle;
+}
+
+/* Стили для отображения информации о RAG в ответе */
+.rag-info {
+  margin-top: 8px;
+  padding: 5px;
+  background-color: #333333;
+  border: 1px solid #404040;
+  border-radius: 5px;
+  font-size: 0.85em;
+}
+
+.rag-info h4 {
+  margin-top: 0;
+  margin-bottom: 3px;
+  color: #4d7c4d;
+  font-size: 0.9em;
+}
+
+.rag-sources {
+  margin-top: 3px;
+}
+
+.rag-sources ul {
+  margin: 0;
+  padding-left: 15px;
+}
+
+.rag-sources li {
+  margin-bottom: 2px;
+  color: #b8b8b8;
+  font-size: 0.85em;
+}
+
+/* Стили для кнопки Debug RAG */
+.debug-button {
+  background-color: #8b4513;
+  color: white;
+  border: none;
+  padding: 2px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 0.8em;
+  height: 20px;
+  margin-left: 5px;
+  line-height: 1;
+}
+
+.debug-button:hover {
+  background-color: #a0522d;
+}
+
+/* Стили для модального окна отладки */
+.debug-section {
+  margin-bottom: 15px;
+}
+
+.debug-section h4 {
+  margin-top: 0;
+  color: #8b4513;
+  font-size: 1em;
+  margin-bottom: 5px;
+}
+
+.debug-content {
+  background-color: #2a2a2a;
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 10px;
+  max-height: 200px;
+  overflow-y: auto;
+  font-family: monospace;
+  font-size: 0.9em;
+  white-space: pre-wrap;
+  color: #e0e0e0;
+}
+
+.debug-content:empty::before {
+  content: "No data available";
+  color: #888;
+  font-style: italic;
+}
+
+/* Стили для загрузки файла */
+.file-upload-group {
+  margin-bottom: 15px;
+}
+
+.file-upload-container {
+  display: flex;
+  flex-direction: column;
+  border: 5x dashed #555;
+  padding: 5px;
+  border-radius: 4px;
+  background-color: #2a2a2a;
+}
+
+.file-info {
+  margin: 5px 0;
+  padding: 5px;
+  background-color: #333;
+  border-radius: 3px;
+  font-size: 0.9em;
+  color: #b8b8b8;
+  min-height: 20px;
+}
+
+.small-button {
+  padding: 2px 8px;
+  font-size: 0.8em;
+  background-color: #444;
+  color: #e0e0e0;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  margin-left: 5px;
+}
+
+.small-button:hover {
+  background-color: #555;
+}
+
+.use-file-button {
+  padding: 5px 10px;
+  background-color: #464;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  align-self: flex-end;
+  font-size: 0.9em;
+  margin-top: 5px;
+}
+
+.use-file-button:hover {
+  background-color: #575;
+}
+
+.use-file-button:disabled {
+  background-color: #444;
+  color: #777;
+  cursor: not-allowed;
+}
+
+input[type="file"] {
+  padding: 5px;
+  border: 1px solid #444;
+  border-radius: 3px;
+  background-color: #333;
+  color: #e0e0e0;
+  width: 100%;
+}
+
+input[type="file"]::-webkit-file-upload-button {
+  background-color: #444;
+  color: #e0e0e0;
+  padding: 5px 10px;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  margin-right: 10px;
+}
+
+input[type="file"]::-webkit-file-upload-button:hover {
+  background-color: #555;
+}
+
+/* Стили для уведомлений */
+.notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 12px 20px;
+  border-radius: 4px;
+  color: white;
+  font-size: 14px;
+  z-index: 1000;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  opacity: 1;
+  transition: opacity 0.5s ease;
+}
+
+.success-notification {
+  background-color: #4CAF50;
+  border-left: 4px solid #2E7D32;
+}
+
+.error-notification {
+  background-color: #F44336;
+  border-left: 4px solid #B71C1C;
+}
+
+.fade-out {
+  opacity: 0;
+}
+
+/* Стили для анализа файла по частям */
+.file-split-body {
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  max-height: 70vh;
+  overflow: hidden;
+}
+
+.file-split-info {
+  background-color: #333;
+  padding: 10px;
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.file-split-info p {
+  margin: 0 0 10px 0;
+  font-size: 0.95em;
+}
+
+.split-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.split-controls label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.split-controls input[type="checkbox"] {
+  margin-right: 8px;
+}
+
+.split-controls button {
+  background-color: #4d4d7c;
+  padding: 5px 10px;
+  border: none;
+  border-radius: 3px;
+  color: white;
+  cursor: pointer;
+  font-size: 0.9em;
+}
+
+.split-controls button:disabled {
+  background-color: #555;
+  color: #888;
+  cursor: not-allowed;
+}
+
+.file-parts-list {
+  flex: 1;
+  overflow: auto;
+  border: 1px solid #444;
+  border-radius: 4px;
+}
+
+.file-parts-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.file-parts-table th,
+.file-parts-table td {
+  padding: 8px;
+  text-align: left;
+  border-bottom: 1px solid #444;
+}
+
+.file-parts-table th {
+  background-color: #404040;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  color: #e0e0e0;
+}
+
+.process-part-btn {
+  background-color: #4d7c4d;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  padding: 5px 8px;
+  cursor: pointer;
+  font-size: 0.9em;
+}
+
+.process-part-btn:hover {
+  background-color: #5a8c5a;
+}
+
+.process-part-btn:disabled {
+  background-color: #555;
+  color: #888;
+  cursor: not-allowed;
+}
+
+.part-status {
+  font-size: 0.9em;
+  color: #b8b8b8;
+}
+
+.part-status.processing {
+  color: #ffa500;
+  font-weight: bold;
+}
+
+.part-status.success {
+  color: #4CAF50;
+  font-weight: bold;
+}
+
+.part-status.error {
+  color: #F44336;
+  font-weight: bold;
+}
+
+/* Стиль для кнопки использования файла в группе кнопок */
+.use-file-button-main {
+  background-color: #464;
+  color: white;
+  padding: 5px 10px;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+  margin-right: 5px;
+}
+
+.use-file-button-main:hover {
+  background-color: #575;
+}
+
+.use-file-button-main:disabled {
+  background-color: #666;
+  cursor: not-allowed;
+}

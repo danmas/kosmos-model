@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AI Analytics Interface for testing various AI models">
+    <meta name="keywords" content="AI, analytics, testing, interface">
+    <title>AI Analytics Interface</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="compact-styles.css">
+    <!-- Подключаем библиотеку Marked.js для обработки Markdown -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Подключаем highlight.js для подсветки синтаксиса кода -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.7.0/styles/github-dark.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.7.0/highlight.min.js"></script>
+    <!-- Font Awesome для иконок -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div id="loading">Loading application...</div>
+    <div id="error"></div>
+    <div id="app"></div>
+    
+    <script src="rag.js"></script>
+    <script src="app.js"></script>
+    <script src="index.js"></script>
+    <!-- Подключаем модуль server-info.js -->
+    <script type="module">
+      import { initServerInfo, ServerInfoConfig } from './js/server-info.js';
+      
+      // Инициализация обновления заголовка окна
+      document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => {
+          initServerInfo({
+            headerSelector: '.card h2', // Селектор заголовка в приложении
+            updateWindowTitle: true,
+            enableLogging: true
+          })
+          .then(success => {
+            console.log('Инициализация обновления заголовка окна:', success ? 'успешно' : 'не удалось');
+          })
+          .catch(error => {
+            console.error('Ошибка при инициализации обновления заголовка окна:', error);
+          });
+        }, 1000); // Задержка для загрузки приложения
+      });
+    </script>
+</body>
+</html>

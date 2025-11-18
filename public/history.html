@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>История запросов AI - AI Analytics Interface</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="compact-styles.css">
+    <!-- Подключаем библиотеку Marked.js для обработки Markdown -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Подключаем highlight.js для подсветки синтаксиса кода -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.7.0/styles/github-dark.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.7.0/highlight.min.js"></script>
+    <!-- Font Awesome для иконок -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* Специальные стили для страницы истории */
+        .history-container {
+            max-width: 100%;
+            margin: 0;
+            padding: 20px;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background-color: #1a1a1a;
+        }
+
+        .page-header {
+            text-align: center;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #4a9eff 0%, #764ba2 100%);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .page-header h1 {
+            margin: 0;
+            font-size: 1em;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .page-header p {
+            margin: 0;
+            opacity: 0.9;
+            font-size: 0.85em;
+            white-space: nowrap;
+        }
+
+        .back-button {
+            position: absolute;
+            top: 8px;
+            left: 10px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            transition: background-color 0.3s;
+        }
+
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            text-decoration: none;
+            color: white;
+        }
+
+        .controls-section {
+            background-color: #2d2d2d;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            border: 1px solid #404040;
+        }
+
+        .controls-header {
+            padding: 6px 10px;
+            background-color: #404040;
+            border-radius: 6px 6px 0 0;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
+        }
+
+        .controls-header:hover {
+            background-color: #4a4a4a;
+        }
+
+        .controls-header h3 {
+            margin: 0;
+            font-size: 12px;
+            color: #e0e0e0;
+        }
+
+        .controls-toggle {
+            font-size: 10px;
+            transition: transform 0.3s ease;
+        }
+
+        .controls-toggle.collapsed {
+            transform: rotate(-90deg);
+        }
+
+        .controls-content {
+            padding: 8px 10px;
+            transition: max-height 0.3s ease, opacity 0.3s ease;
+            overflow: hidden;
+        }
+
+        .controls-content.collapsed {
+            max-height: 0;
+            padding: 0 10px;
+            opacity: 0;
+        }
+
+        .pagination-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .pagination-info {
+            color: #b8b8b8;
+            font-size: 11px;
+        }
+
+        .pagination-buttons {
+            display: flex;
+            gap: 5px;
+        }
+
+        .pagination-btn {
+            background-color: #4a9eff;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .pagination-btn:hover:not(:disabled) {
+            background-color: #357abd;
+        }
+
+        .pagination-btn:disabled {
+            background-color: #666;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        .filters-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 8px;
+            align-items: flex-end;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            min-width: 100px;
+        }
+
+        .filter-group label {
+            margin-bottom: 2px;
+            font-size: 10px;
+            color: #b8b8b8;
+            font-weight: 500;
+        }
+
+        .filter-input, .filter-select {
+            padding: 4px 6px;
+            border: 1px solid #404040;
+            border-radius: 3px;
+            background-color: #363636;
+            color: #e0e0e0;
+            font-size: 11px;
+        }
+
+        .filter-input:focus, .filter-select:focus {
+            outline: none;
+            border-color: #4a9eff;
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 5px;
+            margin-top: 8px;
+        }
+
+        .filter-btn {
+            background-color: #4d7c4d;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 10px;
+            transition: background-color 0.3s;
+        }
+
+        .filter-btn:hover {
+            background-color: #5a8c5a;
+        }
+
+        .filter-btn.reset {
+            background-color: #7c4d4d;
+        }
+
+        .filter-btn.reset:hover {
+            background-color: #8c5a5a;
+        }
+
+        .main-content {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            min-height: 0;
+        }
+
+        .panel {
+            background-color: #2d2d2d;
+            border: 1px solid #404040;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            background-color: #404040;
+            padding: 12px;
+            border-bottom: 1px solid #505050;
+            font-weight: 600;
+            color: #e0e0e0;
+            font-size: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .panel-header-btn {
+            background: none;
+            border: none;
+            color: #e0e0e0;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: background-color 0.2s, color 0.2s;
+            display: none; /* Скрыты по умолчанию */
+        }
+
+        .panel-header-btn:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .panel-header-btn:disabled {
+            color: #666;
+            cursor: not-allowed;
+            background: none;
+        }
+
+        .panel-content {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 13px;
+            line-height: 1.4;
+            color: #e0e0e0;
+            background-color: #363636;
+        }
+
+        .history-list {
+            background-color: #2d2d2d;
+            border: 1px solid #404040;
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+
+        .history-header {
+            padding: 6px 10px;
+            background-color: #404040;
+            border-radius: 6px 6px 0 0;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
+        }
+
+        .history-header:hover {
+            background-color: #4a4a4a;
+        }
+
+        .history-header h3 {
+            margin: 0;
+            font-size: 12px;
+            color: #e0e0e0;
+        }
+
+        .history-toggle {
+            font-size: 10px;
+            transition: transform 0.3s ease;
+        }
+
+        .history-toggle.collapsed {
+            transform: rotate(-90deg);
+        }
+
+        .history-content {
+            max-height: 150px;
+            overflow-y: auto;
+            transition: max-height 0.3s ease;
+        }
+
+        .history-content.collapsed {
+            max-height: 0;
+            overflow: hidden;
+        }
+
+        .history-item {
+            padding: 6px 8px;
+            border-bottom: 1px solid #404040;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .history-item:hover {
+            background-color: #3a3a3a;
+        }
+
+        .history-item.active {
+            background-color: #4a9eff;
+            color: white;
+        }
+
+        .history-item:last-child {
+            border-bottom: none;
+        }
+
+        .history-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 3px;
+        }
+
+        .history-item-date {
+            font-size: 10px;
+            color: #b8b8b8;
+            font-weight: 500;
+        }
+
+        .history-item.active .history-item-date {
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .history-item-model {
+            font-size: 9px;
+            background-color: #4d7c4d;
+            color: white;
+            padding: 1px 4px;
+            border-radius: 2px;
+            font-weight: 500;
+        }
+
+        .history-item.active .history-item-model {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .history-item-prompt {
+            font-size: 10px;
+            color: #ccc;
+            font-weight: 500;
+            margin-bottom: 2px;
+        }
+
+        .history-item.active .history-item-prompt {
+            color: white;
+        }
+
+        .history-item-preview {
+            font-size: 9px;
+            color: #999;
+            line-height: 1.2;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 1;
+            -webkit-box-orient: vertical;
+        }
+
+        .history-item.active .history-item-preview {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .loading-message {
+            text-align: center;
+            padding: 40px;
+            color: #b8b8b8;
+            font-size: 14px;
+        }
+
+        .error-message {
+            background-color: #7c4d4d;
+            color: white;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        .empty-message {
+            text-align: center;
+            padding: 40px;
+            color: #b8b8b8;
+            font-size: 14px;
+        }
+
+        .meta-info {
+            background-color: #2a2a2a;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            font-size: 12px;
+            border: 1px solid #404040;
+        }
+
+        .meta-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+
+        .meta-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .meta-label {
+            color: #b8b8b8;
+            font-weight: 500;
+        }
+
+        .meta-value {
+            color: #e0e0e0;
+            font-weight: 600;
+        }
+
+        /* Адаптивность */
+        @media (max-width: 1200px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto 1fr;
+            }
+            
+            .filters-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .filter-group {
+                min-width: auto;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .history-container {
+                padding: 5px;
+            }
+            
+            .page-header {
+                flex-direction: column;
+                gap: 5px;
+                padding: 6px 10px;
+            }
+            
+            .page-header h1 {
+                font-size: 0.9em;
+            }
+            
+            .page-header p {
+                font-size: 0.8em;
+            }
+            
+            .back-button {
+                position: static;
+                margin-bottom: 5px;
+                align-self: flex-start;
+                font-size: 10px;
+                padding: 3px 6px;
+            }
+            
+            .pagination-nav {
+                flex-direction: column;
+                gap: 5px;
+                align-items: stretch;
+            }
+            
+            .filters-row {
+                flex-direction: column;
+                gap: 5px;
+            }
+            
+            .filter-group {
+                min-width: auto;
+            }
+        }
+
+        /* Стили для Raw JSON секций */
+        .json-content {
+            background-color: #2a2a2a;
+            border: 1px solid #404040;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: #e0e0e0;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .section-divider {
+            border: none;
+            height: 1px;
+            background-color: #404040;
+            margin: 15px 0;
+        }
+
+        /* Модальное окно для просмотра текста (аналогично responseModal) */
+        .text-view-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none;
+            z-index: 1000;
+        }
+
+        .text-view-modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #2d2d2d;
+            border: 1px solid #404040;
+            border-radius: 8px;
+            width: 80%;
+            height: 80%;
+            display: flex;
+            flex-direction: column;
+            resize: both;
+            overflow: hidden;
+            min-width: 400px;
+            min-height: 300px;
+        }
+
+        .text-view-modal-header {
+            background-color: #404040;
+            padding: 8px 12px;
+            border-bottom: 1px solid #505050;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: move;
+        }
+
+        .text-view-modal-header h3 {
+            margin: 0;
+            color: #e0e0e0;
+            font-size: 14px;
+        }
+
+        .text-view-tab-buttons {
+            display: flex;
+            gap: 6px;
+        }
+
+        .text-view-tab-button {
+            background: #555;
+            color: #e0e0e0;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: background-color 0.2s;
+        }
+
+        .text-view-tab-button.active {
+            background: #4a9eff;
+            color: white;
+        }
+
+        .text-view-tab-button:hover {
+            background: #666;
+        }
+
+        .text-view-tab-button.active:hover {
+            background: #357abd;
+        }
+
+        .text-view-modal-close,
+        .text-view-modal-maximize {
+            background: none;
+            border: none;
+            color: #ccc;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 2px;
+            line-height: 1;
+            margin-left: 8px;
+            border-radius: 2px;
+            transition: background-color 0.2s, color 0.2s;
+        }
+
+        .text-view-modal-close {
+            font-size: 20px;
+        }
+
+        .text-view-modal-close:hover,
+        .text-view-modal-maximize:hover {
+            color: white;
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .text-view-modal-header-buttons {
+            display: flex;
+            align-items: center;
+        }
+
+        .text-view-modal-body {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .text-view-tab-content {
+            flex: 1;
+            overflow: auto;
+            display: none;
+        }
+
+        .text-view-tab-content.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .text-view-modal-textarea {
+            flex: 1;
+            background: #222;
+            color: #e0e0e0;
+            border: none;
+            padding: 15px;
+            font-family: monospace;
+            font-size: 13px;
+            line-height: 1.4;
+            resize: none;
+            outline: none;
+        }
+
+        .text-view-markdown-preview {
+            flex: 1;
+            background: #222;
+            color: #e0e0e0;
+            padding: 15px;
+            overflow: auto;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+        }
+
+        .text-view-modal-footer {
+            background-color: #404040;
+            padding: 8px 12px;
+            border-top: 1px solid #505050;
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        .text-view-modal-button {
+            background: #4a9eff;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background-color 0.2s;
+        }
+
+        .text-view-modal-button:hover {
+            background: #357abd;
+        }
+
+        .text-view-resize-handle {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 15px;
+            height: 15px;
+            cursor: se-resize;
+            background: linear-gradient(-45deg, transparent 0%, transparent 40%, #666 40%, #666 60%, transparent 60%);
+        }
+    </style>
+</head>
+<body>
+    <div class="history-container">
+        <div class="page-header">
+            <a href="/" class="back-button">
+                <i class="fas fa-arrow-left"></i>
+                Назад в админ-панель
+            </a>
+            <h1><i class="fas fa-history"></i> Просмотр логов AI</h1>
+            <p>История запросов и ответов AI моделей</p>
+        </div>
+
+        <div class="controls-section">
+            <div class="controls-header" onclick="toggleControls()">
+                <h3><i class="fas fa-filter"></i> Фильтры и настройки</h3>
+                <span class="controls-toggle"><i class="fas fa-chevron-down"></i></span>
+            </div>
+            <div class="controls-content" id="controlsContent">
+                <div class="pagination-nav">
+                    <div class="pagination-info">
+                        <span id="paginationInfo">Загрузка...</span>
+                    </div>
+                    <div class="pagination-buttons">
+                        <button id="prevBtn" class="pagination-btn">
+                            <i class="fas fa-chevron-left"></i> Назад
+                        </button>
+                        <button id="nextBtn" class="pagination-btn">
+                            Вперед <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="filters-row">
+                    <div class="filter-group">
+                        <label>Модель:</label>
+                        <input type="text" id="modelFilter" class="filter-input" placeholder="Фильтр по модели...">
+                    </div>
+                    <div class="filter-group">
+                        <label>Промпт:</label>
+                        <input type="text" id="promptFilter" class="filter-input" placeholder="Фильтр по промпту...">
+                    </div>
+                    <div class="filter-group">
+                        <label>Дата от:</label>
+                        <input type="date" id="dateFromFilter" class="filter-input">
+                    </div>
+                    <div class="filter-group">
+                        <label>Дата до:</label>
+                        <input type="date" id="dateToFilter" class="filter-input">
+                    </div>
+                    <div class="filter-group">
+                        <label>Сортировка:</label>
+                        <select id="sortBy" class="filter-select">
+                            <option value="date">По дате</option>
+                            <option value="model">По модели</option>
+                            <option value="promptName">По промпту</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Порядок:</label>
+                        <select id="sortOrder" class="filter-select">
+                            <option value="desc">По убыванию</option>
+                            <option value="asc">По возрастанию</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="filter-buttons">
+                    <button id="applyFilters" class="filter-btn">
+                        <i class="fas fa-filter"></i> Применить фильтры
+                    </button>
+                    <button id="resetFilters" class="filter-btn reset">
+                        <i class="fas fa-undo"></i> Сбросить
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="history-list">
+            <div class="history-header" onclick="toggleHistory()">
+                <h3><i class="fas fa-list"></i> Список запросов (<span id="historyCount">0</span>)</h3>
+                <span class="history-toggle"><i class="fas fa-chevron-down"></i></span>
+            </div>
+            <div class="history-content" id="historyContent">
+                <div id="historyItems">
+                    <div class="loading-message">
+                        <i class="fas fa-spinner fa-spin"></i> Загрузка истории запросов...
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="panel">
+                <div class="panel-header">
+                    <span><i class="fas fa-paper-plane"></i> Запрос (Request)</span>
+                    <button class="panel-header-btn" id="viewRequestBtn" title="Просмотреть полный запрос">
+                        <i class="fas fa-expand-alt"></i>
+                    </button>
+                </div>
+                <div id="requestContent" class="panel-content">
+                    <div class="empty-message">
+                        Выберите элемент из истории для просмотра запроса
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <span><i class="fas fa-reply"></i> Ответ (Response)</span>
+                    <button class="panel-header-btn" id="viewResponseBtn" title="Просмотреть полный ответ">
+                        <i class="fas fa-expand-alt"></i>
+                    </button>
+                </div>
+                <div id="responseContent" class="panel-content">
+                    <div class="empty-message">
+                        Выберите элемент из истории для просмотра ответа
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal для просмотра текста -->
+    <div id="textViewModal" class="text-view-modal">
+        <div class="text-view-modal-content" id="textViewModalContent">
+            <div class="text-view-modal-header" id="textViewModalHeader">
+                <h3 id="textViewModalTitle">Просмотр</h3>
+                <div class="text-view-tab-buttons">
+                    <button class="text-view-tab-button active" data-tab="text">Plain Text</button>
+                    <button class="text-view-tab-button" data-tab="markdown">Markdown</button>
+                </div>
+                <div class="text-view-modal-header-buttons">
+                    <button class="text-view-modal-maximize" id="textViewModalMaximize" title="Развернуть/Свернуть">
+                        <i class="fas fa-expand-arrows-alt"></i>
+                    </button>
+                    <button class="text-view-modal-close" id="textViewModalClose">&times;</button>
+                </div>
+            </div>
+            <div class="text-view-modal-body">
+                <div class="text-view-tab-content active" id="textViewTextTab">
+                    <textarea class="text-view-modal-textarea" id="textViewModalText" readonly></textarea>
+                </div>
+                <div class="text-view-tab-content" id="textViewMarkdownTab">
+                    <div class="text-view-markdown-preview" id="textViewMarkdownPreview"></div>
+                </div>
+            </div>
+            <div class="text-view-modal-footer">
+                <button class="text-view-modal-button" id="textViewCopyBtn">
+                    <i class="fas fa-copy"></i> Копировать
+                </button>
+                <button class="text-view-modal-button text-view-modal-close">Закрыть</button>
+            </div>
+            <div class="text-view-resize-handle" id="textViewResizeHandle"></div>
+        </div>
+    </div>
+
+    <script src="history.js"></script>
+    <script>
+        // Функции для сворачивания панелей
+        function toggleControls() {
+            const content = document.getElementById('controlsContent');
+            const toggle = document.querySelector('.controls-toggle');
+            
+            content.classList.toggle('collapsed');
+            toggle.classList.toggle('collapsed');
+            
+            // Сохраняем состояние в localStorage
+            localStorage.setItem('controlsCollapsed', content.classList.contains('collapsed'));
+        }
+
+        function toggleHistory() {
+            const content = document.getElementById('historyContent');
+            const toggle = document.querySelector('.history-toggle');
+            
+            content.classList.toggle('collapsed');
+            toggle.classList.toggle('collapsed');
+            
+            // Сохраняем состояние в localStorage
+            localStorage.setItem('historyCollapsed', content.classList.contains('collapsed'));
+        }
+
+        // Восстанавливаем состояние при загрузке
+        document.addEventListener('DOMContentLoaded', () => {
+            // Восстанавливаем состояние панели управления
+            const controlsCollapsed = localStorage.getItem('controlsCollapsed') === 'true';
+            if (controlsCollapsed) {
+                document.getElementById('controlsContent').classList.add('collapsed');
+                document.querySelector('.controls-toggle').classList.add('collapsed');
+            }
+
+            // Восстанавливаем состояние списка истории
+            const historyCollapsed = localStorage.getItem('historyCollapsed') === 'true';
+            if (historyCollapsed) {
+                document.getElementById('historyContent').classList.add('collapsed');
+                document.querySelector('.history-toggle').classList.add('collapsed');
+            }
+        });
+    </script>
+</body>
+</html>
+
