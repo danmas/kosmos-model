@@ -16,6 +16,24 @@ const GroqService = require('./groq-service');
 // Добавляем библиотеку CORS
 const cors = require('cors');
 
+const MODELS_FILE = path.join(__dirname, 'available-models.json');
+
+// Загрузка моделей
+async function loadModels() {
+  try {
+    const data = await fsPromises.readFile(MODELS_FILE, 'utf8');
+    return JSON.parse(data);
+  } catch (err) {
+    console.error('Ошибка чтения available-models.json, создаём пустой');
+    return [];
+  }
+}
+
+// Сохранение моделей
+async function saveModels(models) {
+  await fsPromises.writeFile(MODELS_FILE, JSON.stringify(models, null, 2));
+}
+
 // Константа для директории сохранения файлов по умолчанию
 const OUTPUT_DOCS_DIR = process.env.OUTPUT_DOCS_DIR || path.join(__dirname, 'output_docs');
 
@@ -1337,100 +1355,53 @@ app.get('/api/available-models', (req, res) => {
     res.json(models);
 });
 
-// Новый маршрут для получения всех моделей для фронтенда
-app.get('/api/all-models', (req, res) => {
-    res.json(config.availableModels);
+// === НОВЫЙ УМНЫЙ СПИСОК МОДЕЛЕЙ ===
+app.get('/api/all-models', async (req, res) => {
+  try {
+    const models = await loadModels();
+    res.json(models.filter(m => m.enabled));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to load models' });
+  }
 });
 
-// Эндпоинт для получения всех моделей по умолчанию
-app.get('/api/default-models', (req, res) => {
-    res.json({
-        success: true,
-        defaultModels: config.defaultModels
-    });
+// Текущие выбранные CHEAP / FAST / RICH
+app.get('/api/default-models', async (req, res) => {
+  const models = await loadModels();
+  const defaults = {
+    cheap: models.find(m => m.cost_level === 'cheap' && m.is_default) || null,
+    fast:  models.find(m => m.cost_level === 'fast'  && m.is_default) || null,
+    rich:  models.find(m => m.cost_level === 'rich'  && m.is_default) || null
+  };
+  res.json(defaults);
 });
 
-// Эндпоинт для установки модели по умолчанию
-app.post('/api/default-models', async (req, res) => {
-    try {
-        const { type, model, provider } = req.body;
-        
-        // Валидация типа модели
-        if (!['cheap', 'fast', 'rich'].includes(type)) {
-            return res.status(400).json({ 
-                success: false,
-                error: 'Недопустимый тип модели. Используйте: cheap, fast, rich' 
-            });
-        }
-        
-        if (!model || !provider) {
-            return res.status(400).json({ 
-                success: false,
-                error: 'Требуются поля: model и provider' 
-            });
-        }
-        
-        // Проверяем, что модель существует в доступных моделях
-        const modelExists = config.availableModels.some(m => 
-            m.name === model && m.provider === provider
-        );
-        
-        if (!modelExists) {
-            return res.status(400).json({ 
-                success: false,
-                error: `Модель ${model} с провайдером ${provider} не найдена в списке доступных моделей` 
-            });
-        }
-        
-        // Обновляем конфигурацию в памяти
-        config.defaultModels[type] = {
-            model,
-            provider,
-            description: config.defaultModels[type].description
-        };
-        
-        // Обновляем .env файл
-        const envPath = path.join(__dirname, 'props.env');
-        let envContent = await fsPromises.readFile(envPath, 'utf8');
-        
-        const typeUpper = type.toUpperCase();
-        const modelKey = `DEFAULT_MODEL_${typeUpper}`;
-        const providerKey = `DEFAULT_MODEL_${typeUpper}_PROVIDER`;
-        
-        // Обновляем или добавляем переменные
-        const modelRegex = new RegExp(`^${modelKey}=.*$`, 'm');
-        const providerRegex = new RegExp(`^${providerKey}=.*$`, 'm');
-        
-        if (modelRegex.test(envContent)) {
-            envContent = envContent.replace(modelRegex, `${modelKey}=${model}`);
-        } else {
-            envContent += `\n${modelKey}=${model}`;
-        }
-        
-        if (providerRegex.test(envContent)) {
-            envContent = envContent.replace(providerRegex, `${providerKey}=${provider}`);
-        } else {
-            envContent += `\n${providerKey}=${provider}`;
-        }
-        
-        await fsPromises.writeFile(envPath, envContent);
-        
-        console.log(`✅ Модель по умолчанию ${type.toUpperCase()} обновлена: ${model} (${provider})`);
-        
-        res.json({ 
-            success: true,
-            message: `Модель ${type} успешно обновлена`,
-            updatedModel: config.defaultModels[type]
-        });
-        
-    } catch (error) {
-        console.error('Ошибка при обновлении модели по умолчанию:', error);
-        res.status(500).json({ 
-            success: false,
-            error: 'Не удалось обновить модель по умолчанию',
-            details: error.message 
-        });
-    }
+// Сменить дефолтную модель
+app.post('/api/default-models/set', async (req, res) => {
+  const { modelId, type } = req.body;
+
+  if (!['cheap', 'fast', 'rich'].includes(type)) {
+    return res.status(400).json({ error: 'Invalid type' });
+  }
+
+  let models = await loadModels();
+
+  // Сбрасываем все is_default этого типа
+  models = models.map(m => ({
+    ...m,
+    is_default: m.cost_level === type ? false : m.is_default
+  }));
+
+  const target = models.find(m => m.id === modelId);
+  if (!target || target.cost_level !== type) {
+    return res.status(400).json({ error: 'Model not suitable for this type' });
+  }
+
+  target.is_default = true;
+  await saveModels(models);
+
+  res.json({ success: true, selected: target });
 });
 
 // Эндпоинт для получения конкретной модели по умолчанию по типу
@@ -1450,6 +1421,53 @@ app.get('/api/default-models/:type', (req, res) => {
         model: config.defaultModels[type]
     });
 });
+
+async function refreshOpenRouterModels() {
+  try {
+    console.log('Обновляем список OpenRouter...');
+    const { data } = await axios.get('https://openrouter.ai/api/v1/models');
+
+    let localModels = await loadModels();
+
+    // Сохраняем текущие дефолты
+    const currentDefaults = {
+      cheap: localModels.find(m => m.cost_level === 'cheap' && m.is_default)?.id,
+      fast:  localModels.find(m => m.cost_level === 'fast'  && m.is_default)?.id,
+      rich:  localModels.find(m => m.cost_level === 'rich'  && m.is_default)?.id
+    };
+
+    // Удаляем все старые openroute модели
+    localModels = localModels.filter(m => m.provider !== 'openroute');
+
+    // Добавляем новые
+    for (const remote of data.data) {
+      if (remote.id.includes(':free') || remote.id.includes('-free') || remote.id.endsWith(':free')) {
+        const newModel = {
+          id: `or-${remote.id.replace(/:/g, '-')}`,
+          provider: "openroute",
+          name: remote.id,
+          visible_name: `OpenRouter → ${remote.name || remote.id}`,
+          context: remote.context_length || 32768,
+          cost_level: "cheap",
+          is_default: currentDefaults.cheap === `or-${remote.id.replace(/:/g, '-')}`,
+          enabled: true,
+          free: true,
+          added_at: new Date().toISOString()
+        };
+        localModels.push(newModel);
+      }
+    }
+
+    await saveModels(localModels);
+    console.log(`OpenRouter обновлён: добавлено/обновлено ${data.data.length} моделей`);
+  } catch (err) {
+    console.error('Ошибка автообновления OpenRouter:', err.message);
+  }
+}
+
+// При старте и каждые 8 часов
+refreshOpenRouterModels();
+setInterval(refreshOpenRouterModels, 8 * 60 * 60 * 1000);
 
 const PORT = process.env.PORT || config.port;
 

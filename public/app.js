@@ -70,6 +70,7 @@
       console.log('RAG enabled status before render:', this.ragEnabled);
       this.render();
       this.attachEventListeners();
+      this.populateModelSelect(); // Заполняем селект моделей после render()
       this.loadSavedState();
 
       // Деактивируем кнопку сохранения при запуске (до получения ответа)
@@ -90,15 +91,95 @@
   async loadModels() {
     try {
       const response = await fetch('/api/all-models');
-      if (!response.ok) {
-        throw new Error('Failed to load models');
-      }
-      const allModels = await response.json();
-      this.modelsList = allModels.filter(m => m.use_in_ui);
-      console.log('Loaded and filtered models for UI:', this.modelsList);
-    } catch (error) {
-      console.error('Failed to load models:', error);
-      this.modelsList = []; // В случае ошибки используем пустой список
+      if (!response.ok) throw new Error('Network error');
+      const models = await response.json();
+  
+      // Получаем дефолтные модели
+      const defaultsRes = await fetch('/api/default-models');
+      const defaults = defaultsRes.ok ? await defaultsRes.json() : {};
+      
+      // Сохраняем данные для populateModelSelect()
+      this.modelsList = models;
+      this.defaultModelsData = defaults;
+
+    } catch (err) {
+      console.error('Ошибка загрузки моделей:', err);
+      this.showError('Не удалось загрузить модели');
+      this.modelsList = [];
+      this.defaultModelsData = {};
+    }
+  }
+  
+  // Заполнение селекта моделей (вызывается после render())
+  populateModelSelect() {
+    const select = document.getElementById('modelSelect');
+    if (!select || !this.modelsList || this.modelsList.length === 0) {
+      return;
+    }
+
+    // Очищаем старые опции
+    select.innerHTML = '<option value="">-- Выбрать вручную --</option>';
+
+    // Группируем по cost_level
+    const groups = {
+      rich: { emoji: '💎', label: 'RICH', models: [] },
+      fast: { emoji: '⚡', label: 'FAST', models: [] },
+      cheap: { emoji: '💸', label: 'CHEAP', models: [] }
+    };
+
+    this.modelsList.forEach(model => {
+      const group = groups[model.cost_level] || groups.cheap;
+      group.models.push(model);
+    });
+
+    // Добавляем в селект сгруппировано
+    Object.keys(groups).forEach(key => {
+      const g = groups[key];
+      if (g.models.length === 0) return;
+
+      const optgroup = document.createElement('optgroup');
+      optgroup.label = `${g.emoji} ${g.label}`;
+
+      g.models.sort((a, b) => {
+        // Дефолтная модель наверх
+        if (a.is_default && !b.is_default) return -1;
+        if (!a.is_default && b.is_default) return 1;
+        return (a.visible_name || a.name).localeCompare(b.visible_name || b.name);
+      });
+
+      g.models.forEach(model => {
+        const option = document.createElement('option');
+        option.value = model.name;
+        option.textContent = model.visible_name || model.name;
+        
+        // Автопрефикс для GROQ
+        if (model.provider === 'groq') {
+          option.textContent = `GROQ → ${option.textContent}`;
+        }
+        
+        option.dataset.provider = model.provider;
+        option.dataset.id = model.id;
+
+        // Подсвечиваем дефолтную
+        if (model.is_default) {
+          option.textContent = `✅ ${option.textContent} (по умолчанию)`;
+        }
+
+        optgroup.appendChild(option);
+      });
+
+      select.appendChild(optgroup);
+    });
+
+    // Восстанавливаем выбор
+    const saved = localStorage.getItem('selectedModel');
+    if (saved && this.modelsList.some(m => m.name === saved)) {
+      select.value = saved;
+      this.model = saved;
+    } else if (this.defaultModelsData?.fast?.name) {
+      select.value = this.defaultModelsData.fast.name;
+      this.model = this.defaultModelsData.fast.name;
+      localStorage.setItem('selectedModel', this.model);
     }
   }
 
@@ -109,7 +190,30 @@
         throw new Error('Failed to load default models');
       }
       const data = await response.json();
-      this.defaultModels = data.defaultModels;
+      // Новый формат: { cheap: {...}, fast: {...}, rich: {...} }
+      // Старый формат: { defaultModels: { cheap: {...}, ... } }
+      if (data.defaultModels) {
+        this.defaultModels = data.defaultModels;
+      } else {
+        // Новый формат - преобразуем в старый для совместимости
+        this.defaultModels = {
+          cheap: data.cheap ? {
+            model: data.cheap.name,
+            provider: data.cheap.provider,
+            description: data.cheap.visible_name || data.cheap.name
+          } : null,
+          fast: data.fast ? {
+            model: data.fast.name,
+            provider: data.fast.provider,
+            description: data.fast.visible_name || data.fast.name
+          } : null,
+          rich: data.rich ? {
+            model: data.rich.name,
+            provider: data.rich.provider,
+            description: data.rich.visible_name || data.rich.name
+          } : null
+        };
+      }
       console.log('Loaded default models:', this.defaultModels);
     } catch (error) {
       console.error('Failed to load default models:', error);
@@ -162,13 +266,14 @@
             <select id="modelTypeSelect" style="flex: 1;">
               <option value="">-- Выбрать вручную --</option>
               ${this.defaultModels ? `
-                <option value="cheap" ${this.selectedModelType === 'cheap' ? 'selected' : ''}>💰 CHEAP (${this.defaultModels.cheap.description})</option>
-                <option value="fast" ${this.selectedModelType === 'fast' ? 'selected' : ''}>⚡ FAST (${this.defaultModels.fast.description})</option>
-                <option value="rich" ${this.selectedModelType === 'rich' ? 'selected' : ''}>💎 RICH (${this.defaultModels.rich.description})</option>
+                ${this.defaultModels.cheap ? `<option value="cheap" ${this.selectedModelType === 'cheap' ? 'selected' : ''}>💰 CHEAP (${this.defaultModels.cheap.description})</option>` : ''}
+                ${this.defaultModels.fast ? `<option value="fast" ${this.selectedModelType === 'fast' ? 'selected' : ''}>⚡ FAST (${this.defaultModels.fast.description})</option>` : ''}
+                ${this.defaultModels.rich ? `<option value="rich" ${this.selectedModelType === 'rich' ? 'selected' : ''}>💎 RICH (${this.defaultModels.rich.description})</option>` : ''}
               ` : ''}
             </select>
             <select id="modelSelect" style="flex: 1;">
-              ${this.modelsList.map(model => `<option value="${model.name}">${model.visible_name}</option>`).join('')}
+              <option value="">-- Выбрать вручную --</option>
+              ${(this.modelsList || []).map(model => `<option value="${model.name}">${model.visible_name || model.name}</option>`).join('')}
             </select>
           </div>
         </div>
@@ -569,12 +674,13 @@
       modelSelect.addEventListener('change', (e) => {
         const selectedModel = e.target.value;
         this.model = selectedModel;
+        localStorage.setItem('selectedModel', selectedModel);
         
         // Проверяем, совпадает ли выбранная модель с какой-то из типов по умолчанию
         let matchedType = null;
         if (this.defaultModels) {
           for (const [type, config] of Object.entries(this.defaultModels)) {
-            if (config.model === selectedModel) {
+            if (config && config.model === selectedModel) {
               matchedType = type;
               break;
             }
