@@ -9,7 +9,13 @@ function loadModelsFromFile(filePath) {
         const modelsJson = JSON.parse(modelsData);
         return modelsJson.models || [];
     } catch (error) {
-        console.error(`❌ Ошибка при загрузке моделей из файла ${filePath}:`, error);
+        // Если файл не существует, это нормально - модели могут быть в available-models.json
+        if (error.code === 'ENOENT') {
+            // Тихо игнорируем отсутствие файла
+            return [];
+        }
+        // Для других ошибок (например, синтаксическая ошибка JSON) выводим предупреждение
+        console.warn(`⚠️ Предупреждение при загрузке моделей из файла ${filePath}:`, error.message);
         return [];
     }
 }
@@ -18,8 +24,10 @@ function createConfig(env) {
     const isTestMode = env.IS_TEST_MODE === 'true';
     
     // Загружаем модели GROQ и OpenRouter из файлов
-    const groqModels = loadModelsFromFile('groq-models.json');
-    const openRouterModels = loadModelsFromFile('openrouter-models.json');
+    // Закомментировано: файлы groq-models.json и openrouter-models.json отсутствуют
+    // Модели загружаются из available-models.json через loadModels() в server.js
+    // const groqModels = loadModelsFromFile('groq-models.json');
+    // const openRouterModels = loadModelsFromFile('openrouter-models.json');
     
     return {
         // URL для вебхука n8n
@@ -50,17 +58,18 @@ function createConfig(env) {
         },
         
         // Доступные модели (OpenRoute + GROQ)
+        // Закомментировано: модели загружаются из available-models.json
         availableModels: [
             // GROQ модели - быстрые и эффективные
-            ...groqModels.map(model => ({
-                ...model,
-                showInApi: true,
-                use_in_ui: true,
-                visible_name: `🚀 GROQ: ${model.visible_name}` // Префикс для отличия
-            })),
+            // ...groqModels.map(model => ({
+            //     ...model,
+            //     showInApi: true,
+            //     use_in_ui: true,
+            //     visible_name: `🚀 GROQ: ${model.visible_name}` // Префикс для отличия
+            // })),
             
             // OpenRouter модели из файла
-            ...openRouterModels
+            // ...openRouterModels
         ],
         
         // Настройки логирования

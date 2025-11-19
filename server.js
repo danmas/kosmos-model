@@ -10,11 +10,13 @@ const axios = require('axios');
 const { createConfig } = require('./config');
 const langchainPgService = require('./rag');
 
-// Добавляем GROQ сервис
+// Добавляем GROQ и direct сервис
 const GroqService = require('./groq-service');
+const DirectService = require('./direct-service');
 
 // Добавляем библиотеку CORS
 const cors = require('cors');
+
 
 const MODELS_FILE = path.join(__dirname, 'available-models.json');
 
@@ -571,10 +573,46 @@ function resolveModelName(modelInput, providerInput) {
   return { model: resolvedModel, provider: resolvedProvider, wasResolved: false };
 }
 
+// Функция для получения модели по имени из available-models.json
+async function getModelByName(modelName) {
+  try {
+    const models = await loadModels();
+    return models.find(m => m.name === modelName || m.id === modelName);
+  } catch (error) {
+    console.error('Ошибка при поиске модели:', error);
+    return null;
+  }
+}
+
+// Простая обертка для OpenRouter (для совместимости с кодом пользователя)
+const openRouterService = {
+  async sendRequest({ model, messages, temperature = 0.7, maxTokens = 1024 }) {
+    const response = await axios.post('https://openrouter.ai/api/v1/chat/completions', {
+      model: model,
+      messages: messages,
+      temperature: temperature,
+      max_tokens: maxTokens
+    }, {
+      headers: {
+        'Authorization': `Bearer ${config.openRouterKey}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    return {
+      data: {
+        choices: response.data.choices,
+        model: response.data.model,
+        usage: response.data.usage
+      }
+    };
+  }
+};
+
 // Маршрут для прямой обработки запросов к AI моделям с поддержкой GROQ
 app.post('/api/send-request', async (req, res) => {
     try {
-      let { model, prompt, inputText, useRag, contextCode, saveResponse = false, provider } = req.body;
+      let { model, prompt, inputText, useRag, contextCode, saveResponse = false, provider, temperature, maxTokens } = req.body;
       
       console.log('DEBUG SERVER: Received request with parameters:');
       console.log('DEBUG SERVER: model =', model);
@@ -591,10 +629,12 @@ app.post('/api/send-request', async (req, res) => {
       model = resolved.model;
       let selectedProvider = resolved.provider;
       
+      // Получаем данные модели для определения провайдера и параметров
+      const modelData = await getModelByName(model);
+      
       // Определяем провайдера автоматически по модели, если не был указан
       if (!selectedProvider) {
-        const modelConfig = config.availableModels.find(m => m.name === model);
-        selectedProvider = modelConfig?.provider || 'openroute';
+        selectedProvider = modelData?.provider || 'openroute';
       }
       
       console.log(`📡 Используем провайдера: ${selectedProvider} для модели: ${model}`);
@@ -606,6 +646,10 @@ app.post('/api/send-request', async (req, res) => {
       
       if (selectedProvider === 'openroute' && !config.openRouterKey) {
         return res.status(500).json({ error: 'OpenRoute API ключ не настроен' });
+      }
+      
+      if (selectedProvider === 'direct' && !modelData) {
+        return res.status(500).json({ error: 'Модель не найдена в available-models.json' });
       }
       
       let finalInputText = inputText;
@@ -655,21 +699,37 @@ app.post('/api/send-request', async (req, res) => {
         timestamp: new Date().toISOString()
       };
 
+      // Формируем messages для всех провайдеров
+      const messages = [
+        { role: 'system', content: prompt },
+        { role: 'user', content: finalInputText }
+      ];
+      
+      // Устанавливаем значения по умолчанию для temperature и maxTokens
+      const finalTemperature = temperature !== undefined ? temperature : 0.7;
+      const finalMaxTokens = maxTokens !== undefined ? maxTokens : 1024;
+      
+      // Детальное логирование для отладки (особенно для direct провайдера)
+      if (selectedProvider === 'direct') {
+        console.log('🔍 DEBUG DIRECT: Исходные данные запроса:');
+        console.log('  model:', model);
+        console.log('  prompt:', prompt);
+        console.log('  inputText:', inputText);
+        console.log('  provider:', selectedProvider);
+        console.log('  temperature:', temperature, '->', finalTemperature);
+        console.log('  maxTokens:', maxTokens, '->', finalMaxTokens);
+        console.log('  finalInputText (после RAG):', finalInputText);
+      }
+      
       let response;
       
       // Отправляем запрос в зависимости от провайдера
       if (selectedProvider === 'groq') {
-        // Используем GROQ
-        const messages = [
-          { role: 'system', content: prompt },
-          { role: 'user', content: finalInputText }
-        ];
-        
-        const groqResponse = await groqService.sendRequest({
-          model,
-          messages,
-          temperature: 0.7,
-          maxTokens: 1024
+        const groqResponse = await groqService.sendRequest({ 
+          model, 
+          messages, 
+          temperature: finalTemperature, 
+          maxTokens: finalMaxTokens 
         });
         
         response = {
@@ -682,20 +742,57 @@ app.post('/api/send-request', async (req, res) => {
           }
         };
         
-      } else {
-        // Используем OpenRoute (существующий код)
-        response = await axios.post('https://openrouter.ai/api/v1/chat/completions', {
-          model: model,
-          messages: [
-            { role: 'system', content: prompt },
-            { role: 'user', content: finalInputText }
-          ]
-        }, {
-          headers: {
-            'Authorization': `Bearer ${config.openRouterKey}`,
-            'Content-Type': 'application/json'
-          }
+      } else if (selectedProvider === 'openroute') {
+        response = await openRouterService.sendRequest({ 
+          model, 
+          messages, 
+          temperature: finalTemperature, 
+          maxTokens: finalMaxTokens 
         });
+        
+      } else if (selectedProvider === 'direct') {
+        // Получаем API ключ из env или из модели
+        const apiKey = process.env[`${selectedProvider.toUpperCase()}_API_KEY`] || modelData.api_key;
+        const baseUrl = modelData.base_url;
+        
+        console.log('🔍 DEBUG DIRECT: Данные модели из available-models.json:', {
+          model: model,
+          modelData: modelData,
+          apiKey: apiKey ? `${apiKey.substring(0, 10)}...` : 'не найден',
+          baseUrl: baseUrl
+        });
+        
+        if (!apiKey || !baseUrl) {
+          throw new Error(`Для провайдера 'direct' требуется api_key и base_url в модели или ${selectedProvider.toUpperCase()}_API_KEY в env`);
+        }
+        
+        console.log('🔍 DEBUG DIRECT: Формируем messages:', JSON.stringify(messages, null, 2));
+        console.log('🔍 DEBUG DIRECT: Параметры запроса:', {
+          model: model,
+          temperature: finalTemperature,
+          maxTokens: finalMaxTokens
+        });
+        
+        const directService = new DirectService(apiKey, baseUrl);
+        const directResponse = await directService.sendRequest({ 
+          model, 
+          messages, 
+          temperature: finalTemperature, 
+          maxTokens: finalMaxTokens 
+        });
+        
+        response = {
+          data: {
+            choices: [{
+              message: { content: directResponse.content }
+            }],
+            model: directResponse.model,
+            usage: directResponse.usage
+          }
+        };
+        
+      } else {
+        throw new Error(`Неизвестный провайдер: ${selectedProvider}`);
       }
       
       // Обработка ответа (унифицированная)
