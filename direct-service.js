@@ -26,7 +26,7 @@ class DirectService {
             };
 
             // Специфика Z.AI: добавляем "thinking" если нужно (опционально, включи по флагу)
-            if (process.env.DIRECT_THINKING_ENABLED === 'true') {
+            if (process.env.ZAI_THINKING_ENABLED === 'true') {
                 payload.thinking = { type: "enabled" };
             }
 
