@@ -1463,7 +1463,7 @@ app.get('/api/all-models', async (req, res) => {
   }
 });
 
-// === ТЕСТ МОДЕЛИ В ОДИН КЛИК ===
+// === ТЕСТ МОДЕЛИ В ОДИН КЛИК (улучшенная версия) ===
 app.post('/api/test-model', async (req, res) => {
   const { modelId } = req.body;
   if (!modelId) return res.status(400).json({ error: 'modelId required' });
@@ -1473,37 +1473,50 @@ app.post('/api/test-model', async (req, res) => {
   if (!model) return res.status(404).json({ error: 'Model not found' });
 
   const startTime = Date.now();
-  let success = false;
-  let sample_response = '';
-  let error_message = '';
+  let result = {
+    success: false,
+    response_time_ms: 0,
+    sample_response: null,
+    error_message: 'Неизвестная ошибка'
+  };
 
   try {
-    // Формируем запрос в зависимости от провайдера
     let apiRes;
+
     if (model.provider === 'groq') {
       apiRes = await axios.post(
-        `https://api.groq.com/openai/v1/chat/completions`,
+        'https://api.groq.com/openai/v1/chat/completions',
         {
           model: model.name,
           messages: [{ role: "user", content: "Кто ты? Ответь в одном предложении на русском." }],
-          max_tokens: 100,
+          max_tokens: 120,
           temperature: 0
         },
-        { headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}` }, timeout: 15000 }
+        {
+          headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
+          timeout: 18000
+        }
       );
     } else if (model.provider === 'openroute') {
       apiRes = await axios.post(
-        `https://openrouter.ai/api/v1/chat/completions`,
+        'https://openrouter.ai/api/v1/chat/completions',
         {
           model: model.name,
           messages: [{ role: "user", content: "Кто ты? Ответь в одном предложении на русском." }]
         },
-        { headers: { "HTTP-Referer": "http://localhost:3000", "X-Title": "AI Analytics", Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}` }, timeout: 20000 }
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+            "HTTP-Referer": "http://localhost:3000",
+            "X-Title": "AI Models Tester"
+          },
+          timeout: 25000
+        }
       );
     } else if (model.provider === 'direct') {
       const apiKeyEnv = model.api_key_env || 'ZAI_API_KEY';
       const baseUrl = model.base_url || "https://api.z.ai/api/paas/v4";
-      const modelName = model.name.replace('glm-', '');
+      const modelName = model.name.replace(/^glm-/, '');
       
       apiRes = await axios.post(
         `${baseUrl}/chat/completions`,
@@ -1517,31 +1530,38 @@ app.post('/api/test-model', async (req, res) => {
       throw new Error(`Unsupported provider: ${model.provider}`);
     }
 
-    sample_response = apiRes.data.choices[0]?.message?.content?.trim() || "OK";
-    success = true;
+    const content = apiRes.data.choices?.[0]?.message?.content?.trim();
+    if (content) {
+      result.success = true;
+      result.sample_response = content;
+    } else {
+      result.error_message = "Пустой ответ от модели";
+    }
   } catch (err) {
-    error_message = err.response?.data?.error?.message || err.message || 'Unknown error';
-    sample_response = error_message;
+    // === Максимально информативная ошибка ===
+    if (err.code === 'ECONNABORTED') {
+      result.error_message = 'Таймаут — модель не ответила вовремя';
+    } else if (err.response) {
+      const status = err.response.status;
+      const data = err.response.data;
+      if (status === 429) result.error_message = '429 Too Many Requests — лимит';
+      else if (status === 403 || status === 401) result.error_message = '403/401 — нет доступа (ключи/баланс)';
+      else if (data?.error?.message) result.error_message = data.error.message;
+      else result.error_message = `HTTP ${status}: ${JSON.stringify(data)}`;
+    } else {
+      result.error_message = err.message || 'Ошибка сети';
+    }
   }
 
-  const response_time_ms = Date.now() - startTime;
+  result.response_time_ms = Date.now() - startTime;
+  result.timestamp = new Date().toISOString();
 
-  // Сохраняем результат теста
+  // Сохраняем
   const idx = models.findIndex(m => m.id === modelId);
-  models[idx].last_test = {
-    timestamp: new Date().toISOString(),
-    success,
-    response_time_ms,
-    sample_response: success ? sample_response : null,
-    error_message: success ? null : error_message
-  };
-
+  models[idx].last_test = result;
   await saveModels(models);
 
-  res.json({
-    success: true,
-    result: models[idx].last_test
-  });
+  res.json({ success: true, result });
 });
 
 // Текущие выбранные CHEAP / FAST / RICH
