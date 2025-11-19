@@ -125,6 +125,21 @@ class ModelsPage {
     }
 
     createModelCard(model, provider) {
+        const test = model.last_test;
+        let testBadge = '';
+        if (test) {
+            const ago = this.timeAgo(new Date(test.timestamp));
+            if (test.success) {
+                testBadge = `<div class="test-badge success" title="Ответ: ${this.escapeHtml(test.sample_response)}\nВремя ответа: ${test.response_time_ms}мс\n${ago}">
+                    ✅ Работает (${ago}, ${test.response_time_ms}мс)
+                </div>`;
+            } else {
+                testBadge = `<div class="test-badge error" title="Ошибка: ${this.escapeHtml(test.error_message)}\n${ago}">
+                    ❌ Ошибка (${ago})
+                </div>`;
+            }
+        }
+
         const badges = [];
         if (model.isDefault) badges.push(`<span class="badge default">★ По умолчанию</span>`);
         if (model.isFast) badges.push(`<span class="badge fast">⚡ Быстрая</span>`);
@@ -137,7 +152,7 @@ class ModelsPage {
                 <div class="model-header">
                     <div>
                         <h3 class="model-name">${model.visible_name || model.name}</h3>
-                        ${model.name !== model.visible_name ? `<p class="model-visible-name">${model.name}</p>` : ''}
+                        ${model.name !== (model.visible_name || '') ? `<p class="model-visible-name">${model.name}</p>` : ''}
                     </div>
                 </div>
                 <div class="model-details">
@@ -150,13 +165,19 @@ class ModelsPage {
                         <span class="detail-label">Категория:</span>
                         <span class="detail-value">${this.costLevelText(model.cost_level)}</span>
                     </div>` : ''}
-                    ${badges.length ? `<div class="badges" style="margin-top:10px">${badges.join(' ')}</div>` : ''}
+                    ${badges.length ? `<div class="badges">${badges.join(' ')}</div>` : ''}
+                    ${testBadge}
                 </div>
                 <div class="copy-section">
-                    <input type="text" class="copy-input" value="${model.name}" readonly>
-                    <button class="copy-button" onclick="modelsPage.copy('${model.name}', this)">
-                        <i class="fas fa-copy"></i> Скопировать
-                    </button>
+                    <input type="text" class="copy-input" value="${this.escapeHtml(model.name)}" readonly>
+                    <div style="display:flex;gap:8px;">
+                        <button class="copy-button" onclick="modelsPage.copy('${this.escapeHtml(model.name).replace(/'/g, "\\'")}', this)">
+                            <i class="fas fa-copy"></i> Скопировать
+                        </button>
+                        <button class="test-button" onclick="modelsPage.testModel('${this.escapeHtml(model.id).replace(/'/g, "\\'")}', this)">
+                            <i class="fas fa-play"></i> Test
+                        </button>
+                    </div>
                 </div>
             </div>
         `;
@@ -185,6 +206,46 @@ class ModelsPage {
             btn.innerHTML = old;
             btn.classList.remove('copied');
         }, 2000);
+    }
+
+    timeAgo(date) {
+        const seconds = Math.floor((new Date() - date) / 1000);
+        if (seconds < 60) return `${seconds}с назад`;
+        if (seconds < 3600) return `${Math.floor(seconds/60)}м назад`;
+        if (seconds < 86400) return `${Math.floor(seconds/3600)}ч назад`;
+        return `${Math.floor(seconds/86400)}д назад`;
+    }
+
+    async testModel(modelId, button) {
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Тест...';
+
+        try {
+            const res = await fetch('/api/test-model', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ modelId })
+            });
+            const data = await res.json();
+            if (data.success) {
+                location.reload(); // проще всего — обновим страницу
+            } else {
+                alert('Ошибка теста: ' + data.error);
+            }
+        } catch (err) {
+            alert('Ошибка соединения');
+            console.error(err);
+        } finally {
+            button.disabled = false;
+            button.innerHTML = '<i class="fas fa-play"></i> Test';
+        }
+    }
+
+    escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     showError(msg) {

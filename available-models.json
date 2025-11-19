@@ -10,7 +10,14 @@
     "is_default": true,
     "enabled": true,
     "api_key_env": "ZAI_API_KEY",
-    "added_at": "2025-11-18T00:00:00Z"
+    "added_at": "2025-11-18T00:00:00Z",
+    "last_test": {
+      "timestamp": "2025-11-19T07:44:20.837Z",
+      "success": false,
+      "response_time_ms": 1174,
+      "sample_response": null,
+      "error_message": "Unknown Model, please check the model code."
+    }
   },
   {
     "id": "groq-llama3-70b",
@@ -22,7 +29,14 @@
     "cost_level": "fast",
     "is_default": false,
     "enabled": true,
-    "added_at": "2025-11-18T00:00:00Z"
+    "added_at": "2025-11-18T00:00:00Z",
+    "last_test": {
+      "timestamp": "2025-11-19T07:44:51.823Z",
+      "success": false,
+      "response_time_ms": 68,
+      "sample_response": null,
+      "error_message": "Forbidden"
+    }
   },
   {
     "id": "groq-mixtral-8x7b",
@@ -33,7 +47,14 @@
     "cost_level": "rich",
     "is_default": false,
     "enabled": true,
-    "added_at": "2025-11-18T00:00:00Z"
+    "added_at": "2025-11-18T00:00:00Z",
+    "last_test": {
+      "timestamp": "2025-11-19T07:49:38.445Z",
+      "success": false,
+      "response_time_ms": 27,
+      "sample_response": null,
+      "error_message": "Forbidden"
+    }
   },
   {
     "id": "groq-llama3-8b",
@@ -68,7 +89,14 @@
     "is_default": false,
     "enabled": true,
     "free": true,
-    "added_at": "2025-11-19T07:27:33.957Z"
+    "added_at": "2025-11-19T07:44:03.354Z",
+    "last_test": {
+      "timestamp": "2025-11-19T07:45:09.279Z",
+      "success": true,
+      "response_time_ms": 1696,
+      "sample_response": "Я — Qwen, сверхмасштабная языковая модель, разработанная Alibaba Cloud, способная помогать с ответами на вопросы, созданием текстов и выполнением различных задач.",
+      "error_message": null
+    }
   },
   {
     "id": "or-nvidia/nemotron-nano-12b-v2-vl-free",
@@ -80,7 +108,14 @@
     "is_default": false,
     "enabled": true,
     "free": true,
-    "added_at": "2025-11-19T07:27:33.957Z"
+    "added_at": "2025-11-19T07:44:03.354Z",
+    "last_test": {
+      "timestamp": "2025-11-19T07:49:33.224Z",
+      "success": true,
+      "response_time_ms": 3638,
+      "sample_response": "Я — Nemotron-H, суперкомпьютерный языковой модель, разработанный NVIDIA для выполнения различных задач вроде ответов на вопросы, написания текстов и программирования.",
+      "error_message": null
+    }
   },
   {
     "id": "or-alibaba/tongyi-deepresearch-30b-a3b-free",
@@ -92,7 +127,7 @@
     "is_default": false,
     "enabled": true,
     "free": true,
-    "added_at": "2025-11-19T07:27:33.957Z"
+    "added_at": "2025-11-19T07:44:03.354Z"
   },
   {
     "id": "or-meituan/longcat-flash-chat-free",
@@ -104,7 +139,14 @@
     "is_default": false,
     "enabled": true,
     "free": true,
-    "added_at": "2025-11-19T07:27:33.957Z"
+    "added_at": "2025-11-19T07:44:03.354Z",
+    "last_test": {
+      "timestamp": "2025-11-19T07:50:17.737Z",
+      "success": false,
+      "response_time_ms": 496,
+      "sample_response": null,
+      "error_message": "Provider returned error"
+    }
   },
   {
     "id": "or-nvidia/nemotron-nano-9b-v2-free",
@@ -116,7 +158,7 @@
     "is_default": false,
     "enabled": true,
     "free": true,
-    "added_at": "2025-11-19T07:27:33.957Z"
+    "added_at": "2025-11-19T07:44:03.354Z"
   },
   {
     "id": "or-openai/gpt-oss-20b-free",
@@ -128,7 +170,7 @@
     "is_default": false,
     "enabled": true,
     "free": true,
-    "added_at": "2025-11-19T07:27:33.957Z"
+    "added_at": "2025-11-19T07:44:03.354Z"
   },
   {
     "id": "or-z-ai/glm-4.5-air-free",
@@ -140,7 +182,7 @@
     "is_default": false,
     "enabled": true,
     "free": true,
-    "added_at": "2025-11-19T07:27:33.957Z"
+    "added_at": "2025-11-19T07:44:03.354Z"
   },
   {
     "id": "or-qwen/qwen3-coder-free",
@@ -152,7 +194,7 @@
     "is_default": false,
     "enabled": true,
     "free": true,
-    "added_at": "2025-11-19T07:27:33.957Z"
+    "added_at": "2025-11-19T07:44:03.354Z"
   },
   {
     "id": "or-moonshotai/kimi-k2-free",
@@ -164,7 +206,7 @@
     "is_default": false,
     "enabled": true,
     "free": true,
-    "added_at": "2025-11-19T07:27:33.957Z"
+    "added_at": "2025-11-19T07:44:03.354Z"
   },
   {
     "id": "or-cognitivecomputations/dolphin-mistral-24b-venice-edition-free",
@@ -176,7 +218,7 @@
     "is_default": false,
     "enabled": true,
     "free": true,
-    "added_at": "2025-11-19T07:27:33.957Z"
+    "added_at": "2025-11-19T07:44:03.354Z"
   },
   {
     "id": "or-google/gemma-3n-e2b-it-free",
@@ -188,7 +230,7 @@
     "is_default": false,
     "enabled": true,
     "free": true,
-    "added_at": "2025-11-19T07:27:33.957Z"
+    "added_at": "2025-11-19T07:44:03.354Z"
   },
   {
     "id": "or-tngtech/deepseek-r1t2-chimera-free",
@@ -200,7 +242,7 @@
     "is_default": false,
     "enabled": true,
     "free": true,
-    "added_at": "2025-11-19T07:27:33.957Z"
+    "added_at": "2025-11-19T07:44:03.354Z"
   },
   {
     "id": "or-mistralai/mistral-small-3.2-24b-instruct-free",
@@ -212,7 +254,7 @@
     "is_default": false,
     "enabled": true,
     "free": true,
-    "added_at": "2025-11-19T07:27:33.957Z"
+    "added_at": "2025-11-19T07:44:03.354Z"
   },
   {
     "id": "or-deepseek/deepseek-r1-0528-qwen3-8b-free",
@@ -224,7 +266,7 @@
     "is_default": false,
     "enabled": true,
     "free": true,
-    "added_at": "2025-11-19T07:27:33.957Z"
+    "added_at": "2025-11-19T07:44:03.354Z"
   },
   {
     "id": "or-deepseek/deepseek-r1-0528-free",
@@ -236,7 +278,7 @@
     "is_default": false,
     "enabled": true,
     "free": true,
-    "added_at": "2025-11-19T07:27:33.957Z"
+    "added_at": "2025-11-19T07:44:03.354Z"
   },
   {
     "id": "or-google/gemma-3n-e4b-it-free",
@@ -248,7 +290,7 @@
     "is_default": false,
     "enabled": true,
     "free": true,
-    "added_at": "2025-11-19T07:27:33.957Z"
+    "added_at": "2025-11-19T07:44:03.354Z"
   },
   {
     "id": "or-qwen/qwen3-4b-free",
@@ -260,7 +302,7 @@
     "is_default": false,
     "enabled": true,
     "free": true,
-    "added_at": "2025-11-19T07:27:33.957Z"
+    "added_at": "2025-11-19T07:44:03.354Z"
   },
   {
     "id": "or-qwen/qwen3-30b-a3b-free",
@@ -272,7 +314,7 @@
     "is_default": false,
     "enabled": true,
     "free": true,
-    "added_at": "2025-11-19T07:27:33.957Z"
+    "added_at": "2025-11-19T07:44:03.354Z"
   },
   {
     "id": "or-qwen/qwen3-14b-free",
@@ -284,7 +326,7 @@
     "is_default": false,
     "enabled": true,
     "free": true,
-    "added_at": "2025-11-19T07:27:33.957Z"
+    "added_at": "2025-11-19T07:44:03.354Z"
   },
   {
     "id": "or-qwen/qwen3-235b-a22b-free",
@@ -296,7 +338,7 @@
     "is_default": false,
     "enabled": true,
     "free": true,
-    "added_at": "2025-11-19T07:27:33.957Z"
+    "added_at": "2025-11-19T07:44:03.354Z"
   },
   {
     "id": "or-tngtech/deepseek-r1t-chimera-free",
@@ -308,7 +350,7 @@
     "is_default": false,
     "enabled": true,
     "free": true,
-    "added_at": "2025-11-19T07:27:33.957Z"
+    "added_at": "2025-11-19T07:44:03.354Z"
   },
   {
     "id": "or-microsoft/mai-ds-r1-free",
@@ -320,7 +362,7 @@
     "is_default": false,
     "enabled": true,
     "free": true,
-    "added_at": "2025-11-19T07:27:33.957Z"
+    "added_at": "2025-11-19T07:44:03.354Z"
   },
   {
     "id": "or-arliai/qwq-32b-arliai-rpr-v1-free",
@@ -332,7 +374,7 @@
     "is_default": false,
     "enabled": true,
     "free": true,
-    "added_at": "2025-11-19T07:27:33.957Z"
+    "added_at": "2025-11-19T07:44:03.354Z"
   },
   {
     "id": "or-qwen/qwen2.5-vl-32b-instruct-free",
@@ -344,7 +386,7 @@
     "is_default": false,
     "enabled": true,
     "free": true,
-    "added_at": "2025-11-19T07:27:33.957Z"
+    "added_at": "2025-11-19T07:44:03.354Z"
   },
   {
     "id": "or-deepseek/deepseek-chat-v3-0324-free",
@@ -356,7 +398,7 @@
     "is_default": true,
     "enabled": true,
     "free": true,
-    "added_at": "2025-11-19T07:27:33.957Z"
+    "added_at": "2025-11-19T07:44:03.354Z"
   },
   {
     "id": "or-mistralai/mistral-small-3.1-24b-instruct-free",
@@ -368,7 +410,7 @@
     "is_default": false,
     "enabled": true,
     "free": true,
-    "added_at": "2025-11-19T07:27:33.957Z"
+    "added_at": "2025-11-19T07:44:03.354Z"
   },
   {
     "id": "or-google/gemma-3-4b-it-free",
@@ -380,7 +422,7 @@
     "is_default": false,
     "enabled": true,
     "free": true,
-    "added_at": "2025-11-19T07:27:33.957Z"
+    "added_at": "2025-11-19T07:44:03.354Z"
   },
   {
     "id": "or-google/gemma-3-12b-it-free",
@@ -392,7 +434,7 @@
     "is_default": false,
     "enabled": true,
     "free": true,
-    "added_at": "2025-11-19T07:27:33.957Z"
+    "added_at": "2025-11-19T07:44:03.354Z"
   },
   {
     "id": "or-google/gemma-3-27b-it-free",
@@ -404,7 +446,7 @@
     "is_default": false,
     "enabled": true,
     "free": true,
-    "added_at": "2025-11-19T07:27:33.957Z"
+    "added_at": "2025-11-19T07:44:03.354Z"
   },
   {
     "id": "or-mistralai/mistral-small-24b-instruct-2501-free",
@@ -416,7 +458,7 @@
     "is_default": false,
     "enabled": true,
     "free": true,
-    "added_at": "2025-11-19T07:27:33.957Z"
+    "added_at": "2025-11-19T07:44:03.354Z"
   },
   {
     "id": "or-deepseek/deepseek-r1-distill-llama-70b-free",
@@ -428,7 +470,7 @@
     "is_default": false,
     "enabled": true,
     "free": true,
-    "added_at": "2025-11-19T07:27:33.957Z"
+    "added_at": "2025-11-19T07:44:03.354Z"
   },
   {
     "id": "or-deepseek/deepseek-r1-free",
@@ -440,7 +482,7 @@
     "is_default": false,
     "enabled": true,
     "free": true,
-    "added_at": "2025-11-19T07:27:33.957Z"
+    "added_at": "2025-11-19T07:44:03.354Z"
   },
   {
     "id": "or-google/gemini-2.0-flash-exp-free",
@@ -452,7 +494,7 @@
     "is_default": false,
     "enabled": true,
     "free": true,
-    "added_at": "2025-11-19T07:27:33.957Z"
+    "added_at": "2025-11-19T07:44:03.354Z"
   },
   {
     "id": "or-meta-llama/llama-3.3-70b-instruct-free",
@@ -464,7 +506,7 @@
     "is_default": false,
     "enabled": true,
     "free": true,
-    "added_at": "2025-11-19T07:27:33.957Z"
+    "added_at": "2025-11-19T07:44:03.354Z"
   },
   {
     "id": "or-qwen/qwen-2.5-coder-32b-instruct-free",
@@ -476,7 +518,7 @@
     "is_default": false,
     "enabled": true,
     "free": true,
-    "added_at": "2025-11-19T07:27:33.957Z"
+    "added_at": "2025-11-19T07:44:03.354Z"
   },
   {
     "id": "or-meta-llama/llama-3.2-3b-instruct-free",
@@ -488,7 +530,7 @@
     "is_default": false,
     "enabled": true,
     "free": true,
-    "added_at": "2025-11-19T07:27:33.957Z"
+    "added_at": "2025-11-19T07:44:03.354Z"
   },
   {
     "id": "or-qwen/qwen-2.5-72b-instruct-free",
@@ -500,7 +542,7 @@
     "is_default": false,
     "enabled": true,
     "free": true,
-    "added_at": "2025-11-19T07:27:33.957Z"
+    "added_at": "2025-11-19T07:44:03.354Z"
   },
   {
     "id": "or-nousresearch/hermes-3-llama-3.1-405b-free",
@@ -512,7 +554,7 @@
     "is_default": false,
     "enabled": true,
     "free": true,
-    "added_at": "2025-11-19T07:27:33.957Z"
+    "added_at": "2025-11-19T07:44:03.354Z"
   },
   {
     "id": "or-mistralai/mistral-nemo-free",
@@ -524,7 +566,7 @@
     "is_default": false,
     "enabled": true,
     "free": true,
-    "added_at": "2025-11-19T07:27:33.957Z"
+    "added_at": "2025-11-19T07:44:03.354Z"
   },
   {
     "id": "or-mistralai/mistral-7b-instruct-free",
@@ -536,6 +578,6 @@
     "is_default": false,
     "enabled": true,
     "free": true,
-    "added_at": "2025-11-19T07:27:33.957Z"
+    "added_at": "2025-11-19T07:44:03.354Z"
   }
 ]

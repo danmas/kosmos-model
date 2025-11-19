@@ -1463,6 +1463,87 @@ app.get('/api/all-models', async (req, res) => {
   }
 });
 
+// === ТЕСТ МОДЕЛИ В ОДИН КЛИК ===
+app.post('/api/test-model', async (req, res) => {
+  const { modelId } = req.body;
+  if (!modelId) return res.status(400).json({ error: 'modelId required' });
+
+  let models = await loadModels();
+  const model = models.find(m => m.id === modelId);
+  if (!model) return res.status(404).json({ error: 'Model not found' });
+
+  const startTime = Date.now();
+  let success = false;
+  let sample_response = '';
+  let error_message = '';
+
+  try {
+    // Формируем запрос в зависимости от провайдера
+    let apiRes;
+    if (model.provider === 'groq') {
+      apiRes = await axios.post(
+        `https://api.groq.com/openai/v1/chat/completions`,
+        {
+          model: model.name,
+          messages: [{ role: "user", content: "Кто ты? Ответь в одном предложении на русском." }],
+          max_tokens: 100,
+          temperature: 0
+        },
+        { headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}` }, timeout: 15000 }
+      );
+    } else if (model.provider === 'openroute') {
+      apiRes = await axios.post(
+        `https://openrouter.ai/api/v1/chat/completions`,
+        {
+          model: model.name,
+          messages: [{ role: "user", content: "Кто ты? Ответь в одном предложении на русском." }]
+        },
+        { headers: { "HTTP-Referer": "http://localhost:3000", "X-Title": "AI Analytics", Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}` }, timeout: 20000 }
+      );
+    } else if (model.provider === 'direct') {
+      const apiKeyEnv = model.api_key_env || 'ZAI_API_KEY';
+      const baseUrl = model.base_url || "https://api.z.ai/api/paas/v4";
+      const modelName = model.name.replace('glm-', '');
+      
+      apiRes = await axios.post(
+        `${baseUrl}/chat/completions`,
+        {
+          model: modelName,
+          messages: [{ role: "user", content: "Кто ты? Ответь в одном предложении на русском." }]
+        },
+        { headers: { Authorization: `Bearer ${process.env[apiKeyEnv]}` }, timeout: 20000 }
+      );
+    } else {
+      throw new Error(`Unsupported provider: ${model.provider}`);
+    }
+
+    sample_response = apiRes.data.choices[0]?.message?.content?.trim() || "OK";
+    success = true;
+  } catch (err) {
+    error_message = err.response?.data?.error?.message || err.message || 'Unknown error';
+    sample_response = error_message;
+  }
+
+  const response_time_ms = Date.now() - startTime;
+
+  // Сохраняем результат теста
+  const idx = models.findIndex(m => m.id === modelId);
+  models[idx].last_test = {
+    timestamp: new Date().toISOString(),
+    success,
+    response_time_ms,
+    sample_response: success ? sample_response : null,
+    error_message: success ? null : error_message
+  };
+
+  await saveModels(models);
+
+  res.json({
+    success: true,
+    result: models[idx].last_test
+  });
+});
+
 // Текущие выбранные CHEAP / FAST / RICH
 app.get('/api/default-models', async (req, res) => {
   const models = await loadModels();
