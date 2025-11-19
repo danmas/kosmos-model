@@ -86,6 +86,12 @@
             color: white;
         }
 
+        .provider-header.direct {
+            border-left-color: #9c27b0;
+            background: linear-gradient(135deg, #9c27b0 0%, #ba68c8 100%);
+            color: white;
+        }
+
         .provider-icon {
             font-size: 1.5em;
         }
@@ -133,6 +139,10 @@
             border-left: 4px solid #28a745;
         }
 
+        .model-card.direct {
+            border-left: 4px solid #9c27b0;
+        }
+
         .model-header {
             display: flex;
             justify-content: between;
@@ -173,6 +183,11 @@
 
         .model-provider.openrouter {
             background: #28a745;
+            color: white;
+        }
+
+        .model-provider.direct {
+            background: #9c27b0;
             color: white;
         }
 
@@ -319,6 +334,39 @@
             padding: 15px;
             border-radius: 8px;
             margin-bottom: 20px;
+        }
+
+        .badges { 
+            display: flex; 
+            flex-wrap: wrap; 
+            gap: 6px; 
+        }
+
+        .badge {
+            padding: 2px 8px; 
+            border-radius: 12px; 
+            font-size: 0.75em; 
+            font-weight: 600;
+        }
+
+        .badge.default { 
+            background: #ffc107; 
+            color: #000; 
+        }
+
+        .badge.fast { 
+            background: #4caf50; 
+            color: white; 
+        }
+
+        .badge.free { 
+            background: #2196f3; 
+            color: white; 
+        }
+
+        .badge.rich { 
+            background: #9c27b0; 
+            color: white; 
         }
 
         @media (max-width: 768px) {
