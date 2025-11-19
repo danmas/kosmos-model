@@ -1387,21 +1387,30 @@ app.post('/api/default-models/set', async (req, res) => {
 
   let models = await loadModels();
 
+  const target = models.find(m => m.id === modelId);
+  if (!target) {
+    return res.status(400).json({ error: 'Model not found' });
+  }
+
   // Сбрасываем все is_default этого типа
   models = models.map(m => ({
     ...m,
     is_default: m.cost_level === type ? false : m.is_default
   }));
 
-  const target = models.find(m => m.id === modelId);
-  if (!target || target.cost_level !== type) {
-    return res.status(400).json({ error: 'Model not suitable for this type' });
+  // Меняем cost_level и устанавливаем is_default для выбранной модели
+  const targetIndex = models.findIndex(m => m.id === modelId);
+  if (targetIndex !== -1) {
+    models[targetIndex] = {
+      ...models[targetIndex],
+      cost_level: type,
+      is_default: true
+    };
   }
 
-  target.is_default = true;
   await saveModels(models);
 
-  res.json({ success: true, selected: target });
+  res.json({ success: true, selected: models[targetIndex] });
 });
 
 // Эндпоинт для получения конкретной модели по умолчанию по типу
