@@ -752,7 +752,16 @@ app.post('/api/send-request', async (req, res) => {
         
       } else if (selectedProvider === 'direct') {
         // Получаем API ключ из env или из модели
-        const apiKey = process.env[`${selectedProvider.toUpperCase()}_API_KEY`] || modelData.api_key;
+        let apiKey = modelData.api_key;
+        if (typeof apiKey === 'string' && apiKey.startsWith('env:')) {
+          const envVar = apiKey.slice(4);
+          apiKey = process.env[envVar];
+          if (!apiKey) {
+            throw new Error(`Переменная окружения ${envVar} не найдена для провайдера 'direct'`);
+          }
+        } else {
+          apiKey = process.env[`${selectedProvider.toUpperCase()}_API_KEY`] || apiKey;
+        }
         const baseUrl = modelData.base_url;
         
         console.log('🔍 DEBUG DIRECT: Данные модели из available-models.json:', {
@@ -763,7 +772,7 @@ app.post('/api/send-request', async (req, res) => {
         });
         
         if (!apiKey || !baseUrl) {
-          throw new Error(`Для провайдера 'direct' требуется api_key и base_url в модели или ${selectedProvider.toUpperCase()}_API_KEY в env`);
+          throw new Error(`Для провайдера 'direct' требуется api_key (или env:VAR_NAME) и base_url в модели или ${selectedProvider.toUpperCase()}_API_KEY в env`);
         }
         
         console.log('🔍 DEBUG DIRECT: Формируем messages:', JSON.stringify(messages, null, 2));
@@ -839,6 +848,34 @@ app.post('/api/send-request', async (req, res) => {
           rag: ragInfo
         });
       } else {
+        // Сохраняем ошибку невалидного ответа в историю
+        try {
+          const responseData = await readResponses();
+          const newResponse = {
+            id: Date.now().toString(),
+            timestamp: new Date().toISOString(),
+            model: req.body.model || 'unknown',
+            provider: selectedProvider,
+            prompt: req.body.prompt || '--',
+            inputText: req.body.inputText || '',
+            response: `ERROR: Invalid response from AI model - no choices in response`,
+            tokens: {
+              input: 0,
+              output: 0,
+              total: 0,
+              source: 'error'
+            },
+            autoSaved: true,
+            errorDetails: response.data
+          };
+          
+          responseData.responses.push(newResponse);
+          await writeResponses(responseData);
+          console.log(`💾 Ошибка невалидного ответа сохранена в историю: ${newResponse.id}`);
+        } catch (saveError) {
+          console.error('❌ Ошибка сохранения ошибки в историю:', saveError);
+        }
+        
         return res.status(500).json({ 
           error: 'Invalid response from AI model',
           provider: selectedProvider,
@@ -884,6 +921,34 @@ app.post('/api/send-request', async (req, res) => {
       } else {
         errorMessage = error.message;
         errorDetails = { stack: error.stack };
+      }
+      
+      // Сохраняем ошибку в историю
+      try {
+        const responseData = await readResponses();
+        const newResponse = {
+          id: Date.now().toString(),
+          timestamp: new Date().toISOString(),
+          model: req.body.model || 'unknown',
+          provider: req.body.provider || 'unknown',
+          prompt: req.body.prompt || '--',
+          inputText: req.body.inputText || '',
+          response: `ERROR: ${errorMessage}`,
+          tokens: {
+            input: 0,
+            output: 0,
+            total: 0,
+            source: 'error'
+          },
+          autoSaved: true,
+          errorDetails: errorDetails
+        };
+        
+        responseData.responses.push(newResponse);
+        await writeResponses(responseData);
+        console.log(`💾 Ошибка сохранена в историю: ${newResponse.id}`);
+      } catch (saveError) {
+        console.error('❌ Ошибка сохранения ошибки в историю:', saveError);
       }
       
       return res.status(500).json({ 
@@ -1025,6 +1090,50 @@ app.post('/api/send-request-sys', async (req, res) => {
         });
       } else {
         console.log('DEBUG SERVER: Invalid response structure from AI model via /api/send-request-sys:', response.data);
+        
+        // Сохраняем ошибку невалидного ответа в историю
+        try {
+          const responseData = await readResponses();
+          
+          // Получаем промпт для сохранения
+          let promptText = '--';
+          let promptName = req.body.prompt_name || '--';
+          try {
+            const promptsData = await readPrompts();
+            const promptObj = promptsData.prompts.find(p => p.name === promptName);
+            if (promptObj) {
+              promptText = promptObj.text;
+            }
+          } catch (e) {
+            console.error('Error reading prompt for error save:', e);
+          }
+          
+          const newResponse = {
+            id: Date.now().toString(),
+            timestamp: new Date().toISOString(),
+            model: req.body.model || 'unknown',
+            provider: req.body.provider || 'unknown',
+            promptName: promptName,
+            prompt: promptText,
+            inputText: req.body.inputText || '',
+            response: `ERROR: Invalid response from AI model - no choices in response`,
+            tokens: {
+              input: 0,
+              output: 0,
+              total: 0,
+              source: 'error'
+            },
+            autoSaved: true,
+            errorDetails: response.data
+          };
+          
+          responseData.responses.push(newResponse);
+          await writeResponses(responseData);
+          console.log(`💾 Ошибка невалидного ответа сохранена в историю: ${newResponse.id}`);
+        } catch (saveError) {
+          console.error('❌ Ошибка сохранения ошибки в историю:', saveError);
+        }
+        
         return res.status(500).json({ 
           error: 'Invalid response from AI model',
           data: response.data 
@@ -1066,6 +1175,49 @@ app.post('/api/send-request-sys', async (req, res) => {
         errorMessage = error.message;
         errorDetails = { stack: error.stack };
         console.log('DEBUG SERVER: General error via /api/send-request-sys:', error.message, error.stack);
+      }
+      
+      // Сохраняем ошибку в историю
+      try {
+        const responseData = await readResponses();
+        
+        // Получаем промпт для сохранения
+        let promptText = '--';
+        let promptName = req.body.prompt_name || '--';
+        try {
+          const promptsData = await readPrompts();
+          const promptObj = promptsData.prompts.find(p => p.name === promptName);
+          if (promptObj) {
+            promptText = promptObj.text;
+          }
+        } catch (e) {
+          console.error('Error reading prompt for error save:', e);
+        }
+        
+        const newResponse = {
+          id: Date.now().toString(),
+          timestamp: new Date().toISOString(),
+          model: req.body.model || 'unknown',
+          provider: req.body.provider || 'unknown',
+          promptName: promptName,
+          prompt: promptText,
+          inputText: req.body.inputText || '',
+          response: `ERROR: ${errorMessage}`,
+          tokens: {
+            input: 0,
+            output: 0,
+            total: 0,
+            source: 'error'
+          },
+          autoSaved: true,
+          errorDetails: errorDetails
+        };
+        
+        responseData.responses.push(newResponse);
+        await writeResponses(responseData);
+        console.log(`💾 Ошибка сохранена в историю: ${newResponse.id}`);
+      } catch (saveError) {
+        console.error('❌ Ошибка сохранения ошибки в историю:', saveError);
       }
       
       return res.status(500).json({ 
