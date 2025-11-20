@@ -69,7 +69,27 @@
       console.log('RAG enabled status before render:', this.ragEnabled);
       this.render();
       this.attachEventListeners();
-      await this.loadModels(); // Загружаем модели (внутри вызывается populateModelSelect)
+      await this.loadModels(); 
+      
+      this.populateProviderSelect();
+      
+      // Проверяем сохраненную модель и устанавливаем провайдера
+      const savedModelName = localStorage.getItem('selectedModel');
+      let initialProvider = '';
+      
+      if (savedModelName && this.modelsList) {
+        const savedModel = this.modelsList.find(m => m.name === savedModelName);
+        if (savedModel) {
+          initialProvider = savedModel.provider;
+          const providerSelect = document.getElementById('providerSelect');
+          if (providerSelect) {
+            providerSelect.value = initialProvider;
+          }
+        }
+      }
+      
+      this.populateModelSelect(initialProvider);
+
       this.loadSavedState();
 
       // Деактивируем кнопку сохранения при запуске (до получения ответа)
@@ -97,74 +117,13 @@
       if (!allRes.ok || !defaultsRes.ok) throw new Error('Network error');
 
       const allModels = await allRes.json();
-      const currentDefaults = await defaultsRes.json(); // { cheap, fast, rich }
+      const defaultModels = await defaultsRes.json();
 
       // Сохраняем данные для populateModelSelect()
       this.modelsList = allModels;
-      this.defaultModelsData = currentDefaults;
-
-      // Заполняем селектор моделей
-      this.populateModelSelect();
-
-      // Устанавливаем обработчик для назначения типа
-      const assignSelect = document.getElementById('assignTypeSelect');
-      if (assignSelect) {
-        // Удаляем старый обработчик если есть
-        const newAssignSelect = assignSelect.cloneNode(true);
-        assignSelect.parentNode.replaceChild(newAssignSelect, assignSelect);
-
-        newAssignSelect.addEventListener('change', async (e) => {
-          const type = e.target.value;
-          if (!type) return;
-
-          const selectedModelName = document.getElementById('modelSelect')?.value;
-          if (!selectedModelName) {
-            this.showError('Сначала выберите модель!');
-            newAssignSelect.value = '';
-            return;
-          }
-
-          const model = allModels.find(m => m.name === selectedModelName);
-          if (!model) {
-            this.showError('Модель не найдена!');
-            newAssignSelect.value = '';
-            return;
-          }
-
-          // Отправляем на сервер
-          try {
-            const res = await fetch('/api/default-models/set', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                modelId: model.id,
-                type: type
-              })
-            });
-
-            if (res.ok) {
-              const result = await res.json();
-              this.showMessage(`Модель "${model.visible_name || model.name}" теперь ${type.toUpperCase()} по умолчанию!`);
-              
-              // Обновляем UI: перезагружаем модели
-              await this.loadModels();
-              await this.loadDefaultModels();
-
-              // Сбрасываем селектор
-              newAssignSelect.value = '';
-            } else {
-              const err = await res.json();
-              this.showError(err.error || 'Ошибка');
-              newAssignSelect.value = '';
-            }
-          } catch (error) {
-            console.error('Ошибка назначения типа:', error);
-            this.showError('Ошибка при назначении типа модели');
-            newAssignSelect.value = '';
-          }
-        });
-      }
-
+      this.defaultModelsData = defaultModels;
+      
+      this.setupAssignTypeListener(allModels);
     } catch (err) {
       console.error('Ошибка загрузки моделей:', err);
       this.showError('Не удалось загрузить модели');
@@ -174,27 +133,36 @@
   }
   
   // Заполнение селекта моделей (вызывается после render())
-  populateModelSelect() {
+  populateModelSelect(provider = '') {
     const select = document.getElementById('modelSelect');
-    if (!select || !this.modelsList || this.modelsList.length === 0) {
+    if (!select || !this.modelsList) {
       return;
     }
 
-    // Очищаем старые опции
+    const savedModel = localStorage.getItem('selectedModel');
+    select.innerHTML = ''; // Очищаем
+
+    const filteredModels = provider 
+      ? this.modelsList.filter(model => model.provider === provider)
+      : this.modelsList;
+
+    if (filteredModels.length === 0) {
+      select.innerHTML = '<option value="">-- Нет моделей для этого провайдера --</option>';
+      return;
+    }
+    
     select.innerHTML = '<option value="">-- Выбрать модель --</option>';
 
     // Добавляем все модели
-    this.modelsList.forEach(model => {
+    filteredModels.forEach(model => {
       const opt = document.createElement('option');
       opt.value = model.name;
       let textContent = model.visible_name || model.name;
 
-      // Префикс для GROQ (добавляем первым)
       if (model.provider === 'groq') {
-        textContent = 'GROQ → ' + textContent;
+        textContent = `[groq] ${textContent}`;
       }
 
-      // Подсвечиваем текущие дефолтные (добавляем после префикса провайдера)
       if (model.is_default) {
         const emoji = model.cost_level === 'cheap' ? '💸' : model.cost_level === 'fast' ? '⚡' : '💎';
         textContent = `${emoji} ${textContent} ← ${model.cost_level.toUpperCase()}`;
@@ -207,16 +175,30 @@
       select.appendChild(opt);
     });
 
-    // Восстанавливаем выбор
-    const saved = localStorage.getItem('selectedModel');
-    if (saved && this.modelsList.some(m => m.name === saved)) {
-      select.value = saved;
-      this.model = saved;
-    } else if (this.defaultModelsData?.fast?.name) {
-      select.value = this.defaultModelsData.fast.name;
-      this.model = this.defaultModelsData.fast.name;
-      localStorage.setItem('selectedModel', this.model);
+    if (savedModel && filteredModels.some(m => m.name === savedModel)) {
+      select.value = savedModel;
+      this.model = savedModel;
+    } else if (filteredModels.length > 0) {
+      // select.value = '';
+      // this.model = '';
     }
+  }
+
+  populateProviderSelect() {
+    const select = document.getElementById('providerSelect');
+    if (!select || !this.modelsList) {
+      return;
+    }
+
+    const providers = [...new Set(this.modelsList.map(model => model.provider))];
+    
+    select.innerHTML = '<option value="">-- Все провайдеры --</option>';
+    providers.forEach(provider => {
+      const opt = document.createElement('option');
+      opt.value = provider;
+      opt.textContent = provider.charAt(0).toUpperCase() + provider.slice(1);
+      select.appendChild(opt);
+    });
   }
 
   async loadDefaultModels() {
@@ -299,10 +281,12 @@
         <div class="form-group">
           <label>Тип модели / Модель:</label>
           <div class="model-selector-row" style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px; flex-wrap: wrap;">
-            <label style="white-space: nowrap; font-weight: bold; color: #aaa;">Модель:</label>
+            <select id="providerSelect" style="flex: 1; min-width: 150px; padding: 8px; border-radius: 4px; background: #333; color: white; border: 1px solid #555;">
+              <option value="">-- Все провайдеры --</option>
+            </select>
             
             <select id="modelSelect" style="flex: 2; min-width: 300px; padding: 8px; border-radius: 4px; background: #333; color: white; border: 1px solid #555;">
-              <option value="">-- Загрузка моделей... --</option>
+              <option value="">-- Сначала выберите провайдера --</option>
             </select>
 
             <span style="font-size: 1.3em; color: #666;">→</span>
@@ -681,6 +665,13 @@
     const editPromptBtn = document.getElementById('editPromptBtn');
     const deletePromptBtn = document.getElementById('deletePromptBtn');
     const debugRagButton = document.getElementById('debugRagButton');
+
+    const providerSelect = document.getElementById('providerSelect');
+    if (providerSelect) {
+      providerSelect.addEventListener('change', (e) => {
+        this.populateModelSelect(e.target.value);
+      });
+    }
 
     // Обработчик для селектора модели
     if (modelSelect) {
@@ -2997,6 +2988,55 @@ Timestamp: ${debugInfo.timestamp || 'N/A'}`;
     } catch (error) {
       console.error('Error saving markdown file:', error);
       this.showError(`Не удалось сохранить файл: ${error.message}`);
+    }
+  }
+
+  setupAssignTypeListener(allModels) {
+    const assignSelect = document.getElementById('assignTypeSelect');
+    if (assignSelect) {
+      // Удаляем старый обработчик если есть
+      const newAssignSelect = assignSelect.cloneNode(true);
+      assignSelect.parentNode.replaceChild(newAssignSelect, assignSelect);
+
+      newAssignSelect.addEventListener('change', async (e) => {
+        const type = e.target.value;
+        if (!type) return;
+
+        const selectedModelName = document.getElementById('modelSelect')?.value;
+        if (!selectedModelName) {
+          this.showError('Сначала выберите модель!');
+          newAssignSelect.value = '';
+          return;
+        }
+
+        const model = allModels.find(m => m.name === selectedModelName);
+        if (!model) {
+          this.showError('Модель не найдена!');
+          newAssignSelect.value = '';
+          return;
+        }
+
+        try {
+          const res = await fetch('/api/default-models/set', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: type,
+              modelId: model.id,
+            }),
+          });
+          if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.error || 'Ошибка при назначении модели');
+          }
+          await this.loadModels(); // Перезагружаем модели для обновления UI
+          this.showMessage(`Модель "${model.visible_name || model.name}" теперь ${type.toUpperCase()} по умолчанию!`);
+        } catch (error) {
+          this.showError(error.message);
+        } finally {
+          newAssignSelect.value = '';
+        }
+      });
     }
   }
 }
