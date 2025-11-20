@@ -73,22 +73,30 @@
       
       this.populateProviderSelect();
       
-      // Проверяем сохраненную модель и устанавливаем провайдера
+      // Проверяем сохраненную модель и устанавливаем провайдера и тип
       const savedModelName = localStorage.getItem('selectedModel');
       let initialProvider = '';
+      let initialType = '';
       
       if (savedModelName && this.modelsList) {
         const savedModel = this.modelsList.find(m => m.name === savedModelName);
         if (savedModel) {
           initialProvider = savedModel.provider;
+          initialType = savedModel.cost_level;
+
           const providerSelect = document.getElementById('providerSelect');
-          if (providerSelect) {
-            providerSelect.value = initialProvider;
+          if (providerSelect) providerSelect.value = initialProvider;
+          
+          const typeSelect = document.getElementById('typeSelect');
+          if (typeSelect && ['cheap', 'fast', 'rich'].includes(initialType)) {
+            typeSelect.value = initialType;
+          } else {
+            initialType = '';
           }
         }
       }
       
-      this.populateModelSelect(initialProvider);
+      this.populateModelSelect(initialProvider, initialType);
 
       this.loadSavedState();
 
@@ -133,7 +141,7 @@
   }
   
   // Заполнение селекта моделей (вызывается после render())
-  populateModelSelect(provider = '') {
+  populateModelSelect(provider = '', type = '') {
     const select = document.getElementById('modelSelect');
     if (!select || !this.modelsList) {
       return;
@@ -142,12 +150,18 @@
     const savedModel = localStorage.getItem('selectedModel');
     select.innerHTML = ''; // Очищаем
 
-    const filteredModels = provider 
-      ? this.modelsList.filter(model => model.provider === provider)
-      : this.modelsList;
+    let filteredModels = this.modelsList;
+    
+    if (provider) {
+      filteredModels = filteredModels.filter(model => model.provider === provider);
+    }
+
+    if (type) {
+      filteredModels = filteredModels.filter(model => model.cost_level === type);
+    }
 
     if (filteredModels.length === 0) {
-      select.innerHTML = '<option value="">-- Нет моделей для этого провайдера --</option>';
+      select.innerHTML = '<option value="">-- Нет моделей --</option>';
       return;
     }
     
@@ -175,12 +189,25 @@
       select.appendChild(opt);
     });
 
+    let modelSelected = false;
+
     if (savedModel && filteredModels.some(m => m.name === savedModel)) {
       select.value = savedModel;
       this.model = savedModel;
-    } else if (filteredModels.length > 0) {
-      // select.value = '';
-      // this.model = '';
+      modelSelected = true;
+    }
+
+    if (!modelSelected && type && filteredModels.length > 0) {
+         // Автовыбор лучшей модели для типа
+         const defaultModel = filteredModels.find(m => m.is_default);
+         if (defaultModel) {
+           select.value = defaultModel.name;
+           this.model = defaultModel.name;
+         } else {
+           select.value = filteredModels[0].name;
+           this.model = filteredModels[0].name;
+         }
+         localStorage.setItem('selectedModel', this.model);
     }
   }
 
@@ -283,6 +310,13 @@
           <div class="model-selector-row" style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px; flex-wrap: wrap;">
             <select id="providerSelect" style="flex: 1; min-width: 150px; padding: 8px; border-radius: 4px; background: #333; color: white; border: 1px solid #555;">
               <option value="">-- Все провайдеры --</option>
+            </select>
+            
+            <select id="typeSelect" style="flex: 1; min-width: 120px; padding: 8px; border-radius: 4px; background: #333; color: white; border: 1px solid #555;">
+              <option value="">-- Все типы --</option>
+              <option value="fast">⚡ FAST</option>
+              <option value="rich">💎 RICH</option>
+              <option value="cheap">💸 CHEAP</option>
             </select>
             
             <select id="modelSelect" style="flex: 2; min-width: 300px; padding: 8px; border-radius: 4px; background: #333; color: white; border: 1px solid #555;">
@@ -667,9 +701,26 @@
     const debugRagButton = document.getElementById('debugRagButton');
 
     const providerSelect = document.getElementById('providerSelect');
+    const typeSelect = document.getElementById('typeSelect');
+
     if (providerSelect) {
       providerSelect.addEventListener('change', (e) => {
-        this.populateModelSelect(e.target.value);
+        const type = typeSelect ? typeSelect.value : '';
+        this.populateModelSelect(e.target.value, type);
+      });
+    }
+
+    if (typeSelect) {
+      typeSelect.addEventListener('change', (e) => {
+        const type = e.target.value;
+        
+        // Если выбран конкретный тип, сбрасываем провайдера на "Все"
+        if (type && providerSelect) {
+          providerSelect.value = '';
+        }
+        
+        const provider = providerSelect ? providerSelect.value : '';
+        this.populateModelSelect(provider, type);
       });
     }
 
