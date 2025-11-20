@@ -753,15 +753,27 @@ app.post('/api/send-request', async (req, res) => {
       } else if (selectedProvider === 'direct') {
         // Получаем API ключ из env или из модели
         let apiKey = modelData.api_key;
+        let envVar = null;
+        
         if (typeof apiKey === 'string' && apiKey.startsWith('env:')) {
-          const envVar = apiKey.slice(4);
+          envVar = apiKey.slice(4);
           apiKey = process.env[envVar];
           if (!apiKey) {
-            throw new Error(`Переменная окружения ${envVar} не найдена для провайдера 'direct'`);
+            const errorMsg = `Переменная окружения "${envVar}" не найдена для провайдера 'direct'. Проверьте .env файл.`;
+            console.error(`❌ ${errorMsg}`);
+            // Логируем в файл, если есть логгер, иначе просто в консоль
+            // fs.appendFileSync('error.log', `${new Date().toISOString()} - ${errorMsg}\n`); // Раскомментируй, если нужно в файл
+            throw new Error(errorMsg);
           }
         } else {
           apiKey = process.env[`${selectedProvider.toUpperCase()}_API_KEY`] || apiKey;
+          if (!apiKey) {
+            const errorMsg = `API ключ не найден: ни в модели, ни в env как "${selectedProvider.toUpperCase()}_API_KEY".`;
+            console.error(`❌ ${errorMsg}`);
+            throw new Error(errorMsg);
+          }
         }
+        
         const baseUrl = modelData.base_url;
         
         console.log('🔍 DEBUG DIRECT: Данные модели из available-models.json:', {
@@ -771,8 +783,10 @@ app.post('/api/send-request', async (req, res) => {
           baseUrl: baseUrl
         });
         
-        if (!apiKey || !baseUrl) {
-          throw new Error(`Для провайдера 'direct' требуется api_key (или env:VAR_NAME) и base_url в модели или ${selectedProvider.toUpperCase()}_API_KEY в env`);
+        if (!baseUrl) {
+          const errorMsg = `Base URL не найден для провайдера 'direct' в модели.`;
+          console.error(`❌ ${errorMsg}`);
+          throw new Error(errorMsg);
         }
         
         console.log('🔍 DEBUG DIRECT: Формируем messages:', JSON.stringify(messages, null, 2));
@@ -1666,9 +1680,25 @@ app.post('/api/test-model', async (req, res) => {
         }
       );
     } else if (model.provider === 'direct') {
-      const apiKeyEnv = model.api_key_env || 'ZAI_API_KEY';
+      let apiKey = model.api_key;
+      if (typeof apiKey === 'string' && apiKey.startsWith('env:')) {
+        const envVar = apiKey.slice(4);
+        apiKey = process.env[envVar];
+        if (!apiKey) {
+          throw new Error(`Переменная окружения ${envVar} не найдена для теста модели`);
+        }
+      } else {
+        // Fallback for older config or direct key
+        apiKey = process.env['ZAI_API_KEY'] || apiKey;
+      }
+      
+      if (!apiKey) {
+        throw new Error('Не удалось найти API ключ для теста модели direct');
+      }
+
       const baseUrl = model.base_url || "https://api.z.ai/api/paas/v4";
-      const modelName = model.name.replace(/^glm-/, '');
+      // Убираем некорректную замену. API ожидает полное имя модели.
+      const modelName = model.name; 
       
       apiRes = await axios.post(
         `${baseUrl}/chat/completions`,
@@ -1676,7 +1706,7 @@ app.post('/api/test-model', async (req, res) => {
           model: modelName,
           messages: [{ role: "user", content: "Кто ты? Ответь в одном предложении на русском." }]
         },
-        { headers: { Authorization: `Bearer ${process.env[apiKeyEnv]}` }, timeout: 20000 }
+        { headers: { Authorization: `Bearer ${apiKey}` }, timeout: 60000 } // Увеличено до 60 секунд
       );
     } else {
       throw new Error(`Unsupported provider: ${model.provider}`);
