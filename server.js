@@ -18,9 +18,21 @@ const DirectService = require('./direct-service');
 const cors = require('cors');
 
 
-const MODELS_FILE = path.join(__dirname, 'available-models.json');
+const MODELS_FILE = path.join(__dirname, 'data', 'available-models.json');
+const PROMPTS_FILE = path.join(__dirname, 'data', 'prompts.json');
+const RESPONSES_FILE = path.join(__dirname, 'data', 'responses.json');
+const PROMPTS_DEFAULTS_FILE = path.join(__dirname, 'prompts.defaults.json');
 
-// Загрузка моделей
+// Создаем директорию data, если она не существует
+const DATA_DIR = path.join(__dirname, 'data');
+try {
+    if (!fs.existsSync(DATA_DIR)) {
+        fs.mkdirSync(DATA_DIR, { recursive: true });
+        console.log(`Создана директория для данных: ${DATA_DIR}`);
+    }
+} catch (err) {
+    console.error(`Ошибка при создании директории ${DATA_DIR}:`, err);
+}
 async function loadModels() {
   try {
     const data = await fsPromises.readFile(MODELS_FILE, 'utf8');
@@ -208,11 +220,6 @@ app.get('/api/config', (req, res) => {
 });
 
 
-//const PROMPTS_FILE = path.join(__dirname, '../../MYDATA/ai-analytics/prompts.json');
-const PROMPTS_FILE = path.join(__dirname, './prompts.json');
-// Добавьте эти строки после объявления PROMPTS_FILE
-//const RESPONSES_FILE = path.join(__dirname, '../../MYDATA/ai-analytics/responses.json');
-const RESPONSES_FILE = path.join(__dirname, './responses.json');
 
 // Инициализация файла истории ответов, если он не существует
 async function initializeResponsesFile() {
@@ -442,7 +449,16 @@ async function initializePromptsFile() {
     try {
         await fsPromises.access(PROMPTS_FILE);
     } catch {
-        await fsPromises.writeFile(PROMPTS_FILE, JSON.stringify({ prompts: [] }));
+        console.log('Файл prompts.json не найден.');
+        // Пытаемся скопировать из дефолтного файла
+        try {
+            await fsPromises.access(PROMPTS_DEFAULTS_FILE);
+            console.log('Создаем prompts.json из шаблона prompts.defaults.json');
+            await fsPromises.copyFile(PROMPTS_DEFAULTS_FILE, PROMPTS_FILE);
+        } catch (err) {
+            console.warn('Файл prompts.defaults.json не найден, создаем пустой список промптов.');
+            await fsPromises.writeFile(PROMPTS_FILE, JSON.stringify({ prompts: [] }));
+        }
     }
 }
 
@@ -1874,6 +1890,71 @@ app.get('/api/default-models/:type', (req, res) => {
     });
 });
 
+async function refreshGroqModels() {
+  if (!groqService) {
+    console.warn('⚠️ GROQ сервис не настроен, обновление моделей пропущено.');
+    return;
+  }
+  try {
+    console.log('Обновляем список GROQ моделей...');
+    const { data } = await axios.get('https://api.groq.com/openai/v1/models', {
+      headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}` }
+    });
+
+    let localModels = await loadModels();
+    
+    const activeRemoteMap = new Map();
+    for (const remote of data.data) {
+      const internalId = `groq-${remote.id}`;
+      activeRemoteMap.set(internalId, remote);
+    }
+
+    let addedCount = 0;
+    let disabledCount = 0;
+
+    localModels = localModels.map(model => {
+      if (model.provider === 'groq') {
+        if (!activeRemoteMap.has(model.id)) {
+          if (model.enabled) {
+            disabledCount++;
+            return { ...model, enabled: false };
+          }
+        }
+        return model;
+      }
+      return model;
+    });
+
+    for (const [id, remote] of activeRemoteMap) {
+      const exists = localModels.some(m => m.id === id);
+      if (!exists) {
+        const contextMatch = remote.id.match(/-(\d+)k/i) || remote.id.match(/-(\d{4,5})/);
+        const context = contextMatch ? parseInt(contextMatch[1], 10) * (contextMatch[0].toLowerCase().includes('k') ? 1024 : 1) : 8192;
+
+        const newModel = {
+          id: id,
+          provider: "groq",
+          name: remote.id,
+          visible_name: `GROQ → ${remote.id}`,
+          context: context,
+          cost_level: "fast",
+          fast: true,
+          is_default: false,
+          enabled: true,
+          added_at: new Date().toISOString()
+        };
+        localModels.push(newModel);
+        addedCount++;
+      }
+    }
+
+    await saveModels(localModels);
+    console.log(`GROQ синхронизирован: ${addedCount} новых добавлено, ${disabledCount} устаревших отключено.`);
+  } catch (err) {
+    console.error('Ошибка автообновления GROQ:', err.message);
+  }
+}
+
 async function refreshOpenRouterModels() {
   try {
     console.log('Обновляем список OpenRouter...');
@@ -1881,44 +1962,73 @@ async function refreshOpenRouterModels() {
 
     let localModels = await loadModels();
 
-    // Сохраняем текущие дефолты
-    const currentDefaults = {
-      cheap: localModels.find(m => m.cost_level === 'cheap' && m.is_default)?.id,
-      fast:  localModels.find(m => m.cost_level === 'fast'  && m.is_default)?.id,
-      rich:  localModels.find(m => m.cost_level === 'rich'  && m.is_default)?.id
-    };
+    // 1. Собираем Map актуальных бесплатных моделей из API
+    // Ключ - наш внутренний ID, Значение - данные API
+    const activeRemoteMap = new Map();
 
-    // Удаляем все старые openroute модели
-    localModels = localModels.filter(m => m.provider !== 'openroute');
-
-    // Добавляем новые
     for (const remote of data.data) {
+      // Критерий "бесплатности"
       if (remote.id.includes(':free') || remote.id.includes('-free') || remote.id.endsWith(':free')) {
+        // Генерируем ID так же, как это делалось раньше для совместимости
+        const internalId = `or-${remote.id.replace(/:/g, '-')}`;
+        activeRemoteMap.set(internalId, remote);
+      }
+    }
+
+    let addedCount = 0;
+    let disabledCount = 0;
+
+    // 2. Обновляем существующие локальные модели
+    localModels = localModels.map(model => {
+      // Нас интересуют только модели OpenRouter
+      if (model.provider === 'openroute') {
+        // Если модели нет в актуальном бесплатном списке
+        if (!activeRemoteMap.has(model.id)) {
+          // Если она была включена - выключаем
+          if (model.enabled) {
+            disabledCount++;
+            return { ...model, enabled: false };
+          }
+        }
+        // Если модель есть в списке - НЕ ТРОГАЕМ ЕЁ (сохраняем ручные настройки)
+        return model;
+      }
+      // Модели других провайдеров не трогаем
+      return model;
+    });
+
+    // 3. Добавляем новые модели, которых еще нет локально
+    for (const [id, remote] of activeRemoteMap) {
+      const exists = localModels.some(m => m.id === id);
+      if (!exists) {
         const newModel = {
-          id: `or-${remote.id.replace(/:/g, '-')}`,
+          id: id,
           provider: "openroute",
           name: remote.id,
           visible_name: `OpenRouter → ${remote.name || remote.id}`,
           context: remote.context_length || 32768,
           cost_level: "cheap",
-          is_default: currentDefaults.cheap === `or-${remote.id.replace(/:/g, '-')}`,
+          is_default: false,
           enabled: true,
           free: true,
           added_at: new Date().toISOString()
         };
         localModels.push(newModel);
+        addedCount++;
       }
     }
 
     await saveModels(localModels);
-    console.log(`OpenRouter обновлён: добавлено/обновлено ${data.data.length} моделей`);
+    console.log(`OpenRouter синхронизирован: ${addedCount} новых добавлено, ${disabledCount} устаревших отключено.`);
   } catch (err) {
     console.error('Ошибка автообновления OpenRouter:', err.message);
   }
 }
 
 // При старте и каждые 8 часов
+refreshGroqModels();
 refreshOpenRouterModels();
+setInterval(refreshGroqModels, 8 * 60 * 60 * 1000);
 setInterval(refreshOpenRouterModels, 8 * 60 * 60 * 1000);
 
 const PORT = process.env.PORT || config.port;
