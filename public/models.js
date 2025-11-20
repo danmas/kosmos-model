@@ -115,6 +115,7 @@ class ModelsPage {
             <div class="provider-header" style="background:linear-gradient(135deg, ${info.color} 0%, ${info.color}cc 100%)">
                 <i class="${info.icon} provider-icon"></i>
                 <h2 class="provider-title">${info.name}</h2>
+                <button class="add-model-btn" onclick="modelsPage.openAddModelModal('${provider}')" title="Добавить новую модель">+</button>
                 <div class="provider-stats">${models.length} модел${this.plural(models.length)}</div>
             </div>
             <div class="models-grid">
@@ -168,6 +169,24 @@ class ModelsPage {
                     </div>` : ''}
                     ${badges.length ? `<div class="badges">${badges.join(' ')}</div>` : ''}
                     ${testBadge}
+                </div>
+                <div class="model-controls">
+                    <div class="control-item">
+                        <label for="enabled-${model.id}" class="switch-label">Включена:</label>
+                        <label class="switch">
+                            <input type="checkbox" id="enabled-${model.id}" ${model.enabled ? 'checked' : ''} onchange="modelsPage.toggleModelEnabled('${this.escapeForAttribute(model.id)}', this.checked)">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div class="control-item">
+                        <label for="role-${model.id}" class="role-label">Роль:</label>
+                        <select id="role-${model.id}" onchange="modelsPage.setModelRole('${this.escapeForAttribute(model.id)}', this.value)">
+                            <option value="">Нет</option>
+                            <option value="rich" ${model.is_default && model.cost_level === 'rich' ? 'selected' : ''}>REACH</option>
+                            <option value="fast" ${model.is_default && model.cost_level === 'fast' ? 'selected' : ''}>FAST</option>
+                            <option value="cheap" ${model.is_default && model.cost_level === 'cheap' ? 'selected' : ''}>CHEAP</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="copy-section">
                     <input type="text" class="copy-input" value="${this.escapeHtml(model.name)}" readonly>
@@ -322,6 +341,134 @@ class ModelsPage {
             .replace(/\n/g, '\\n')
             .replace(/\r/g, '\\r');
     }
+
+    // === НОВЫЕ МЕТОДЫ ДЛЯ УПРАВЛЕНИЯ МОДЕЛЯМИ ===
+    async toggleModelEnabled(modelId, isEnabled) {
+        try {
+            const res = await fetch(`/api/models/update/${modelId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enabled: isEnabled })
+            });
+            const data = await res.json();
+            if (!data.success) throw new Error(data.error || 'Server error');
+            
+            const model = this.allModels.find(m => m.id === modelId);
+            if (model) model.enabled = isEnabled;
+        } catch (err) {
+            console.error('Failed to update model:', err);
+            alert(`Ошибка обновления модели: ${err.message}`);
+        }
+    }
+
+    async setModelRole(modelId, role) {
+        if (!role) {
+            // TODO: Implement unsetting role
+            console.warn("Unsetting role is not fully implemented.");
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/default-models/set', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ modelId, type: role })
+            });
+            const data = await res.json();
+            if (!data.success) throw new Error(data.error || 'Server error');
+            
+            await this.loadModels();
+            this.filterModels(document.getElementById('searchInput').value); // Re-filter and re-render
+        } catch (err) {
+            console.error('Failed to set model role:', err);
+            alert(`Ошибка назначения роли: ${err.message}`);
+            // Re-render to reset dropdown on failure
+            this.renderModels();
+        }
+    }
+
+    openAddModelModal(provider) {
+        let modal = document.getElementById('addModelModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'addModelModal';
+            modal.className = 'add-model-modal'; // for styling
+            modal.onclick = (e) => { if (e.target === modal) modal.style.display = 'none'; };
+            document.body.appendChild(modal);
+        }
+
+        modal.innerHTML = `
+            <div class="modal-content" onclick="event.stopPropagation()">
+                <div class="modal-header">
+                    <h2>Добавить новую модель</h2>
+                    <span class="close-button" onclick="document.getElementById('addModelModal').style.display='none'">&times;</span>
+                </div>
+                <form id="addModelForm" onsubmit="modelsPage.saveNewModel(event)">
+                    <input type="hidden" id="newModelProvider" value="${provider}">
+                    <div class="form-group">
+                        <label for="newModelId">ID</label>
+                        <input type="text" id="newModelId" placeholder="e.g., groq-llama3-70b" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="newModelName">Name (API name)</label>
+                        <input type="text" id="newModelName" placeholder="e.g., llama3-70b-8192" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="newModelVisibleName">Visible Name</label>
+                        <input type="text" id="newModelVisibleName" placeholder="e.g., Llama 3 70B">
+                    </div>
+                    <div class="form-group">
+                        <label for="newModelContext">Context</label>
+                        <input type="number" id="newModelContext" value="8192" required>
+                    </div>
+                     <div class="form-group">
+                        <label for="newModelBaseUrl">Base URL (для 'direct' провайдера)</label>
+                        <input type="text" id="newModelBaseUrl" placeholder="e.g., https://api.example.com/v1">
+                    </div>
+                    <div class="form-group">
+                        <label for="newModelApiKey">API Key (для 'direct' провайдера)</label>
+                        <input type="text" id="newModelApiKey" placeholder="e.g., env:MY_API_KEY or literal key">
+                    </div>
+                    <button type="submit" class="submit-btn">Сохранить модель</button>
+                </form>
+            </div>
+        `;
+
+        modal.style.display = 'flex';
+    }
+
+    async saveNewModel(event) {
+        event.preventDefault();
+        const newModel = {
+            provider: document.getElementById('newModelProvider').value,
+            id: document.getElementById('newModelId').value.trim(),
+            name: document.getElementById('newModelName').value.trim(),
+            visible_name: document.getElementById('newModelVisibleName').value.trim(),
+            context: parseInt(document.getElementById('newModelContext').value, 10),
+            base_url: document.getElementById('newModelBaseUrl').value.trim() || undefined,
+            api_key: document.getElementById('newModelApiKey').value.trim() || undefined,
+        };
+
+        try {
+            const res = await fetch('/api/models/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newModel)
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.error || `Server error: ${res.status}`);
+            }
+            
+            document.getElementById('addModelModal').style.display = 'none';
+            await this.loadModels();
+            this.filterModels(document.getElementById('searchInput').value); // Re-filter and re-render
+        } catch (err) {
+            console.error('Failed to save new model:', err);
+            alert(`Ошибка сохранения модели: ${err.message}`);
+        }
+    }
+
 
     showError(msg) {
         document.getElementById('errorMessage').style.display = 'block';

@@ -1746,6 +1746,69 @@ app.post('/api/test-model', async (req, res) => {
   res.json({ success: true, result });
 });
 
+// === НОВЫЙ ЭНДПОИНТ ДЛЯ ОБНОВЛЕНИЯ МОДЕЛИ ===
+app.post('/api/models/update/:id', async (req, res) => {
+  const { id } = req.params;
+  const updates = req.body;
+
+  if (!id || !updates) {
+    return res.status(400).json({ error: 'ID модели и данные для обновления обязательны' });
+  }
+
+  try {
+    let models = await loadModels();
+    const modelIndex = models.findIndex(m => m.id === id);
+
+    if (modelIndex === -1) {
+      return res.status(404).json({ error: 'Модель не найдена' });
+    }
+
+    // Обновляем модель, сохраняя существующие поля
+    models[modelIndex] = { ...models[modelIndex], ...updates };
+
+    await saveModels(models);
+
+    res.json({ success: true, model: models[modelIndex] });
+  } catch (error) {
+    console.error('Ошибка при обновлении модели:', error);
+    res.status(500).json({ error: 'Не удалось обновить модель' });
+  }
+});
+
+// === НОВЫЙ ЭНДПОИНТ ДЛЯ ДОБАВЛЕНИЯ МОДЕЛИ ===
+app.post('/api/models/add', async (req, res) => {
+  const newModel = req.body;
+
+  if (!newModel || !newModel.id || !newModel.name || !newModel.provider) {
+    return res.status(400).json({ error: 'ID, имя и провайдер обязательны для новой модели' });
+  }
+
+  try {
+    let models = await loadModels();
+
+    const exists = models.some(m => m.id === newModel.id);
+    if (exists) {
+      return res.status(409).json({ error: 'Модель с таким ID уже существует' });
+    }
+
+    // Добавляем поля по умолчанию
+    const modelToAdd = {
+      enabled: true,
+      is_default: false,
+      added_at: new Date().toISOString(),
+      ...newModel
+    };
+
+    models.push(modelToAdd);
+    await saveModels(models);
+
+    res.status(201).json({ success: true, model: modelToAdd });
+  } catch (error) {
+    console.error('Ошибка при добавлении модели:', error);
+    res.status(500).json({ error: 'Не удалось добавить модель' });
+  }
+});
+
 // Текущие выбранные CHEAP / FAST / RICH
 app.get('/api/default-models', async (req, res) => {
   const models = await loadModels();
