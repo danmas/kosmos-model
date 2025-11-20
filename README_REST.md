@@ -113,6 +113,16 @@ curl -X POST http://localhost:3002/api/send-request ^
 
 Возвращает массив объектов `ModelInfo` с полным набором метаданных: `name`, `visible_name`, `provider`, `context`, `fast`, `showInApi`, `use_in_ui`.
 
+### POST `/api/models/update/:id`
+
+Обновляет параметры существующей модели.
+Тело: `{ enabled: boolean, ... }`
+
+### POST `/api/models/add`
+
+Добавляет новую модель в систему.
+Тело: `{ id, name, provider, context, ... }`
+
 ### `/api/default-models*`
 
 - `GET /api/default-models` — `{ success, defaultModels: { cheap, fast, rich } }`
