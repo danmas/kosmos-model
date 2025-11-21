@@ -177,9 +177,10 @@
         textContent = `[groq] ${textContent}`;
       }
 
-      if (model.is_default) {
-        const emoji = model.cost_level === 'cheap' ? '💸' : model.cost_level === 'fast' ? '⚡' : '💎';
-        textContent = `${emoji} ${textContent} ← ${model.cost_level.toUpperCase()}`;
+      if (model.user_type) {
+        const type = model.user_type.toLowerCase();
+        const emoji = type === 'cheap' ? '💸' : type === 'fast' ? '⚡' : '💎';
+        textContent = `${emoji} ${textContent} ← ${type.toUpperCase()}`;
       }
 
       opt.textContent = textContent;
@@ -199,7 +200,7 @@
 
     if (!modelSelected && type && filteredModels.length > 0) {
          // Автовыбор лучшей модели для типа
-         const defaultModel = filteredModels.find(m => m.is_default);
+         const defaultModel = filteredModels.find(m => m.user_type);
          if (defaultModel) {
            select.value = defaultModel.name;
            this.model = defaultModel.name;

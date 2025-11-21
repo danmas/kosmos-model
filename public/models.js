@@ -28,7 +28,6 @@ class ModelsPage {
         // Добавляем подсвеченные дефолты
         this.allModels = data.map(m => ({
             ...m,
-            isDefault: m.is_default || false,
             isFast: !!m.fast,
             isFree: !!m.free
         }));
@@ -63,7 +62,7 @@ class ModelsPage {
         const openrouter = this.filteredModels.filter(m => m.provider === 'openroute').length;
         const direct = this.filteredModels.filter(m => m.provider === 'direct').length;
         const fast = this.filteredModels.filter(m => m.isFast).length;
-        const defaults = this.filteredModels.filter(m => m.isDefault).length;
+        const defaults = this.filteredModels.filter(m => m.user_type).length;
 
         stats.innerHTML = `
             <div class="stat-card"><div class="stat-number">${total}</div><div class="stat-label">Всего</div></div>
@@ -143,7 +142,7 @@ class ModelsPage {
         }
 
         const badges = [];
-        if (model.isDefault) badges.push(`<span class="badge default">★ По умолчанию</span>`);
+        if (model.user_type) badges.push(`<span class="badge default">★ ${this.userTypeText(model.user_type)}</span>`);
         if (model.isFast) badges.push(`<span class="badge fast">⚡ Быстрая</span>`);
         if (model.isFree) badges.push(`<span class="badge free">БЕСПЛАТНО</span>`);
         if (model.cost_level === 'rich') badges.push(`<span class="badge rich">Мощная</span>`);
@@ -182,9 +181,9 @@ class ModelsPage {
                         <label for="role-${model.id}" class="role-label">Роль:</label>
                         <select id="role-${model.id}" onchange="modelsPage.setModelRole('${this.escapeForAttribute(model.id)}', this.value)">
                             <option value="">Нет</option>
-                            <option value="rich" ${model.is_default && model.cost_level === 'rich' ? 'selected' : ''}>REACH</option>
-                            <option value="fast" ${model.is_default && model.cost_level === 'fast' ? 'selected' : ''}>FAST</option>
-                            <option value="cheap" ${model.is_default && model.cost_level === 'cheap' ? 'selected' : ''}>CHEAP</option>
+                            <option value="rich" ${model.user_type === 'RICH' ? 'selected' : ''}>RICH</option>
+                            <option value="fast" ${model.user_type === 'FAST' ? 'selected' : ''}>FAST</option>
+                            <option value="cheap" ${model.user_type === 'CHEAP' ? 'selected' : ''}>CHEAP</option>
                         </select>
                     </div>
                 </div>
@@ -290,6 +289,12 @@ class ModelsPage {
             button.disabled = false;
             button.innerHTML = '<i class="fas fa-play"></i> Test';
         }
+    }
+
+    userTypeText(userType) {
+        if (!userType) return '';
+        const lower = userType.toLowerCase();
+        return { cheap: 'Дешевая', fast: 'Быстрая', rich: 'Мощная' }[lower] || userType;
     }
 
     costLevelText(level) {

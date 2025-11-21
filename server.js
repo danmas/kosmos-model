@@ -563,30 +563,35 @@ let lastRagDebugInfo = {
 };
 
 // Функция-хелпер для разрешения имени модели
-function resolveModelName(modelInput, providerInput) {
-  let resolvedModel = modelInput;
-  let resolvedProvider = providerInput;
-  
-  // Если модель не указана, используем CHEAP по умолчанию
+async function resolveModelName(modelInput, providerInput) {
+  // Если модель не указана или пуста, используем CHEAP по умолчанию
   if (!modelInput || modelInput.trim() === '') {
-    console.log('⚙️ Модель не указана, используется CHEAP по умолчанию');
-    resolvedModel = config.defaultModels.cheap.model;
-    resolvedProvider = providerInput || config.defaultModels.cheap.provider;
-    return { model: resolvedModel, provider: resolvedProvider, wasResolved: true, resolvedType: 'cheap' };
+    modelInput = 'CHEAP';
   }
-  
-  // Проверяем, не является ли это ключевым словом (CHEAP, FAST, RICH)
+
   const modelUpper = modelInput.trim().toUpperCase();
+
   if (['CHEAP', 'FAST', 'RICH'].includes(modelUpper)) {
-    const modelType = modelUpper.toLowerCase();
-    resolvedModel = config.defaultModels[modelType].model;
-    resolvedProvider = providerInput || config.defaultModels[modelType].provider;
-    console.log(`⚙️ Ключевое слово "${modelUpper}" преобразовано в модель: ${resolvedModel} (${resolvedProvider})`);
-    return { model: resolvedModel, provider: resolvedProvider, wasResolved: true, resolvedType: modelType };
+    const models = await loadModels();
+    const defaultModel = models.find(m => m.user_type === modelUpper && m.enabled);
+    
+    if (defaultModel) {
+      console.log(`⚙️ Ключевое слово "${modelUpper}" преобразовано в модель: ${defaultModel.name} (${defaultModel.provider})`);
+      return { 
+        model: defaultModel.name, 
+        provider: providerInput || defaultModel.provider, 
+        wasResolved: true, 
+        resolvedType: modelUpper.toLowerCase() 
+      };
+    } else {
+      console.warn(`⚠️ Дефолтная модель для типа "${modelUpper}" не найдена или отключена.`);
+      // Возвращаем null или какое-то значение по умолчанию, чтобы обработать ошибку выше
+      return { model: null, provider: providerInput, wasResolved: true, resolvedType: modelUpper.toLowerCase() };
+    }
   }
   
   // Если это обычное имя модели, возвращаем как есть
-  return { model: resolvedModel, provider: resolvedProvider, wasResolved: false };
+  return { model: modelInput, provider: providerInput, wasResolved: false };
 }
 
 // Функция для получения модели по имени из available-models.json
@@ -641,7 +646,7 @@ app.post('/api/send-request', async (req, res) => {
       }
       
       // Разрешаем имя модели (может быть CHEAP/FAST/RICH или пусто)
-      const resolved = resolveModelName(model, provider);
+      const resolved = await resolveModelName(model, provider);
       model = resolved.model;
       let selectedProvider = resolved.provider;
       
@@ -1007,7 +1012,7 @@ app.post('/api/send-request-sys', async (req, res) => {
       }
       
       // Разрешаем имя модели (может быть CHEAP/FAST/RICH или пусто)
-      const resolved = resolveModelName(model, provider);
+      const resolved = await resolveModelName(model, provider);
       model = resolved.model;
       const selectedProvider = resolved.provider;
       
@@ -1386,7 +1391,7 @@ app.post('/analyze', async (req, res) => {
     }
     
     // Разрешаем имя модели (может быть CHEAP/FAST/RICH или пусто)
-    const resolved = resolveModelName(model, provider);
+    const resolved = await resolveModelName(model, provider);
     model = resolved.model;
     const selectedProvider = resolved.provider;
     
@@ -1679,16 +1684,28 @@ app.post('/api/models/update/:id', async (req, res) => {
       return res.status(404).json({ error: 'Модель не найдена' });
     }
 
-    // Добавляем логику сброса is_default при отключении модели
+    // Обновляем модель, сохраняя существующие поля
     const currentModel = models[modelIndex];
     let finalUpdates = { ...updates };
-    if (updates.enabled === false && currentModel.is_default === true) {
-      finalUpdates.is_default = false;
-      console.log(`Сброс is_default для модели ${id} при отключении`);
+
+    // Новая логика: сбрасываем user_type при отключении модели
+    if (updates.enabled === false && currentModel.user_type) {
+      finalUpdates.user_type = null;
+      console.log(`Сброс user_type для модели ${id} при отключении`);
+    }
+    
+    // Удаляем устаревшее поле is_default, если оно пришло в updates
+    if (finalUpdates.is_default !== undefined) {
+      delete finalUpdates.is_default;
     }
 
-    // Обновляем модель, сохраняя существующие поля
     models[modelIndex] = { ...currentModel, ...finalUpdates };
+    
+    // Также удаляем is_default из объекта в самом файле, на всякий случай
+    if (models[modelIndex].is_default !== undefined) {
+        delete models[modelIndex].is_default;
+    }
+
 
     await saveModels(models);
 
@@ -1718,7 +1735,7 @@ app.post('/api/models/add', async (req, res) => {
     // Добавляем поля по умолчанию
     const modelToAdd = {
       enabled: true,
-      is_default: false,
+      user_type: null,
       added_at: new Date().toISOString(),
       ...newModel
     };
@@ -1737,64 +1754,60 @@ app.post('/api/models/add', async (req, res) => {
 app.get('/api/default-models', async (req, res) => {
   const models = await loadModels();
   const defaults = {
-    cheap: models.find(m => m.cost_level === 'cheap' && m.is_default) || null,
-    fast:  models.find(m => m.cost_level === 'fast'  && m.is_default) || null,
-    rich:  models.find(m => m.cost_level === 'rich'  && m.is_default) || null
+    cheap: models.find(m => m.user_type === 'CHEAP' && m.enabled) || null,
+    fast:  models.find(m => m.user_type === 'FAST' && m.enabled) || null,
+    rich:  models.find(m => m.user_type === 'RICH' && m.enabled) || null
   };
   res.json(defaults);
 });
 
 // Сменить дефолтную модель
 app.post('/api/default-models/set', async (req, res) => {
-  const { modelId, type } = req.body;
+  const { modelId, type } = req.body; // type может быть 'cheap', 'fast', 'rich' или ''
 
-  if (!['cheap', 'fast', 'rich'].includes(type)) {
+  if (type && !['cheap', 'fast', 'rich'].includes(type)) {
     return res.status(400).json({ error: 'Invalid type' });
   }
 
-  let models = await loadModels();
+  try {
+    let models = await loadModels();
+    const targetIndex = models.findIndex(m => m.id === modelId);
 
-  const target = models.find(m => m.id === modelId);
-  if (!target) {
-    return res.status(400).json({ error: 'Model not found' });
+    if (targetIndex === -1) {
+      return res.status(404).json({ error: 'Model not found' });
+    }
+
+    const userTypeToSet = type ? type.toUpperCase() : null;
+
+    // 1. Если устанавливается новый тип, сначала сбрасываем этот тип у любой другой модели
+    if (userTypeToSet) {
+      models.forEach((model, index) => {
+        if (model.user_type === userTypeToSet && model.id !== modelId) {
+          console.log(`Сбрасываем user_type '${userTypeToSet}' с модели ${model.id}`);
+          models[index].user_type = null;
+        }
+      });
+    }
+
+    // 2. Устанавливаем или сбрасываем user_type для целевой модели
+    console.log(`Устанавливаем для модели ${modelId} user_type: ${userTypeToSet}`);
+    models[targetIndex].user_type = userTypeToSet;
+    
+    // 3. Удаляем устаревшее поле is_default, оно больше не нужно
+    delete models[targetIndex].is_default;
+
+
+    await saveModels(models);
+
+    res.json({ success: true, model: models[targetIndex] });
+  } catch (error) {
+    console.error('Ошибка при установке роли модели:', error);
+    res.status(500).json({ error: 'Не удалось установить роль модели' });
   }
-
-  const targetIndex = models.findIndex(m => m.id === modelId);
-  const oldCostLevel = models[targetIndex].cost_level;
-  const newCostLevel = type;
-
-  // Если меняем тип модели, сначала сбрасываем предыдущую default для старого типа
-  if (oldCostLevel && oldCostLevel !== newCostLevel) {
-    console.log(`Перемещение модели ${modelId} из типа ${oldCostLevel} в ${newCostLevel}. Сбрасываю предыдущие defaults.`);
-    models = models.map(m => ({
-      ...m,
-      is_default: m.cost_level === oldCostLevel ? false : m.is_default
-    }));
-  }
-
-  // Сбрасываем все is_default для нового типа (кроме целевой, но она пока ещё не обновлена)
-  models = models.map(m => ({
-    ...m,
-    is_default: m.cost_level === newCostLevel ? false : m.is_default
-  }));
-
-  // Обновляем целевую модель: меняем cost_level и устанавливаем is_default
-  if (targetIndex !== -1) {
-    models[targetIndex] = {
-      ...models[targetIndex],
-      cost_level: newCostLevel,
-      is_default: true
-    };
-    console.log(`Установлена default модель ${modelId} для типа ${newCostLevel}`);
-  }
-
-  await saveModels(models);
-
-  res.json({ success: true, selected: models[targetIndex] });
 });
 
 // Эндпоинт для получения конкретной модели по умолчанию по типу
-app.get('/api/default-models/:type', (req, res) => {
+app.get('/api/default-models/:type', async (req, res) => {
     const { type } = req.params;
     
     if (!['cheap', 'fast', 'rich'].includes(type)) {
@@ -1804,10 +1817,13 @@ app.get('/api/default-models/:type', (req, res) => {
         });
     }
     
+    const models = await loadModels();
+    const model = models.find(m => m.user_type === type.toUpperCase());
+
     res.json({
-        success: true,
+        success: !!model,
         type,
-        model: config.defaultModels[type]
+        model: model || null
     });
 });
 
@@ -1860,7 +1876,7 @@ async function refreshGroqModels() {
           context: context,
           cost_level: "fast",
           fast: true,
-          is_default: false,
+          user_type: null,
           enabled: true,
           added_at: new Date().toISOString()
         };
@@ -1929,7 +1945,7 @@ async function refreshOpenRouterModels() {
           visible_name: `OpenRouter → ${remote.name || remote.id}`,
           context: remote.context_length || 32768,
           cost_level: "cheap",
-          is_default: false,
+          user_type: null,
           enabled: true,
           free: true,
           added_at: new Date().toISOString()
