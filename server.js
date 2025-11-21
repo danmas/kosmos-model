@@ -645,6 +645,13 @@ app.post('/api/send-request', async (req, res) => {
       model = resolved.model;
       let selectedProvider = resolved.provider;
       
+      // ПРОВЕРКА: если модель не разрешена (нет дефолтной для типа)
+      if (!model || model === null || model === 'null') {
+        return res.status(400).json({ 
+          error: `Дефолтная модель для типа "${resolved.resolvedType || 'неизвестного'}" не настроена. Настройте дефолтную модель в UI.` 
+        });
+      }
+      
       // Получаем данные модели для определения провайдера и параметров
       const modelData = await getModelByName(model);
       
@@ -665,7 +672,7 @@ app.post('/api/send-request', async (req, res) => {
       }
       
       if (selectedProvider === 'direct' && !modelData) {
-        return res.status(500).json({ error: 'Модель не найдена в available-models.json' });
+        return res.status(500).json({ error: 'Direct сервис требует валидную модель' });
       }
       
       let finalInputText = inputText;
@@ -1004,6 +1011,13 @@ app.post('/api/send-request-sys', async (req, res) => {
       model = resolved.model;
       const selectedProvider = resolved.provider;
       
+      // ПРОВЕРКА: если модель не разрешена (нет дефолтной для типа)
+      if (!model || model === null || model === 'null') {
+        return res.status(400).json({ 
+          error: `Дефолтная модель для типа "${resolved.resolvedType || 'неизвестного'}" не настроена. Настройте дефолтную модель в UI.` 
+        });
+      }
+      
       // Проверяем API ключ для соответствующего провайдера
       if (selectedProvider === 'groq' && !config.groqKey) {
         return res.status(500).json({ error: 'GROQ API ключ не настроен' });
@@ -1170,90 +1184,8 @@ app.post('/api/send-request-sys', async (req, res) => {
         });
       }
     } catch (error) {
-      console.error('Error sending request to AI model:', error);
-      
-      // Форматируем ошибку для клиента и логируем детали
-      let errorMessage = 'Failed to process request';
-      let errorDetails = null;
-      
-      if (error.response) {
-        // Ошибка от OpenRouter API
-        // Улучшенная обработка ошибок API
-        let apiError = error.response.data.error;
-        let detailedMessage = '';
-
-        if (apiError && typeof apiError === 'object' && apiError.message) {
-            detailedMessage = apiError.message;
-        } else if (typeof apiError === 'string') {
-            detailedMessage = apiError;
-        } else {
-            detailedMessage = error.response.statusText;
-        }
-        
-      errorMessage = `API Error: ${error.response.status} - ${detailedMessage}`;
-      errorDetails = error.response.data;
-      console.log('DEBUG SERVER: API error details via /api/send-request-sys:', {
-          status: error.response.status,
-          data: error.response.data
-        });
-      } else if (error.request) {
-        // Ошибка сети
-        errorMessage = 'Network error. Could not connect to AI service.';
-        errorDetails = { request: error.request };
-        console.log('DEBUG SERVER: Network error via /api/send-request-sys - no response received');
-      } else {
-        errorMessage = error.message;
-        errorDetails = { stack: error.stack };
-        console.log('DEBUG SERVER: General error via /api/send-request-sys:', error.message, error.stack);
-      }
-      
-      // Сохраняем ошибку в историю
-      try {
-        const responseData = await readResponses();
-        
-        // Получаем промпт для сохранения
-        let promptText = '--';
-        let promptName = req.body.prompt_name || '--';
-        try {
-          const promptsData = await readPrompts();
-          const promptObj = promptsData.prompts.find(p => p.name === promptName);
-          if (promptObj) {
-            promptText = promptObj.text;
-          }
-        } catch (e) {
-          console.error('Error reading prompt for error save:', e);
-        }
-        
-        const newResponse = {
-          id: Date.now().toString(),
-          timestamp: new Date().toISOString(),
-          model: req.body.model || 'unknown',
-          provider: req.body.provider || 'unknown',
-          promptName: promptName,
-          prompt: promptText,
-          inputText: req.body.inputText || '',
-          response: `ERROR: ${errorMessage}`,
-          tokens: {
-            input: 0,
-            output: 0,
-            total: 0,
-            source: 'error'
-          },
-          autoSaved: true,
-          errorDetails: errorDetails
-        };
-        
-        responseData.responses.push(newResponse);
-        await writeResponses(responseData);
-        console.log(`💾 Ошибка сохранена в историю: ${newResponse.id}`);
-      } catch (saveError) {
-        console.error('❌ Ошибка сохранения ошибки в историю:', saveError);
-      }
-      
-      return res.status(500).json({ 
-        error: errorMessage,
-        details: errorDetails
-      });
+      console.error('Ошибка в /api/send-request-sys:', error);
+      res.status(500).json({ error: 'Внутренняя ошибка сервера' });
     }
   });
   
@@ -1458,6 +1390,13 @@ app.post('/analyze', async (req, res) => {
     model = resolved.model;
     const selectedProvider = resolved.provider;
     
+    // ПРОВЕРКА: если модель не разрешена (нет дефолтной для типа)
+    if (!model || model === null || model === 'null') {
+      return res.status(400).json({ 
+        error: `Дефолтная модель для типа "${resolved.resolvedType || 'неизвестного'}" не настроена. Настройте дефолтную модель в UI.` 
+      });
+    }
+    
     // Проверяем API ключ для соответствующего провайдера
     if (selectedProvider === 'groq' && !config.groqKey) {
       return res.status(500).json({ error: 'GROQ API ключ не настроен' });
@@ -1582,47 +1521,8 @@ app.post('/analyze', async (req, res) => {
       });
     }
   } catch (error) {
-    console.error('Error sending request to AI model via /analyze:', error);
-    
-    // Форматируем ошибку для клиента и логируем детали
-    let errorMessage = 'Failed to process request';
-    let errorDetails = null;
-    
-    if (error.response) {
-      // Ошибка от OpenRouter API
-      // Улучшенная обработка ошибок API
-        let apiError = error.response.data.error;
-        let detailedMessage = '';
-
-        if (apiError && typeof apiError === 'object' && apiError.message) {
-            detailedMessage = apiError.message;
-        } else if (typeof apiError === 'string') {
-            detailedMessage = apiError;
-        } else {
-            detailedMessage = error.response.statusText;
-        }
-        
-      errorMessage = `API Error: ${error.response.status} - ${detailedMessage}`;
-      errorDetails = error.response.data;
-      console.log('DEBUG SERVER: API error details via /analyze:', {
-        status: error.response.status,
-        data: error.response.data
-      });
-    } else if (error.request) {
-      // Ошибка сети
-      errorMessage = 'Network error. Could not connect to AI service.';
-      errorDetails = { request: error.request };
-      console.log('DEBUG SERVER: Network error via /analyze - no response received');
-    } else {
-      errorMessage = error.message;
-      errorDetails = { stack: error.stack };
-      console.log('DEBUG SERVER: General error via /analyze:', error.message, error.stack);
-    }
-    
-    return res.status(500).json({ 
-      error: errorMessage,
-      details: errorDetails
-    });
+    console.error('Ошибка в /analyze:', error);
+    res.status(500).json({ error: 'Внутренняя ошибка сервера' });
   }
 });
 
@@ -1779,8 +1679,16 @@ app.post('/api/models/update/:id', async (req, res) => {
       return res.status(404).json({ error: 'Модель не найдена' });
     }
 
+    // Добавляем логику сброса is_default при отключении модели
+    const currentModel = models[modelIndex];
+    let finalUpdates = { ...updates };
+    if (updates.enabled === false && currentModel.is_default === true) {
+      finalUpdates.is_default = false;
+      console.log(`Сброс is_default для модели ${id} при отключении`);
+    }
+
     // Обновляем модель, сохраняя существующие поля
-    models[modelIndex] = { ...models[modelIndex], ...updates };
+    models[modelIndex] = { ...currentModel, ...finalUpdates };
 
     await saveModels(models);
 
@@ -1851,20 +1759,33 @@ app.post('/api/default-models/set', async (req, res) => {
     return res.status(400).json({ error: 'Model not found' });
   }
 
-  // Сбрасываем все is_default этого типа
+  const targetIndex = models.findIndex(m => m.id === modelId);
+  const oldCostLevel = models[targetIndex].cost_level;
+  const newCostLevel = type;
+
+  // Если меняем тип модели, сначала сбрасываем предыдущую default для старого типа
+  if (oldCostLevel && oldCostLevel !== newCostLevel) {
+    console.log(`Перемещение модели ${modelId} из типа ${oldCostLevel} в ${newCostLevel}. Сбрасываю предыдущие defaults.`);
+    models = models.map(m => ({
+      ...m,
+      is_default: m.cost_level === oldCostLevel ? false : m.is_default
+    }));
+  }
+
+  // Сбрасываем все is_default для нового типа (кроме целевой, но она пока ещё не обновлена)
   models = models.map(m => ({
     ...m,
-    is_default: m.cost_level === type ? false : m.is_default
+    is_default: m.cost_level === newCostLevel ? false : m.is_default
   }));
 
-  // Меняем cost_level и устанавливаем is_default для выбранной модели
-  const targetIndex = models.findIndex(m => m.id === modelId);
+  // Обновляем целевую модель: меняем cost_level и устанавливаем is_default
   if (targetIndex !== -1) {
     models[targetIndex] = {
       ...models[targetIndex],
-      cost_level: type,
+      cost_level: newCostLevel,
       is_default: true
     };
+    console.log(`Установлена default модель ${modelId} для типа ${newCostLevel}`);
   }
 
   await saveModels(models);
