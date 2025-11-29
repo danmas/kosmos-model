@@ -2296,6 +2296,32 @@ function generateChatCompletionId() {
   return id;
 }
 
+// Функция для создания SSE чанка в формате OpenAI
+function createStreamChunk(id, model, delta, finishReason = null) {
+  return {
+    id,
+    object: 'chat.completion.chunk',
+    created: Math.floor(Date.now() / 1000),
+    model,
+    choices: [{
+      index: 0,
+      delta,
+      finish_reason: finishReason
+    }]
+  };
+}
+
+// Отправка SSE чанка клиенту
+function sendSSEChunk(res, data) {
+  res.write(`data: ${JSON.stringify(data)}\n\n`);
+}
+
+// Завершение SSE стрима
+function endSSEStream(res) {
+  res.write('data: [DONE]\n\n');
+  res.end();
+}
+
 // POST /v1/chat/completions - OpenAI-совместимый эндпоинт
 app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
   try {
@@ -2320,18 +2346,6 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
           type: 'invalid_request_error',
           param: 'messages',
           code: 'missing_required_parameter'
-        }
-      });
-    }
-    
-    // Streaming пока не поддерживается
-    if (stream === true) {
-      return res.status(400).json({
-        error: {
-          message: 'Streaming is not supported yet. Set stream to false or omit it.',
-          type: 'invalid_request_error',
-          param: 'stream',
-          code: 'unsupported_parameter'
         }
       });
     }
@@ -2427,6 +2441,175 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
     const finalTemperature = temperature !== undefined ? temperature : 0.7;
     const finalMaxTokens = max_tokens !== undefined ? max_tokens : 1024;
     
+    // ═══════════════════════════════════════════════════════════════════
+    // STREAMING MODE
+    // ═══════════════════════════════════════════════════════════════════
+    if (stream === true) {
+      const streamId = generateChatCompletionId();
+      const streamCreated = Math.floor(Date.now() / 1000);
+      
+      // Устанавливаем SSE заголовки
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.setHeader('X-Accel-Buffering', 'no'); // Отключаем буферизацию nginx
+      
+      console.log(`🔗 OpenAI-compat STREAM: Начинаем стриминг от ${selectedProvider}`);
+      
+      try {
+        // Отправляем первый чанк с ролью
+        sendSSEChunk(res, createStreamChunk(streamId, resolvedModel, { role: 'assistant' }, null));
+        
+        if (selectedProvider === 'groq') {
+          // GROQ SDK поддерживает streaming нативно
+          const streamResponse = await groqService.sendRequest({
+            model: resolvedModel,
+            messages: providerMessages,
+            temperature: finalTemperature,
+            maxTokens: finalMaxTokens,
+            stream: true
+          });
+          
+          // Итерируем по async iterable от GROQ SDK
+          for await (const chunk of streamResponse) {
+            const content = chunk.choices?.[0]?.delta?.content;
+            const finishReason = chunk.choices?.[0]?.finish_reason;
+            
+            if (content) {
+              sendSSEChunk(res, createStreamChunk(streamId, resolvedModel, { content }, null));
+            }
+            
+            if (finishReason) {
+              sendSSEChunk(res, createStreamChunk(streamId, resolvedModel, {}, finishReason));
+            }
+          }
+          
+        } else if (selectedProvider === 'openroute') {
+          // OpenRouter streaming через axios
+          const streamResponse = await axios.post('https://openrouter.ai/api/v1/chat/completions', {
+            model: resolvedModel,
+            messages: providerMessages,
+            temperature: finalTemperature,
+            max_tokens: finalMaxTokens,
+            stream: true
+          }, {
+            headers: {
+              'Authorization': `Bearer ${config.openRouterKey}`,
+              'Content-Type': 'application/json'
+            },
+            responseType: 'stream'
+          });
+          
+          // Обрабатываем SSE от OpenRouter
+          let buffer = '';
+          streamResponse.data.on('data', (chunk) => {
+            buffer += chunk.toString();
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || ''; // Сохраняем неполную строку
+            
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (trimmed.startsWith('data: ')) {
+                const data = trimmed.slice(6);
+                if (data === '[DONE]') {
+                  continue; // Пропускаем, отправим свой [DONE]
+                }
+                try {
+                  const parsed = JSON.parse(data);
+                  const content = parsed.choices?.[0]?.delta?.content;
+                  const finishReason = parsed.choices?.[0]?.finish_reason;
+                  
+                  if (content) {
+                    sendSSEChunk(res, createStreamChunk(streamId, resolvedModel, { content }, null));
+                  }
+                  if (finishReason) {
+                    sendSSEChunk(res, createStreamChunk(streamId, resolvedModel, {}, finishReason));
+                  }
+                } catch (e) {
+                  // Игнорируем невалидный JSON
+                }
+              }
+            }
+          });
+          
+          await new Promise((resolve, reject) => {
+            streamResponse.data.on('end', resolve);
+            streamResponse.data.on('error', reject);
+          });
+          
+        } else {
+          // Для провайдеров без поддержки streaming - эмулируем через обычный запрос
+          console.log(`⚠️ OpenAI-compat: Провайдер ${selectedProvider} не поддерживает streaming, эмулируем`);
+          
+          let fullContent = '';
+          
+          if (selectedProvider === 'direct') {
+            if (!modelData) {
+              throw new Error(`Model ${model} not found`);
+            }
+            let apiKey = modelData.api_key;
+            if (typeof apiKey === 'string' && apiKey.startsWith('env:')) {
+              apiKey = process.env[apiKey.slice(4)];
+            }
+            const directService = new DirectService(apiKey, modelData.base_url);
+            const directResponse = await directService.sendRequest({
+              model: resolvedModel,
+              messages: providerMessages,
+              temperature: finalTemperature,
+              maxTokens: finalMaxTokens
+            });
+            fullContent = directResponse.content;
+            
+          } else if (selectedProvider === 'gigachat') {
+            const gcResponse = await gigachatService.sendRequest({
+              model: resolvedModel,
+              messages: providerMessages,
+              temperature: finalTemperature,
+              maxTokens: finalMaxTokens
+            });
+            fullContent = gcResponse.content;
+          }
+          
+          // Эмулируем streaming - отправляем контент чанками по ~20 символов
+          const chunkSize = 20;
+          for (let i = 0; i < fullContent.length; i += chunkSize) {
+            const contentChunk = fullContent.slice(i, i + chunkSize);
+            sendSSEChunk(res, createStreamChunk(streamId, resolvedModel, { content: contentChunk }, null));
+            // Небольшая задержка для эмуляции стриминга
+            await new Promise(r => setTimeout(r, 10));
+          }
+          
+          // Финальный чанк
+          sendSSEChunk(res, createStreamChunk(streamId, resolvedModel, {}, 'stop'));
+        }
+        
+        // Завершаем стрим
+        endSSEStream(res);
+        console.log(`✅ OpenAI-compat STREAM: Стриминг завершён`);
+        return;
+        
+      } catch (streamError) {
+        console.error('❌ OpenAI-compat STREAM error:', streamError);
+        // Если стрим уже начался, отправляем ошибку в SSE формате
+        if (res.headersSent) {
+          res.write(`data: ${JSON.stringify({ error: { message: streamError.message } })}\n\n`);
+          endSSEStream(res);
+        } else {
+          return res.status(500).json({
+            error: {
+              message: streamError.message,
+              type: 'server_error',
+              code: 'stream_error'
+            }
+          });
+        }
+        return;
+      }
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // NON-STREAMING MODE (обычный режим)
+    // ═══════════════════════════════════════════════════════════════════
     let response;
     
     // Отправляем запрос в зависимости от провайдера

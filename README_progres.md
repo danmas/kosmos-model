@@ -1,5 +1,67 @@
-+
 # Прогресс разработки Kosmos Model Gateway
+
+## 2025-11-29: Streaming и UI для OpenAI API
+
+### Суть изменений
+
+Добавлен **streaming (SSE)** для OpenAI-совместимого API и интегрирован в веб-интерфейс.
+
+### Streaming в `/v1/chat/completions`
+
+При `stream: true` сервер возвращает Server-Sent Events в формате OpenAI:
+
+```
+data: {"id":"chatcmpl-xxx","object":"chat.completion.chunk","choices":[{"delta":{"role":"assistant"}}]}
+data: {"id":"chatcmpl-xxx","object":"chat.completion.chunk","choices":[{"delta":{"content":"Hello"}}]}
+data: {"id":"chatcmpl-xxx","object":"chat.completion.chunk","choices":[{"delta":{},"finish_reason":"stop"}}]}
+data: [DONE]
+```
+
+**Поддержка провайдеров:**
+| Провайдер | Реализация |
+|-----------|------------|
+| GROQ | Нативный streaming (async iterable) |
+| OpenRouter | Нативный SSE (axios stream) |
+| Direct/GigaChat | Эмуляция (ответ разбивается на чанки) |
+
+### UI изменения (AI Analytics Interface)
+
+В веб-интерфейс добавлены элементы управления:
+
+| Элемент | Описание |
+|---------|----------|
+| **API режим** | Radio buttons: Legacy / OpenAI |
+| **Streaming** | Checkbox, включён по умолчанию для OpenAI режима |
+
+**Поведение:**
+- **Legacy** — старый API `/api/send-request` (без streaming)
+- **OpenAI + Streaming** — текст появляется в реальном времени по мере генерации
+- **OpenAI без Streaming** — ждём полный ответ
+
+Настройки сохраняются в `localStorage`.
+
+### Изменения в файлах
+
+**1. `server.js`**
+- Хелперы: `createStreamChunk()`, `sendSSEChunk()`, `endSSEStream()`
+- В `/v1/chat/completions` при `stream: true`:
+  - SSE заголовки (`Content-Type: text/event-stream`)
+  - Проксирование чанков от GROQ/OpenRouter
+  - Эмуляция для Direct/GigaChat
+
+**2. `public/app.js`**
+- Свойства `apiMode` и `useStreaming`
+- Radio buttons для выбора API режима
+- Checkbox для streaming
+- Обработка SSE через `response.body.getReader()`
+- Сохранение настроек в localStorage
+
+**3. `swagger.yaml`**
+- Документация streaming режима
+- Схема `OpenAIChatCompletionChunk`
+- Примеры SSE ответов
+
+---
 
 ## 2025-11-29: OpenAI-совместимый API
 

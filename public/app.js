@@ -31,6 +31,10 @@
     this.userTypesList = [];
     this.selectedUserType = null; // Выбранный user_type для отправки вместо модели
 
+    // Свойства для API режима и streaming
+    this.apiMode = 'openai'; // 'legacy' или 'openai'
+    this.useStreaming = true; // Streaming по умолчанию включён для OpenAI режима
+
     this.init();
   }
 
@@ -275,6 +279,26 @@
           </div>
         </div>
         ` : ''}
+
+        <div class="form-group api-mode-controls" style="display: flex; align-items: center; gap: 20px; padding: 10px; background: #1a2a3a; border-radius: 6px; margin-bottom: 15px;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <label style="font-weight: bold; color: #8ab4f8;">API режим:</label>
+            <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
+              <input type="radio" name="apiMode" value="legacy" ${this.apiMode === 'legacy' ? 'checked' : ''}>
+              <span style="color: #aaa;">Legacy</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
+              <input type="radio" name="apiMode" value="openai" ${this.apiMode === 'openai' ? 'checked' : ''}>
+              <span style="color: #4ade80;">OpenAI</span>
+            </label>
+          </div>
+          <div id="streamingOption" style="display: ${this.apiMode === 'openai' ? 'flex' : 'none'}; align-items: center; gap: 6px; padding-left: 15px; border-left: 1px solid #4a6a8a;">
+            <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
+              <input type="checkbox" id="useStreamingCheckbox" ${this.useStreaming ? 'checked' : ''}>
+              <span style="color: #fbbf24;">⚡ Streaming</span>
+            </label>
+          </div>
+        </div>
 
         <div class="form-group">
           <div class="input-with-button">
@@ -668,6 +692,31 @@
           console.log('user_type сброшен, используется модель');
         }
         this.saveState();
+      });
+    }
+
+    // Обработчики для API режима и streaming
+    const apiModeRadios = document.querySelectorAll('input[name="apiMode"]');
+    apiModeRadios.forEach(radio => {
+      radio.addEventListener('change', (e) => {
+        this.apiMode = e.target.value;
+        localStorage.setItem('apiMode', this.apiMode);
+        console.log('API режим:', this.apiMode);
+        
+        // Показываем/скрываем опцию streaming
+        const streamingOption = document.getElementById('streamingOption');
+        if (streamingOption) {
+          streamingOption.style.display = this.apiMode === 'openai' ? 'flex' : 'none';
+        }
+      });
+    });
+
+    const streamingCheckbox = document.getElementById('useStreamingCheckbox');
+    if (streamingCheckbox) {
+      streamingCheckbox.addEventListener('change', (e) => {
+        this.useStreaming = e.target.checked;
+        localStorage.setItem('useStreaming', this.useStreaming);
+        console.log('Streaming:', this.useStreaming ? 'включён' : 'выключен');
       });
     }
     
@@ -1204,6 +1253,27 @@
           }
         }
       }
+
+      // Загружаем настройки API режима и streaming
+      const savedApiMode = localStorage.getItem('apiMode');
+      if (savedApiMode) {
+        this.apiMode = savedApiMode;
+        const apiModeRadio = document.querySelector(`input[name="apiMode"][value="${savedApiMode}"]`);
+        if (apiModeRadio) apiModeRadio.checked = true;
+        
+        const streamingOption = document.getElementById('streamingOption');
+        if (streamingOption) {
+          streamingOption.style.display = this.apiMode === 'openai' ? 'flex' : 'none';
+        }
+      }
+
+      const savedStreaming = localStorage.getItem('useStreaming');
+      if (savedStreaming !== null) {
+        this.useStreaming = savedStreaming === 'true';
+        const streamingCheckbox = document.getElementById('useStreamingCheckbox');
+        if (streamingCheckbox) streamingCheckbox.checked = this.useStreaming;
+      }
+
     } catch (error) {
       console.error('Error loading saved state:', error);
     }
@@ -1436,18 +1506,21 @@
       saveResponseButton.disabled = true;
     }
 
-    // Добавляем отладочный вывод для проверки параметров RAG
+    // Проверяем режим API
+    if (this.apiMode === 'openai') {
+      return this.handleSubmitOpenAI(inputText, prompt, responseArea, saveResponseButton);
+    }
+
+    // Legacy режим (как было раньше)
+    console.log('DEBUG: Legacy API mode');
     console.log('DEBUG: RAG parameters before request:');
     console.log('DEBUG: this.useRag =', this.useRag);
     console.log('DEBUG: this.selectedContextCode =', this.selectedContextCode);
-    console.log('DEBUG: this.ragEnabled =', this.ragEnabled);
-    console.log('DEBUG: useRagCheckbox checked =', document.getElementById('useRagCheckbox')?.checked);
 
     this.updateUIState(true);
     this.abortController = new AbortController();
 
     try {
-      // Используем серверный API вместо прямого запроса к OpenRouter
       console.log('Sending request with RAG settings:', {
         useRag: this.useRag,
         contextCode: this.selectedContextCode
@@ -1459,7 +1532,7 @@
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: this.selectedUserType || this.model, // Используем user_type если выбран
+          model: this.selectedUserType || this.model,
           prompt: prompt.value,
           inputText: inputText.value,
           useRag: this.useRag,
@@ -1475,16 +1548,13 @@
 
       const data = await response.json();
       
-      // Отображаем ответ
       responseArea.innerHTML = '';
       
-      // Добавляем основной ответ
       const responseText = document.createElement('div');
       responseText.className = 'response-text';
       responseText.textContent = data.content;
       responseArea.appendChild(responseText);
       
-      // Если есть информация о RAG, добавляем её
       if (data.rag && data.rag.used) {
         const ragInfo = document.createElement('div');
         ragInfo.className = 'rag-info';
@@ -1520,7 +1590,6 @@
         responseArea.appendChild(ragInfo);
       }
       
-      // Активируем кнопку сохранения после получения ответа
       if (saveResponseButton) {
         saveResponseButton.disabled = false;
       }
@@ -1530,6 +1599,119 @@
       } else {
         responseArea.textContent = `Error: ${error.message}`;
         console.error('Error:', error);
+      }
+    } finally {
+      this.updateUIState(false);
+      this.abortController = null;
+    }
+  }
+
+  // OpenAI-совместимый режим с поддержкой streaming
+  async handleSubmitOpenAI(inputText, prompt, responseArea, saveResponseButton) {
+    console.log('DEBUG: OpenAI API mode, streaming:', this.useStreaming);
+    
+    this.updateUIState(true);
+    this.abortController = new AbortController();
+
+    // Формируем messages в формате OpenAI
+    const messages = [
+      { role: 'system', content: prompt.value },
+      { role: 'user', content: inputText.value }
+    ];
+
+    const requestBody = {
+      model: this.selectedUserType || this.model,
+      messages: messages,
+      stream: this.useStreaming
+    };
+
+    try {
+      if (this.useStreaming) {
+        // Streaming режим - читаем SSE
+        responseArea.value = '';
+        responseArea.style.color = '#e0e0e0';
+        
+        const response = await fetch('/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody),
+          signal: this.abortController.signal
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error?.message || 'Failed to get response');
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let fullContent = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n');
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (trimmed.startsWith('data: ')) {
+              const data = trimmed.slice(6);
+              if (data === '[DONE]') continue;
+
+              try {
+                const parsed = JSON.parse(data);
+                const content = parsed.choices?.[0]?.delta?.content;
+                if (content) {
+                  fullContent += content;
+                  responseArea.value = fullContent;
+                  // Автопрокрутка вниз
+                  responseArea.scrollTop = responseArea.scrollHeight;
+                }
+              } catch (e) {
+                // Игнорируем невалидный JSON
+              }
+            }
+          }
+        }
+
+        console.log('✅ OpenAI streaming завершён');
+        
+      } else {
+        // Обычный режим без streaming
+        responseArea.value = 'Отправка запроса...';
+        
+        const response = await fetch('/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody),
+          signal: this.abortController.signal
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error?.message || 'Failed to get response');
+        }
+
+        const data = await response.json();
+        responseArea.value = data.choices?.[0]?.message?.content || 'Пустой ответ';
+        responseArea.style.color = '#e0e0e0';
+        
+        console.log('✅ OpenAI запрос завершён, токенов:', data.usage?.total_tokens);
+      }
+
+      if (saveResponseButton) {
+        saveResponseButton.disabled = false;
+      }
+
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        responseArea.value = 'Запрос отменён';
+      } else {
+        responseArea.value = `Ошибка: ${error.message}`;
+        responseArea.style.color = '#ff6b6b';
+        console.error('OpenAI API Error:', error);
       }
     } finally {
       this.updateUIState(false);
@@ -2165,12 +2347,15 @@
       saveResponseButton.disabled = true;
     }
 
-    // Добавляем отладочный вывод для проверки параметров RAG
-    console.log('DEBUG SERVER: RAG parameters before request:');
+    // Проверяем режим API - для OpenAI используем handleSubmitOpenAI
+    if (this.apiMode === 'openai') {
+      return this.handleSubmitOpenAI(inputText, prompt, responseArea, saveResponseButton);
+    }
+
+    // Legacy режим
+    console.log('DEBUG SERVER: Legacy API mode');
     console.log('DEBUG SERVER: this.useRag =', this.useRag);
     console.log('DEBUG SERVER: this.selectedContextCode =', this.selectedContextCode);
-    console.log('DEBUG SERVER: this.ragEnabled =', this.ragEnabled);
-    console.log('DEBUG SERVER: useRagCheckbox checked =', document.getElementById('useRagCheckbox')?.checked);
 
     this.updateUIState(true);
     this.abortController = new AbortController();

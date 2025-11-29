@@ -4,9 +4,12 @@
 
 ## Основные возможности
 
-*   **Мульти-провайдер:** Поддержка GROQ (Fast inference), OpenRouter (агрегатор) и Direct (Z.AI/Custom).
+*   **Мульти-провайдер:** Поддержка GROQ (Fast inference), OpenRouter (агрегатор), Direct (Z.AI/Custom) и GigaChat (Сбер).
+*   **OpenAI-совместимый API:** Полная совместимость с OpenAI Chat Completions API (`/v1/chat/completions`, `/v1/models`). Работает с OpenAI SDK, LangChain, LlamaIndex.
+*   **Streaming (SSE):** Потоковая генерация ответов в реальном времени для OpenAI API.
 *   **Умная маршрутизация:**
     *   Системные алиасы: `FAST` (быстрая), `CHEAP` (дешевая/бесплатная), `RICH` (умная/дорогая).
+    *   Произвольные `user_type` метки для кастомной маршрутизации.
     *   Автоматический фолбек и выбор провайдера.
 *   **Управление моделями:** UI для включения/отключения моделей, назначения ролей и добавления кастомных моделей без перезагрузки.
 *   **RAG (Retrieval-Augmented Generation):** Интеграция с LangChain и PostgreSQL (pgvector) для контекстного поиска по документам.
@@ -65,6 +68,34 @@
     4.  **Ручные изменения** (например, если вы вручную отключили модель через UI) для существующих моделей сохраняются и не перезаписываются.
 
 Это позволяет поддерживать список моделей актуальным, не теряя при этом кастомных настроек.
+
+## OpenAI-совместимый API
+
+Сервер поддерживает стандартный OpenAI Chat Completions API:
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="http://localhost:3002/v1",
+    api_key="your-key"  # любая строка если аутентификация отключена
+)
+
+# Обычный режим
+response = client.chat.completions.create(
+    model="FAST",
+    messages=[{"role": "user", "content": "Привет!"}]
+)
+
+# Streaming режим
+stream = client.chat.completions.create(
+    model="FAST",
+    messages=[{"role": "user", "content": "Привет!"}],
+    stream=True
+)
+for chunk in stream:
+    print(chunk.choices[0].delta.content or "", end="")
+```
 
 ## API Документация
 

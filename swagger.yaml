@@ -49,6 +49,20 @@ paths:
         Полностью совместимый с OpenAI API эндпоинт для чат-комплитов.
         Поддерживает стандартный формат запроса/ответа OpenAI.
         
+        **Streaming:**
+        При `stream: true` возвращает Server-Sent Events (SSE) в формате OpenAI:
+        ```
+        data: {"id":"chatcmpl-xxx","object":"chat.completion.chunk","choices":[{"delta":{"role":"assistant"}}]}
+        data: {"id":"chatcmpl-xxx","object":"chat.completion.chunk","choices":[{"delta":{"content":"Hello"}}]}
+        data: {"id":"chatcmpl-xxx","object":"chat.completion.chunk","choices":[{"delta":{},"finish_reason":"stop"}]}
+        data: [DONE]
+        ```
+        
+        Поддержка streaming по провайдерам:
+        - **GROQ** — полная поддержка (нативный streaming)
+        - **OpenRouter** — полная поддержка (SSE)
+        - **Direct/GigaChat** — эмуляция (ответ разбивается на чанки)
+        
         **Аутентификация:**
         - Если `OPENAI_COMPAT_API_KEY` задан в .env — требуется Bearer Token
         - Если не задан — доступ без аутентификации
@@ -62,13 +76,21 @@ paths:
             api_key="your-key"
         )
         
+        # Обычный режим
         response = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": "Hello!"}
-            ]
+            messages=[{"role": "user", "content": "Hello!"}]
         )
+        
+        # Streaming режим
+        stream = client.chat.completions.create(
+            model="FAST",
+            messages=[{"role": "user", "content": "Hello!"}],
+            stream=True
+        )
+        for chunk in stream:
+            if chunk.choices[0].delta.content:
+                print(chunk.choices[0].delta.content, end="")
         ```
       security:
         - BearerAuth: []
@@ -103,13 +125,42 @@ paths:
                       content: "Расскажи о погоде"
                   temperature: 0.8
                   max_tokens: 500
+              streaming:
+                summary: Streaming режим
+                value:
+                  model: "llama-3.3-70b-versatile"
+                  messages:
+                    - role: "user"
+                      content: "Напиши короткий рассказ"
+                  stream: true
       responses:
         '200':
-          description: Успешный ответ
+          description: |
+            Успешный ответ.
+            - При `stream: false` — JSON с полным ответом
+            - При `stream: true` — Server-Sent Events (text/event-stream)
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/OpenAIChatCompletionResponse'
+            text/event-stream:
+              schema:
+                type: string
+                description: |
+                  SSE поток с чанками в формате:
+                  ```
+                  data: {"id":"...","object":"chat.completion.chunk","choices":[{"delta":{"content":"..."}}]}
+                  
+                  data: [DONE]
+                  ```
+              example: |
+                data: {"id":"chatcmpl-xxx","object":"chat.completion.chunk","created":1700000000,"model":"llama-3.3-70b-versatile","choices":[{"index":0,"delta":{"role":"assistant"},"finish_reason":null}]}
+                
+                data: {"id":"chatcmpl-xxx","object":"chat.completion.chunk","created":1700000000,"model":"llama-3.3-70b-versatile","choices":[{"index":0,"delta":{"content":"Hello"},"finish_reason":null}]}
+                
+                data: {"id":"chatcmpl-xxx","object":"chat.completion.chunk","created":1700000000,"model":"llama-3.3-70b-versatile","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}
+                
+                data: [DONE]
         '400':
           description: Некорректный запрос
           content:
@@ -1609,7 +1660,10 @@ components:
         stream:
           type: boolean
           default: false
-          description: Потоковый режим (пока не поддерживается)
+          description: |
+            Потоковый режим (SSE). При `true` ответ приходит в формате Server-Sent Events.
+            Поддерживается для провайдеров: GROQ (нативно), OpenRouter (нативно).
+            Для Direct/GigaChat стриминг эмулируется.
 
     OpenAIChatMessage:
       type: object
@@ -1650,6 +1704,55 @@ components:
             $ref: '#/components/schemas/OpenAIChatChoice'
         usage:
           $ref: '#/components/schemas/OpenAIUsage'
+
+    OpenAIChatCompletionChunk:
+      type: object
+      description: Чанк ответа при streaming (SSE формат)
+      properties:
+        id:
+          type: string
+          description: Уникальный идентификатор стрима (одинаковый для всех чанков)
+          example: "chatcmpl-abc123xyz"
+        object:
+          type: string
+          enum: [chat.completion.chunk]
+          example: "chat.completion.chunk"
+        created:
+          type: integer
+          description: Unix timestamp
+          example: 1700000000
+        model:
+          type: string
+          description: Модель
+          example: "llama-3.3-70b-versatile"
+        choices:
+          type: array
+          items:
+            $ref: '#/components/schemas/OpenAIStreamChoice'
+
+    OpenAIStreamChoice:
+      type: object
+      properties:
+        index:
+          type: integer
+          example: 0
+        delta:
+          type: object
+          description: Дельта (изменение) сообщения
+          properties:
+            role:
+              type: string
+              description: Роль (только в первом чанке)
+              example: "assistant"
+            content:
+              type: string
+              description: Часть контента
+              example: "Hello"
+        finish_reason:
+          type: string
+          nullable: true
+          enum: [stop, length, null]
+          description: Причина завершения (только в последнем чанке)
 
     OpenAIChatChoice:
       type: object

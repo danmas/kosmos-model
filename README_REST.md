@@ -86,7 +86,37 @@ curl -X POST http://localhost:3002/api/send-request ^
 - `messages` — массив сообщений с `role` (system/user/assistant) и `content`
 - `temperature` — температура генерации (0-2, по умолчанию 0.7)
 - `max_tokens` — максимум токенов в ответе (по умолчанию 1024)
-- `stream` — потоковый режим (пока не поддерживается, должен быть `false`)
+- `stream` — потоковый режим SSE (по умолчанию `false`)
+
+### Streaming (SSE)
+
+При `stream: true` ответ приходит в формате Server-Sent Events:
+
+```
+data: {"id":"chatcmpl-xxx","object":"chat.completion.chunk","choices":[{"delta":{"role":"assistant"}}]}
+data: {"id":"chatcmpl-xxx","object":"chat.completion.chunk","choices":[{"delta":{"content":"Hello"}}]}
+data: {"id":"chatcmpl-xxx","object":"chat.completion.chunk","choices":[{"delta":{},"finish_reason":"stop"}}]}
+data: [DONE]
+```
+
+**Поддержка провайдеров:**
+| Провайдер | Streaming |
+|-----------|-----------|
+| GROQ | ✅ Нативный |
+| OpenRouter | ✅ Нативный |
+| Direct/GigaChat | ✅ Эмуляция |
+
+**Пример с OpenAI Python SDK (streaming):**
+```python
+stream = client.chat.completions.create(
+    model="FAST",
+    messages=[{"role": "user", "content": "Hello!"}],
+    stream=True
+)
+for chunk in stream:
+    if chunk.choices[0].delta.content:
+        print(chunk.choices[0].delta.content, end="")
+```
 
 ### GET `/v1/models`
 
