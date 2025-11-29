@@ -578,35 +578,54 @@ let lastRagDebugInfo = {
 };
 
 // Функция-хелпер для разрешения имени модели
+// Поддерживает:
+// - Базовые типы: CHEAP, FAST, RICH (из config.defaultModels)
+// - Произвольные user_type: MY_FAST_EXPENSIVE и т.д. (из available-models.json)
+// - Прямое имя модели
 async function resolveModelName(modelInput, providerInput) {
-  // Если модель не указана или пуста, используем CHEAP по умолчанию
+  let resolvedModel = modelInput;
+  let resolvedProvider = providerInput;
+  
+  // Если модель не указана, используем CHEAP по умолчанию
   if (!modelInput || modelInput.trim() === '') {
-    modelInput = 'CHEAP';
-  }
-
-  const modelUpper = modelInput.trim().toUpperCase();
-
-  if (['CHEAP', 'FAST', 'RICH'].includes(modelUpper)) {
-    const models = await loadModels();
-    const defaultModel = models.find(m => m.user_type === modelUpper && m.enabled);
-    
-    if (defaultModel) {
-      console.log(`⚙️ Ключевое слово "${modelUpper}" преобразовано в модель: ${defaultModel.name} (${defaultModel.provider})`);
-      return { 
-        model: defaultModel.name, 
-        provider: providerInput || defaultModel.provider, 
-        wasResolved: true, 
-        resolvedType: modelUpper.toLowerCase() 
-      };
-    } else {
-      console.warn(`⚠️ Дефолтная модель для типа "${modelUpper}" не найдена или отключена.`);
-      // Возвращаем null или какое-то значение по умолчанию, чтобы обработать ошибку выше
-      return { model: null, provider: providerInput, wasResolved: true, resolvedType: modelUpper.toLowerCase() };
-    }
+    console.log('⚙️ Модель не указана, используется CHEAP по умолчанию');
+    resolvedModel = config.defaultModels.cheap.model;
+    resolvedProvider = providerInput || config.defaultModels.cheap.provider;
+    return { model: resolvedModel, provider: resolvedProvider, wasResolved: true, resolvedType: 'cheap' };
   }
   
-  // Если это обычное имя модели, возвращаем как есть
-  return { model: modelInput, provider: providerInput, wasResolved: false };
+  const modelUpper = modelInput.trim().toUpperCase();
+  
+  // 1. Проверяем базовые типы (CHEAP, FAST, RICH) - для совместимости с config.defaultModels
+  if (['CHEAP', 'FAST', 'RICH'].includes(modelUpper)) {
+    const modelType = modelUpper.toLowerCase();
+    resolvedModel = config.defaultModels[modelType].model;
+    resolvedProvider = providerInput || config.defaultModels[modelType].provider;
+    console.log(`⚙️ Базовый тип "${modelUpper}" преобразован в модель: ${resolvedModel} (${resolvedProvider})`);
+    return { model: resolvedModel, provider: resolvedProvider, wasResolved: true, resolvedType: modelType };
+  }
+  
+  // 2. Проверяем произвольные user_type из available-models.json
+  try {
+    const allModels = await loadModels();
+    const modelByUserType = allModels.find(m => m.user_type === modelUpper && m.enabled);
+    
+    if (modelByUserType) {
+      console.log(`⚙️ user_type "${modelUpper}" найден → модель: ${modelByUserType.name} (${modelByUserType.provider})`);
+      return { 
+        model: modelByUserType.name, 
+        provider: providerInput || modelByUserType.provider, 
+        wasResolved: true, 
+        resolvedType: modelUpper,
+        modelData: modelByUserType // Возвращаем данные модели для удобства
+      };
+    }
+  } catch (err) {
+    console.error('⚠️ Ошибка при поиске модели по user_type:', err.message);
+  }
+  
+  // 3. Если это обычное имя модели, возвращаем как есть
+  return { model: resolvedModel, provider: resolvedProvider, wasResolved: false };
 }
 
 // Функция для получения модели по имени из available-models.json
@@ -660,17 +679,10 @@ app.post('/api/send-request', async (req, res) => {
         return res.status(400).json({ error: 'Поля prompt и inputText обязательны' });
       }
       
-      // Разрешаем имя модели (может быть CHEAP/FAST/RICH или пусто)
+      // Разрешаем имя модели (может быть CHEAP/FAST/RICH, произвольный user_type или пусто)
       const resolved = await resolveModelName(model, provider);
       model = resolved.model;
       let selectedProvider = resolved.provider;
-      
-      // ПРОВЕРКА: если модель не разрешена (нет дефолтной для типа)
-      if (!model || model === null || model === 'null') {
-        return res.status(400).json({ 
-          error: `Дефолтная модель для типа "${resolved.resolvedType || 'неизвестного'}" не настроена. Настройте дефолтную модель в UI.` 
-        });
-      }
       
       // Получаем данные модели для определения провайдера и параметров
       const modelData = await getModelByName(model);
@@ -692,7 +704,7 @@ app.post('/api/send-request', async (req, res) => {
       }
       
       if (selectedProvider === 'direct' && !modelData) {
-        return res.status(500).json({ error: 'Direct сервис требует валидную модель' });
+        return res.status(500).json({ error: 'Модель не найдена в available-models.json' });
       }
       
       if (selectedProvider === 'gigachat' && !gigachatService) {
@@ -1048,17 +1060,10 @@ app.post('/api/send-request-sys', async (req, res) => {
         return res.status(400).json({ error: 'Поля prompt_name и inputText обязательны' });
       }
       
-      // Разрешаем имя модели (может быть CHEAP/FAST/RICH или пусто)
+      // Разрешаем имя модели (может быть CHEAP/FAST/RICH, произвольный user_type или пусто)
       const resolved = await resolveModelName(model, provider);
       model = resolved.model;
       const selectedProvider = resolved.provider;
-      
-      // ПРОВЕРКА: если модель не разрешена (нет дефолтной для типа)
-      if (!model || model === null || model === 'null') {
-        return res.status(400).json({ 
-          error: `Дефолтная модель для типа "${resolved.resolvedType || 'неизвестного'}" не настроена. Настройте дефолтную модель в UI.` 
-        });
-      }
       
       // Проверяем API ключ для соответствующего провайдера
       if (selectedProvider === 'groq' && !config.groqKey) {
@@ -1226,8 +1231,90 @@ app.post('/api/send-request-sys', async (req, res) => {
         });
       }
     } catch (error) {
-      console.error('Ошибка в /api/send-request-sys:', error);
-      res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+      console.error('Error sending request to AI model:', error);
+      
+      // Форматируем ошибку для клиента и логируем детали
+      let errorMessage = 'Failed to process request';
+      let errorDetails = null;
+      
+      if (error.response) {
+        // Ошибка от OpenRouter API
+        // Улучшенная обработка ошибок API
+        let apiError = error.response.data.error;
+        let detailedMessage = '';
+
+        if (apiError && typeof apiError === 'object' && apiError.message) {
+            detailedMessage = apiError.message;
+        } else if (typeof apiError === 'string') {
+            detailedMessage = apiError;
+        } else {
+            detailedMessage = error.response.statusText;
+        }
+        
+      errorMessage = `API Error: ${error.response.status} - ${detailedMessage}`;
+      errorDetails = error.response.data;
+      console.log('DEBUG SERVER: API error details via /api/send-request-sys:', {
+          status: error.response.status,
+          data: error.response.data
+        });
+      } else if (error.request) {
+        // Ошибка сети
+        errorMessage = 'Network error. Could not connect to AI service.';
+        errorDetails = { request: error.request };
+        console.log('DEBUG SERVER: Network error via /api/send-request-sys - no response received');
+      } else {
+        errorMessage = error.message;
+        errorDetails = { stack: error.stack };
+        console.log('DEBUG SERVER: General error via /api/send-request-sys:', error.message, error.stack);
+      }
+      
+      // Сохраняем ошибку в историю
+      try {
+        const responseData = await readResponses();
+        
+        // Получаем промпт для сохранения
+        let promptText = '--';
+        let promptName = req.body.prompt_name || '--';
+        try {
+          const promptsData = await readPrompts();
+          const promptObj = promptsData.prompts.find(p => p.name === promptName);
+          if (promptObj) {
+            promptText = promptObj.text;
+          }
+        } catch (e) {
+          console.error('Error reading prompt for error save:', e);
+        }
+        
+        const newResponse = {
+          id: Date.now().toString(),
+          timestamp: new Date().toISOString(),
+          model: req.body.model || 'unknown',
+          provider: req.body.provider || 'unknown',
+          promptName: promptName,
+          prompt: promptText,
+          inputText: req.body.inputText || '',
+          response: `ERROR: ${errorMessage}`,
+          tokens: {
+            input: 0,
+            output: 0,
+            total: 0,
+            source: 'error'
+          },
+          autoSaved: true,
+          errorDetails: errorDetails
+        };
+        
+        responseData.responses.push(newResponse);
+        await writeResponses(responseData);
+        console.log(`💾 Ошибка сохранена в историю: ${newResponse.id}`);
+      } catch (saveError) {
+        console.error('❌ Ошибка сохранения ошибки в историю:', saveError);
+      }
+      
+      return res.status(500).json({ 
+        error: errorMessage,
+        details: errorDetails
+      });
     }
   });
   
@@ -1427,17 +1514,10 @@ app.post('/analyze', async (req, res) => {
       return res.status(400).json({ error: 'Поля prompt и inputText обязательны' });
     }
     
-    // Разрешаем имя модели (может быть CHEAP/FAST/RICH или пусто)
+    // Разрешаем имя модели (может быть CHEAP/FAST/RICH, произвольный user_type или пусто)
     const resolved = await resolveModelName(model, provider);
     model = resolved.model;
     const selectedProvider = resolved.provider;
-    
-    // ПРОВЕРКА: если модель не разрешена (нет дефолтной для типа)
-    if (!model || model === null || model === 'null') {
-      return res.status(400).json({ 
-        error: `Дефолтная модель для типа "${resolved.resolvedType || 'неизвестного'}" не настроена. Настройте дефолтную модель в UI.` 
-      });
-    }
     
     // Проверяем API ключ для соответствующего провайдера
     if (selectedProvider === 'groq' && !config.groqKey) {
@@ -1563,8 +1643,47 @@ app.post('/analyze', async (req, res) => {
       });
     }
   } catch (error) {
-    console.error('Ошибка в /analyze:', error);
-    res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+    console.error('Error sending request to AI model via /analyze:', error);
+    
+    // Форматируем ошибку для клиента и логируем детали
+    let errorMessage = 'Failed to process request';
+    let errorDetails = null;
+    
+    if (error.response) {
+      // Ошибка от OpenRouter API
+      // Улучшенная обработка ошибок API
+        let apiError = error.response.data.error;
+        let detailedMessage = '';
+
+        if (apiError && typeof apiError === 'object' && apiError.message) {
+            detailedMessage = apiError.message;
+        } else if (typeof apiError === 'string') {
+            detailedMessage = apiError;
+        } else {
+            detailedMessage = error.response.statusText;
+        }
+        
+      errorMessage = `API Error: ${error.response.status} - ${detailedMessage}`;
+      errorDetails = error.response.data;
+      console.log('DEBUG SERVER: API error details via /analyze:', {
+        status: error.response.status,
+        data: error.response.data
+      });
+    } else if (error.request) {
+      // Ошибка сети
+      errorMessage = 'Network error. Could not connect to AI service.';
+      errorDetails = { request: error.request };
+      console.log('DEBUG SERVER: Network error via /analyze - no response received');
+    } else {
+      errorMessage = error.message;
+      errorDetails = { stack: error.stack };
+      console.log('DEBUG SERVER: General error via /analyze:', error.message, error.stack);
+    }
+    
+    return res.status(500).json({ 
+      error: errorMessage,
+      details: errorDetails
+    });
   }
 });
 
@@ -1738,30 +1857,43 @@ app.post('/api/models/update/:id', async (req, res) => {
       return res.status(404).json({ error: 'Модель не найдена' });
     }
 
+    // === ПРОВЕРКА УНИКАЛЬНОСТИ user_type ===
+    if (updates.user_type !== undefined) {
+      const newUserType = updates.user_type ? updates.user_type.trim().toUpperCase() : null;
+      
+      if (newUserType) {
+        // Проверяем, не занят ли этот user_type другой моделью
+        const existingModel = models.find(m => 
+          m.user_type && 
+          m.user_type.toUpperCase() === newUserType && 
+          m.id !== id
+        );
+        
+        if (existingModel) {
+          return res.status(409).json({ 
+            error: `user_type "${newUserType}" уже используется моделью "${existingModel.visible_name || existingModel.name}" (${existingModel.id})`,
+            conflict: {
+              user_type: newUserType,
+              existing_model_id: existingModel.id,
+              existing_model_name: existingModel.name
+            }
+          });
+        }
+        
+        // Нормализуем user_type к верхнему регистру
+        updates.user_type = newUserType;
+      } else {
+        // Если передали пустую строку или null - очищаем user_type
+        updates.user_type = null;
+      }
+    }
+
     // Обновляем модель, сохраняя существующие поля
-    const currentModel = models[modelIndex];
-    let finalUpdates = { ...updates };
-
-    // Новая логика: сбрасываем user_type при отключении модели
-    if (updates.enabled === false && currentModel.user_type) {
-      finalUpdates.user_type = null;
-      console.log(`Сброс user_type для модели ${id} при отключении`);
-    }
-    
-    // Удаляем устаревшее поле is_default, если оно пришло в updates
-    if (finalUpdates.is_default !== undefined) {
-      delete finalUpdates.is_default;
-    }
-
-    models[modelIndex] = { ...currentModel, ...finalUpdates };
-    
-    // Также удаляем is_default из объекта в самом файле, на всякий случай
-    if (models[modelIndex].is_default !== undefined) {
-        delete models[modelIndex].is_default;
-    }
-
+    models[modelIndex] = { ...models[modelIndex], ...updates };
 
     await saveModels(models);
+    
+    console.log(`✅ Модель ${id} обновлена:`, updates);
 
     res.json({ success: true, model: models[modelIndex] });
   } catch (error) {
@@ -1789,7 +1921,7 @@ app.post('/api/models/add', async (req, res) => {
     // Добавляем поля по умолчанию
     const modelToAdd = {
       enabled: true,
-      user_type: null,
+      is_default: false,
       added_at: new Date().toISOString(),
       ...newModel
     };
@@ -1808,60 +1940,51 @@ app.post('/api/models/add', async (req, res) => {
 app.get('/api/default-models', async (req, res) => {
   const models = await loadModels();
   const defaults = {
-    cheap: models.find(m => m.user_type === 'CHEAP' && m.enabled) || null,
-    fast:  models.find(m => m.user_type === 'FAST' && m.enabled) || null,
-    rich:  models.find(m => m.user_type === 'RICH' && m.enabled) || null
+    cheap: models.find(m => m.cost_level === 'cheap' && m.is_default) || null,
+    fast:  models.find(m => m.cost_level === 'fast'  && m.is_default) || null,
+    rich:  models.find(m => m.cost_level === 'rich'  && m.is_default) || null
   };
   res.json(defaults);
 });
 
 // Сменить дефолтную модель
 app.post('/api/default-models/set', async (req, res) => {
-  const { modelId, type } = req.body; // type может быть 'cheap', 'fast', 'rich' или ''
+  const { modelId, type } = req.body;
 
-  if (type && !['cheap', 'fast', 'rich'].includes(type)) {
+  if (!['cheap', 'fast', 'rich'].includes(type)) {
     return res.status(400).json({ error: 'Invalid type' });
   }
 
-  try {
-    let models = await loadModels();
-    const targetIndex = models.findIndex(m => m.id === modelId);
+  let models = await loadModels();
 
-    if (targetIndex === -1) {
-      return res.status(404).json({ error: 'Model not found' });
-    }
-
-    const userTypeToSet = type ? type.toUpperCase() : null;
-
-    // 1. Если устанавливается новый тип, сначала сбрасываем этот тип у любой другой модели
-    if (userTypeToSet) {
-      models.forEach((model, index) => {
-        if (model.user_type === userTypeToSet && model.id !== modelId) {
-          console.log(`Сбрасываем user_type '${userTypeToSet}' с модели ${model.id}`);
-          models[index].user_type = null;
-        }
-      });
-    }
-
-    // 2. Устанавливаем или сбрасываем user_type для целевой модели
-    console.log(`Устанавливаем для модели ${modelId} user_type: ${userTypeToSet}`);
-    models[targetIndex].user_type = userTypeToSet;
-    
-    // 3. Удаляем устаревшее поле is_default, оно больше не нужно
-    delete models[targetIndex].is_default;
-
-
-    await saveModels(models);
-
-    res.json({ success: true, model: models[targetIndex] });
-  } catch (error) {
-    console.error('Ошибка при установке роли модели:', error);
-    res.status(500).json({ error: 'Не удалось установить роль модели' });
+  const target = models.find(m => m.id === modelId);
+  if (!target) {
+    return res.status(400).json({ error: 'Model not found' });
   }
+
+  // Сбрасываем все is_default этого типа
+  models = models.map(m => ({
+    ...m,
+    is_default: m.cost_level === type ? false : m.is_default
+  }));
+
+  // Меняем cost_level и устанавливаем is_default для выбранной модели
+  const targetIndex = models.findIndex(m => m.id === modelId);
+  if (targetIndex !== -1) {
+    models[targetIndex] = {
+      ...models[targetIndex],
+      cost_level: type,
+      is_default: true
+    };
+  }
+
+  await saveModels(models);
+
+  res.json({ success: true, selected: models[targetIndex] });
 });
 
 // Эндпоинт для получения конкретной модели по умолчанию по типу
-app.get('/api/default-models/:type', async (req, res) => {
+app.get('/api/default-models/:type', (req, res) => {
     const { type } = req.params;
     
     if (!['cheap', 'fast', 'rich'].includes(type)) {
@@ -1871,14 +1994,45 @@ app.get('/api/default-models/:type', async (req, res) => {
         });
     }
     
-    const models = await loadModels();
-    const model = models.find(m => m.user_type === type.toUpperCase());
-
     res.json({
-        success: !!model,
+        success: true,
         type,
-        model: model || null
+        model: config.defaultModels[type]
     });
+});
+
+// === ЭНДПОИНТ ДЛЯ ПОЛУЧЕНИЯ ВСЕХ УНИКАЛЬНЫХ user_type ===
+// Возвращает список всех меток user_type, используемых в системе
+// Внешние системы могут использовать эти метки для обращения к моделям
+app.get('/api/user-types', async (req, res) => {
+  try {
+    const models = await loadModels();
+    // Собираем уникальные user_type, исключая null/undefined
+    const types = [...new Set(models.map(m => m.user_type).filter(Boolean))];
+    
+    // Возвращаем с информацией о связанных моделях
+    const typesWithModels = types.map(type => {
+      const model = models.find(m => m.user_type === type);
+      return {
+        user_type: type,
+        model_id: model?.id,
+        model_name: model?.name,
+        visible_name: model?.visible_name,
+        provider: model?.provider,
+        enabled: model?.enabled
+      };
+    });
+    
+    res.json({
+      success: true,
+      count: types.length,
+      types: types,
+      details: typesWithModels
+    });
+  } catch (err) {
+    console.error('Ошибка получения user_types:', err);
+    res.status(500).json({ error: 'Failed to load user types' });
+  }
 });
 
 async function refreshGroqModels() {
@@ -1930,7 +2084,7 @@ async function refreshGroqModels() {
           context: context,
           cost_level: "fast",
           fast: true,
-          user_type: null,
+          is_default: false,
           enabled: true,
           added_at: new Date().toISOString()
         };
@@ -1999,7 +2153,7 @@ async function refreshOpenRouterModels() {
           visible_name: `OpenRouter → ${remote.name || remote.id}`,
           context: remote.context_length || 32768,
           cost_level: "cheap",
-          user_type: null,
+          is_default: false,
           enabled: true,
           free: true,
           added_at: new Date().toISOString()

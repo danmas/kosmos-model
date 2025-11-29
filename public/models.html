@@ -453,6 +453,35 @@
             border: 1px solid #ddd;
         }
 
+        .user-type-input {
+            padding: 5px 8px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            font-size: 0.85em;
+            width: 140px;
+            text-transform: uppercase;
+            font-family: 'Courier New', monospace;
+            background: #f8f9fa;
+            color: #000;
+            transition: all 0.2s;
+        }
+
+        .user-type-input:focus {
+            border-color: #9c27b0;
+            outline: none;
+            background: white;
+        }
+
+        .user-type-input::placeholder {
+            color: #aaa;
+            text-transform: none;
+            font-family: inherit;
+        }
+
+        .user-type-control {
+            flex-wrap: wrap;
+        }
+
         .switch {
             position: relative;
             display: inline-block;

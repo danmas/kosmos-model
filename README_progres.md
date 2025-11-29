@@ -1,5 +1,57 @@
 # Прогресс разработки Kosmos Model Gateway
 
+## 2025-11-29: Гибкий механизм user_type
+
+### Суть изменений
+
+Расширен механизм меток моделей `user_type`:
+- Базовые типы `CHEAP`, `FAST`, `RICH` сохранены для совместимости
+- Добавлена поддержка **произвольных меток** (например `MY_FAST_EXPENSIVE`, `GIGACHAT_MAX`)
+- Гарантируется **уникальность**: одна метка = одна модель
+- Создан API для получения всех используемых меток
+
+### Изменения в файлах
+
+**1. `server.js`**
+- Новый эндпоинт `GET /api/user-types` — возвращает все уникальные user_type с информацией о моделях
+- Функция `resolveModelName()` теперь асинхронная и поддерживает произвольные user_type
+- Эндпоинт `/api/models/update/:id` — добавлена проверка уникальности при установке user_type
+
+**2. `public/models.js`**
+- В карточку модели добавлено поле ввода `user_type`
+- Метод `setUserType(modelId, userType)` с валидацией уникальности
+
+**3. `public/models.html`**
+- CSS стили для поля `.user-type-input`
+
+**4. `public/app.js`**
+- Загрузка user_types с `/api/user-types`
+- Селектор `userTypeSelect` перед селектором модели
+- При выборе user_type автоматически выбирается связанная модель
+
+### API
+
+```
+GET /api/user-types
+→ {
+    success: true,
+    count: 4,
+    types: ["RICH", "CHEAP", "FAST", "GIGACHAT_MAX"],
+    details: [
+      { user_type: "RICH", model_id: "...", model_name: "...", provider: "...", enabled: true },
+      ...
+    ]
+  }
+```
+
+### Логика работы
+
+1. Внешняя система вызывает `/api/send-request` с `model: "MY_FAST_EXPENSIVE"`
+2. `resolveModelName()` находит модель с `user_type: "MY_FAST_EXPENSIVE"`
+3. Запрос выполняется к найденной модели
+
+---
+
 ## 2025-11-29: Добавление провайдера GigaChat и динамический UI
 
 ### 1. Документация `README_ADD_NEW_PROVIDER.md`

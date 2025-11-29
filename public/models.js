@@ -212,6 +212,16 @@ class ModelsPage {
                             <option value="cheap" ${model.user_type === 'CHEAP' ? 'selected' : ''}>CHEAP</option>
                         </select>
                     </div>
+                    <div class="control-item user-type-control">
+                        <label for="usertype-${model.id}" class="role-label" title="Уникальная метка для внешних систем (например: MY_FAST_EXPENSIVE)">User Type:</label>
+                        <input type="text" 
+                               id="usertype-${model.id}" 
+                               class="user-type-input"
+                               value="${this.escapeHtml(model.user_type || '')}" 
+                               placeholder="Нет"
+                               onchange="modelsPage.setUserType('${this.escapeForAttribute(model.id)}', this.value)"
+                               title="Уникальная метка модели для API (например: MY_FAST_EXPENSIVE)">
+                    </div>
                 </div>
                 <div class="copy-section">
                     <input type="text" class="copy-input" value="${this.escapeHtml(model.name)}" readonly>
@@ -415,6 +425,57 @@ class ModelsPage {
             alert(`Ошибка назначения роли: ${err.message}`);
             // Re-render to reset dropdown on failure
             this.renderModels();
+        }
+    }
+
+    // === Установка user_type (уникальной метки модели) ===
+    async setUserType(modelId, userType) {
+        const inputElement = document.getElementById(`usertype-${modelId}`);
+        const normalizedType = userType ? userType.trim().toUpperCase() : null;
+        
+        try {
+            const res = await fetch(`/api/models/update/${modelId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_type: normalizedType })
+            });
+            const data = await res.json();
+            
+            if (!res.ok) {
+                // Обработка конфликта уникальности
+                if (res.status === 409 && data.conflict) {
+                    alert(`Ошибка: метка "${data.conflict.user_type}" уже используется моделью "${data.conflict.existing_model_name}"`);
+                } else {
+                    alert(`Ошибка: ${data.error || 'Server error'}`);
+                }
+                // Восстанавливаем предыдущее значение
+                const model = this.allModels.find(m => m.id === modelId);
+                if (inputElement && model) {
+                    inputElement.value = model.user_type || '';
+                }
+                return;
+            }
+            
+            // Обновляем локальную модель
+            const model = this.allModels.find(m => m.id === modelId);
+            if (model) {
+                model.user_type = normalizedType;
+            }
+            
+            // Обновляем значение в поле ввода (нормализованное)
+            if (inputElement) {
+                inputElement.value = normalizedType || '';
+            }
+            
+            console.log(`✅ user_type для ${modelId} установлен: ${normalizedType || 'null'}`);
+        } catch (err) {
+            console.error('Failed to set user_type:', err);
+            alert(`Ошибка установки user_type: ${err.message}`);
+            // Восстанавливаем предыдущее значение
+            const model = this.allModels.find(m => m.id === modelId);
+            if (inputElement && model) {
+                inputElement.value = model.user_type || '';
+            }
         }
     }
 
