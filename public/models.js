@@ -1,5 +1,15 @@
 // models.js – финальная версия с модалкой и умным обновлением (19.11.2025)
 
+// Конфиг провайдеров — расширяемый, новые провайдеры добавляются сюда
+const PROVIDER_CONFIG = {
+    direct: { name: 'Direct / Z.AI', icon: 'fas fa-server', color: '#9c27b0' },
+    groq: { name: 'GROQ', icon: 'fas fa-rocket', color: '#ff6b35' },
+    openroute: { name: 'OpenRouter', icon: 'fas fa-globe', color: '#28a745' },
+    gigachat: { name: 'GigaChat (Сбер)', icon: 'fas fa-comments', color: '#21a038' },
+    // Дефолт для неизвестных провайдеров (автоматически подхватит любой новый)
+    _default: { name: 'Unknown Provider', icon: 'fas fa-cube', color: '#607d8b' }
+};
+
 class ModelsPage {
     constructor() {
         this.allModels = [];
@@ -58,17 +68,27 @@ class ModelsPage {
         if (!stats) return;
 
         const total = this.filteredModels.length;
-        const groq = this.filteredModels.filter(m => m.provider === 'groq').length;
-        const openrouter = this.filteredModels.filter(m => m.provider === 'openroute').length;
-        const direct = this.filteredModels.filter(m => m.provider === 'direct').length;
         const fast = this.filteredModels.filter(m => m.isFast).length;
         const defaults = this.filteredModels.filter(m => m.user_type).length;
 
+        // Динамически собираем провайдеров из данных
+        const providerCounts = {};
+        this.filteredModels.forEach(m => {
+            const p = m.provider || 'unknown';
+            providerCounts[p] = (providerCounts[p] || 0) + 1;
+        });
+
+        // Генерируем карточки для каждого провайдера
+        const providerCards = Object.entries(providerCounts)
+            .map(([provider, count]) => {
+                const config = PROVIDER_CONFIG[provider] || PROVIDER_CONFIG._default;
+                return `<div class="stat-card"><div class="stat-number" style="color:${config.color}">${count}</div><div class="stat-label">${config.name}</div></div>`;
+            })
+            .join('');
+
         stats.innerHTML = `
             <div class="stat-card"><div class="stat-number">${total}</div><div class="stat-label">Всего</div></div>
-            <div class="stat-card"><div class="stat-number" style="color:#ff6b35">${groq}</div><div class="stat-label">GROQ</div></div>
-            <div class="stat-card"><div class="stat-number" style="color:#28a745">${openrouter}</div><div class="stat-label">OpenRouter</div></div>
-            <div class="stat-card"><div class="stat-number" style="color:#9c27b0">${direct}</div><div class="stat-label">Direct</div></div>
+            ${providerCards}
             <div class="stat-card"><div class="stat-number" style="color:#17a2b8">${fast}</div><div class="stat-label">Быстрые ⚡</div></div>
             <div class="stat-card"><div class="stat-number" style="color:#ffc107">${defaults}</div><div class="stat-label">По умолчанию ★</div></div>
         `;
@@ -78,20 +98,29 @@ class ModelsPage {
         const container = document.getElementById('modelsContainer');
         if (!container) return;
 
-        const groups = {
-            direct: this.filteredModels.filter(m => m.provider === 'direct'),
-            groq: this.filteredModels.filter(m => m.provider === 'groq'),
-            openroute: this.filteredModels.filter(m => m.provider === 'openroute')
-        };
+        // Динамически группируем модели по провайдерам
+        const groups = {};
+        this.filteredModels.forEach(m => {
+            const p = m.provider || 'unknown';
+            if (!groups[p]) groups[p] = [];
+            groups[p].push(m);
+        });
 
         container.innerHTML = '';
 
-        // Direct
-        if (groups.direct.length) container.appendChild(this.createProviderSection('direct', groups.direct));
-        // GROQ
-        if (groups.groq.length) container.appendChild(this.createProviderSection('groq', groups.groq));
-        // OpenRouter
-        if (groups.openroute.length) container.appendChild(this.createProviderSection('openroute', groups.openroute));
+        // Порядок отображения: сначала известные провайдеры, потом остальные
+        const knownOrder = ['direct', 'gigachat', 'groq', 'openroute'];
+        const sortedProviders = [
+            ...knownOrder.filter(p => groups[p]?.length),
+            ...Object.keys(groups).filter(p => !knownOrder.includes(p))
+        ];
+
+        // Рендерим секции для каждого провайдера
+        sortedProviders.forEach(provider => {
+            if (groups[provider]?.length) {
+                container.appendChild(this.createProviderSection(provider, groups[provider]));
+            }
+        });
 
         if (this.filteredModels.length === 0) {
             container.innerHTML = `<div style="text-align:center;padding:60px;color:#888">
@@ -102,11 +131,8 @@ class ModelsPage {
     }
 
     createProviderSection(provider, models) {
-        const info = {
-            direct: { name: 'Direct / Z.AI', icon: 'fas fa-server', color: '#9c27b0' },
-            groq: { name: 'GROQ', icon: 'fas fa-rocket', color: '#ff6b35' },
-            openroute: { name: 'OpenRouter', icon: 'fas fa-globe', color: '#28a745' }
-        }[provider];
+        // Используем конфиг провайдера или дефолтный для неизвестных
+        const info = PROVIDER_CONFIG[provider] || PROVIDER_CONFIG._default;
 
         const section = document.createElement('div');
         section.className = 'provider-section';
