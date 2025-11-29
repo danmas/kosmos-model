@@ -13,7 +13,9 @@
 5. [Структура модели в available-models.json](#5-структура-модели-в-available-modelsjson)
 6. [Конфигурация окружения](#6-конфигурация-окружения)
 7. [Автоматическое обновление моделей](#7-автоматическое-обновление-моделей)
-8. [Тестирование](#8-тестирование)
+8. [Продвинутые сценарии](#8-продвинутые-сценарии)
+9. [Полный пример: GigaChat (Сбер)](#9-полный-пример-gigachat-сбер)
+10. [Тестирование](#10-тестирование)
 
 ---
 
@@ -388,6 +390,29 @@ if (selectedProvider === 'myprovider' && !myProviderService) {
 | `added_at` | string | Дата добавления (ISO 8601) | — |
 | `last_test` | object | Результат последнего теста | — |
 
+> **⚠️ КРИТИЧЕСКИ ВАЖНО: `user_type` при добавлении моделей**
+>
+> При добавлении новых моделей **ВСЕГДА** устанавливайте `user_type: null`!
+>
+> **Почему это важно:**
+> - В системе может быть только **ОДНА** модель каждого типа (`CHEAP`, `FAST`, `RICH`)
+> - Если вы установите `user_type: "RICH"` для новой модели, она **перезапишет** существующую дефолтную модель
+> - Роль модели назначается пользователем через UI (страница моделей) или API `/api/default-models/set`
+>
+> **Неправильно** (перезапишет существующие дефолты):
+> ```json
+> { "id": "new-model-1", "user_type": "CHEAP" },
+> { "id": "new-model-2", "user_type": "FAST" },
+> { "id": "new-model-3", "user_type": "RICH" }
+> ```
+>
+> **Правильно** (добавит модели без изменения дефолтов):
+> ```json
+> { "id": "new-model-1", "user_type": null },
+> { "id": "new-model-2", "user_type": null },
+> { "id": "new-model-3", "user_type": null }
+> ```
+
 ### 5.3. Структура `last_test`
 
 ```json
@@ -402,6 +427,8 @@ if (selectedProvider === 'myprovider' && !myProviderService) {
 
 ### 5.4. Полные примеры
 
+> **Примечание:** Во всех примерах `user_type: null` — роль назначается после добавления через UI.
+
 **OpenRouter модель:**
 ```json
 {
@@ -413,7 +440,7 @@ if (selectedProvider === 'myprovider' && !myProviderService) {
   "cost_level": "cheap",
   "enabled": true,
   "free": true,
-  "user_type": "CHEAP",
+  "user_type": null,
   "added_at": "2025-01-01T00:00:00Z"
 }
 ```
@@ -429,7 +456,7 @@ if (selectedProvider === 'myprovider' && !myProviderService) {
   "cost_level": "fast",
   "fast": true,
   "enabled": true,
-  "user_type": "FAST",
+  "user_type": null,
   "added_at": "2025-01-01T00:00:00Z"
 }
 ```
@@ -446,7 +473,7 @@ if (selectedProvider === 'myprovider' && !myProviderService) {
   "context": 131072,
   "cost_level": "rich",
   "enabled": true,
-  "user_type": "RICH",
+  "user_type": null,
   "added_at": "2025-01-01T00:00:00Z"
 }
 ```
@@ -589,7 +616,501 @@ setInterval(refreshMyProviderModels, 8 * 60 * 60 * 1000);
 
 ---
 
-## 8. Тестирование
+## 8. Продвинутые сценарии
+
+Этот раздел описывает более сложные случаи интеграции провайдеров.
+
+### 8.1. OAuth2 / Token-based авторизация
+
+Некоторые API (GigaChat, YandexGPT, некоторые enterprise решения) требуют сначала получить временный токен доступа.
+
+**Паттерн реализации:**
+
+```javascript
+class TokenBasedService {
+    constructor(authData) {
+        this.authData = authData;
+        this.token = null;
+        this.tokenExpiresAt = 0;
+    }
+
+    // Получение токена с кэшированием
+    async getAccessToken() {
+        const now = Date.now();
+        
+        // Если токен валиден (с запасом 60 сек), возвращаем его
+        if (this.token && this.tokenExpiresAt > now + 60_000) {
+            return this.token;
+        }
+
+        // Запрос нового токена
+        const response = await fetch('https://api.provider.com/oauth', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Authorization': `Basic ${this.authData}`
+            },
+            body: 'scope=API_ACCESS'
+        });
+
+        if (!response.ok) {
+            throw new Error(`Ошибка получения токена: ${response.status}`);
+        }
+
+        const data = await response.json();
+        this.token = data.access_token;
+        
+        // Время жизни токена (обычно ~30 минут)
+        this.tokenExpiresAt = data.expires_at 
+            ? data.expires_at * 1000 
+            : now + 29 * 60 * 1000;
+        
+        console.log('Токен обновлён');
+        return this.token;
+    }
+
+    async sendRequest({ model, messages, ...params }) {
+        const token = await this.getAccessToken();  // Автоматическое обновление
+        
+        // Используем Bearer токен для запроса
+        const response = await fetch('https://api.provider.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ model, messages, ...params })
+        });
+        
+        // ... обработка ответа
+    }
+}
+```
+
+**Ключевые моменты:**
+- Токен кэшируется в памяти сервиса
+- Проверка `tokenExpiresAt` перед каждым запросом
+- Автоматическое обновление при истечении
+- Запас времени (60 сек) для предотвращения race conditions
+
+### 8.2. Работа с самоподписанными сертификатами
+
+Некоторые российские API (GigaChat, внутренние корпоративные сервисы) используют самоподписанные SSL-сертификаты.
+
+**Для `fetch` (Node.js 18+):**
+
+```javascript
+const https = require('https');
+
+// Создаём агент, игнорирующий проверку сертификата
+const agent = new https.Agent({
+    rejectUnauthorized: false
+});
+
+const response = await fetch('https://api.provider.com:9443/oauth', {
+    method: 'POST',
+    agent: agent,  // Передаём агент
+    headers: { ... },
+    body: '...'
+});
+```
+
+**Для `axios`:**
+
+```javascript
+const https = require('https');
+const axios = require('axios');
+
+const httpsAgent = new https.Agent({
+    rejectUnauthorized: false
+});
+
+const response = await axios.post('https://api.provider.com:9443/oauth', data, {
+    httpsAgent: httpsAgent,
+    headers: { ... }
+});
+```
+
+> **⚠️ Внимание:** `rejectUnauthorized: false` отключает проверку сертификата. 
+> Используйте только для доверенных API, не в production с внешними сервисами.
+
+**Когда это нужно:**
+- GigaChat API (Сбер) — порт 9443
+- YandexGPT (некоторые endpoints)
+- Внутренние корпоративные LLM-сервисы
+- Локальные Ollama/LM Studio через HTTPS
+
+### 8.3. Специфичные заголовки API
+
+Некоторые провайдеры требуют дополнительные заголовки для трейсинга или авторизации.
+
+**Примеры:**
+
+```javascript
+const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`,
+    
+    // Уникальный ID запроса (GigaChat, некоторые enterprise API)
+    'RqUID': crypto.randomUUID(),
+    
+    // Или альтернативные варианты
+    'X-Request-ID': crypto.randomUUID(),
+    'X-Trace-Id': `trace-${Date.now()}`,
+    
+    // Идентификация приложения (OpenRouter, некоторые API)
+    'HTTP-Referer': 'http://localhost:3002',
+    'X-Title': 'Kosmos Model Gateway',
+    
+    // Кастомные заголовки провайдера
+    'X-API-Version': '2024-01-01'
+};
+```
+
+**Генерация UUID в Node.js:**
+
+```javascript
+// Node.js 16+
+const { randomUUID } = require('crypto');
+const rquid = randomUUID();
+
+// Или через глобальный crypto (Node.js 19+)
+const rquid = crypto.randomUUID();
+```
+
+### 8.4. Выбор HTTP-клиента: axios vs fetch
+
+| Характеристика | axios | fetch (native) |
+|---------------|-------|----------------|
+| Зависимости | Требует установки | Встроен в Node.js 18+ |
+| Автоматический JSON | Да | Нужен `response.json()` |
+| Интерцепторы | Да | Нет |
+| Таймауты | Встроены | Через AbortController |
+| Прогресс загрузки | Да | Сложнее |
+| Размер бандла | ~15KB | 0 |
+
+**Когда использовать axios (наш шаблон по умолчанию):**
+- Более простой синтаксис
+- Автоматическая обработка JSON
+- Удобная обработка ошибок (`error.response.data`)
+- Поддержка старых версий Node.js
+
+**Когда использовать fetch:**
+- Минимизация зависимостей
+- Node.js 18+ проекты
+- Соответствие браузерному API
+- Специфичные требования (например, GigaChat использует fetch)
+
+**Пример с fetch:**
+
+```javascript
+async sendRequest({ model, messages, temperature, maxTokens }) {
+    const startTime = Date.now();
+    
+    const response = await fetch(`${this.baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.apiKey}`
+        },
+        body: JSON.stringify({
+            model,
+            messages,
+            temperature,
+            max_tokens: maxTokens
+        })
+    });
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`API Error: ${response.status} ${errorText}`);
+    }
+
+    const data = await response.json();
+    const responseTime = Date.now() - startTime;
+
+    return {
+        content: data.choices[0]?.message?.content || '',
+        model: data.model || model,
+        usage: data.usage || {},
+        provider: 'myprovider',
+        responseTime
+    };
+}
+```
+
+### 8.5. Специфичные параметры моделей
+
+Некоторые провайдеры поддерживают дополнительные параметры:
+
+```javascript
+const payload = {
+    model,
+    messages,
+    temperature,
+    max_tokens: maxTokens,
+    
+    // GigaChat
+    repetition_penalty: 1.18,
+    
+    // Claude (Anthropic)
+    top_k: 40,
+    
+    // OpenAI/совместимые
+    presence_penalty: 0.6,
+    frequency_penalty: 0.5,
+    
+    // Reasoning модели (o1, DeepSeek R1)
+    // НЕ передавать temperature!
+    
+    // Стриминг
+    stream: false
+};
+```
+
+---
+
+## 9. Полный пример: GigaChat (Сбер)
+
+Реальный пример интеграции провайдера с OAuth2, самоподписанными сертификатами и специфичными заголовками.
+
+### 9.1. Файл сервиса `gigachat-service.js`
+
+```javascript
+// gigachat-service.js
+const https = require('https');
+const crypto = require('crypto');
+
+class GigaChatService {
+    constructor(authData) {
+        if (!authData) {
+            throw new Error('GigaChat: AUTH_DATA не передан');
+        }
+        this.authData = authData.trim();
+        this.token = null;
+        this.tokenExpiresAt = 0;
+        
+        // Агент для работы с самоподписанным сертификатом
+        this.httpsAgent = new https.Agent({
+            rejectUnauthorized: false
+        });
+        
+        console.log('🟢 GigaChatService инициализирован');
+    }
+
+    // Получение токена с кэшированием
+    async getAccessToken() {
+        const now = Date.now();
+        if (this.token && this.tokenExpiresAt > now + 60_000) {
+            return this.token;
+        }
+
+        const response = await fetch('https://ngw.devices.sberbank.ru:9443/api/v2/oauth', {
+            method: 'POST',
+            agent: this.httpsAgent,
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Accept': 'application/json',
+                'RqUID': crypto.randomUUID(),
+                'Authorization': `Basic ${this.authData}`
+            },
+            body: 'scope=GIGACHAT_API_PERS'
+        });
+
+        if (!response.ok) {
+            const err = await response.text();
+            throw new Error(`GigaChat OAuth: ${response.status} ${err}`);
+        }
+
+        const data = await response.json();
+        this.token = data.access_token;
+        this.tokenExpiresAt = data.expires_at 
+            ? data.expires_at * 1000 
+            : now + 29 * 60 * 1000;
+            
+        console.log('🔑 GigaChat: токен обновлён');
+        return this.token;
+    }
+
+    async sendRequest({ model, messages, temperature = 0.7, maxTokens = 1024, stream = false }) {
+        const token = await this.getAccessToken();
+        const startTime = Date.now();
+
+        const payload = {
+            model,
+            messages,
+            temperature,
+            max_tokens: maxTokens,
+            repetition_penalty: 1.18,  // Специфичный параметр GigaChat
+            stream
+        };
+
+        const response = await fetch('https://gigachat.devices.sberbank.ru/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            const err = await response.text();
+            throw new Error(`GigaChat API: ${response.status} ${err}`);
+        }
+
+        const data = await response.json();
+        const responseTime = Date.now() - startTime;
+
+        return {
+            content: data.choices[0]?.message?.content || '',
+            model: data.model || model,
+            usage: data.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+            provider: 'gigachat',
+            responseTime
+        };
+    }
+
+    async quickChat(prompt, model = "GigaChat") {
+        return this.sendRequest({
+            model,
+            messages: [{ role: "user", content: prompt }],
+            maxTokens: 500
+        });
+    }
+
+    async checkAvailability() {
+        try {
+            await this.quickChat("Привет");
+            return { available: true, provider: 'gigachat' };
+        } catch (err) {
+            return { available: false, error: err.message };
+        }
+    }
+}
+
+module.exports = GigaChatService;
+```
+
+### 9.2. Конфигурация `.env`
+
+```env
+# GigaChat (Сбер)
+# Получить: https://developers.sber.ru/portal/products/gigachat-api
+# → Ваш проект → Настройки → "Скопировать данные авторизации"
+GIGACHAT_AUTH_DATA=ваша_строка_авторизации_base64
+```
+
+### 9.3. Интеграция в `server.js`
+
+```javascript
+// Импорт (в начало файла)
+const GigaChatService = require('./gigachat-service');
+
+// Инициализация (после groqService)
+let gigachatService = null;
+if (process.env.GIGACHAT_AUTH_DATA) {
+    try {
+        gigachatService = new GigaChatService(process.env.GIGACHAT_AUTH_DATA);
+        console.log('✅ GigaChat сервис инициализирован');
+    } catch (error) {
+        console.warn('⚠️ GigaChat не инициализирован:', error.message);
+    }
+} else {
+    console.warn('⚠️ GIGACHAT_AUTH_DATA не настроен');
+}
+
+// В /api/config → providers:
+providers: {
+    openroute: !!config.openRouterKey,
+    groq: !!config.groqKey,
+    gigachat: !!gigachatService
+},
+
+// В /api/send-request → проверка доступности:
+if (selectedProvider === 'gigachat' && !gigachatService) {
+    return res.status(500).json({ error: 'GigaChat сервис не настроен' });
+}
+
+// В /api/send-request → обработка запроса:
+} else if (selectedProvider === 'gigachat') {
+    const gcResponse = await gigachatService.sendRequest({
+        model,
+        messages,
+        temperature: finalTemperature,
+        maxTokens: finalMaxTokens
+    });
+    
+    response = {
+        data: {
+            choices: [{ message: { content: gcResponse.content } }],
+            model: gcResponse.model,
+            usage: gcResponse.usage
+        }
+    };
+}
+
+// В /api/test-model:
+} else if (model.provider === 'gigachat') {
+    if (!gigachatService) throw new Error('GigaChat не инициализирован');
+    
+    const test = await gigachatService.sendRequest({
+        model: model.name,
+        messages: [{ role: "user", content: "Кто ты? Ответь кратко." }],
+        temperature: 0,
+        maxTokens: 100
+    });
+
+    apiRes = {
+        data: { choices: [{ message: { content: test.content } }] }
+    };
+}
+```
+
+### 9.4. Модели в `available-models.json`
+
+```json
+{
+  "id": "gigachat-max",
+  "provider": "gigachat",
+  "name": "GigaChat-Max",
+  "visible_name": "Сбер → GigaChat Max",
+  "context": 32768,
+  "cost_level": "rich",
+  "enabled": true,
+  "user_type": null,
+  "added_at": "2025-01-01T00:00:00Z"
+},
+{
+  "id": "gigachat-pro",
+  "provider": "gigachat",
+  "name": "GigaChat-Pro",
+  "visible_name": "Сбер → GigaChat Pro",
+  "context": 16384,
+  "cost_level": "fast",
+  "enabled": true,
+  "user_type": null,
+  "added_at": "2025-01-01T00:00:00Z"
+},
+{
+  "id": "gigachat-lite",
+  "provider": "gigachat",
+  "name": "GigaChat",
+  "visible_name": "Сбер → GigaChat (Lite)",
+  "context": 8192,
+  "cost_level": "cheap",
+  "enabled": true,
+  "user_type": null,
+  "added_at": "2025-01-01T00:00:00Z"
+}
+```
+
+> **Обратите внимание:** Все модели добавлены с `user_type: null`. 
+> Роль назначается пользователем после добавления через UI.
+
+---
+
+## 10. Тестирование
 
 ### 8.1. Через UI
 
@@ -657,4 +1178,8 @@ curl http://localhost:3002/api/config
 - [OpenRouter API Documentation](https://openrouter.ai/docs)
 - [GROQ API Documentation](https://console.groq.com/docs)
 - [OpenAI API Reference](https://platform.openai.com/docs/api-reference) (для совместимых API)
+- [GigaChat API (Сбер)](https://developers.sber.ru/portal/products/gigachat-api)
+- [YandexGPT API](https://cloud.yandex.ru/docs/yandexgpt/)
+- [Together.ai API](https://docs.together.ai/reference)
+- [Ollama API](https://github.com/ollama/ollama/blob/main/docs/api.md)
 
