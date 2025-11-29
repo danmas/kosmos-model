@@ -1,6 +1,6 @@
 # AI Analytics Interface REST API
 
-Полноценная документация по REST-интерфейсу приложения AI Analytics Interface. Док описывает все маршруты, поддерживаемые провайдерами GROQ и OpenRouter, работу с промптами, историей ответов, RAG и файловыми операциями.
+Полноценная документация по REST-интерфейсу приложения AI Analytics Interface. Описывает все маршруты, поддерживаемые провайдерами (GROQ, OpenRouter, Direct, GigaChat), работу с промптами, историей ответов, RAG и файловыми операциями.
 
 ## Базовая информация
 
@@ -12,7 +12,7 @@
 ## Quick Start
 
 ### Шаги
-1. Поднимите сервер (`npm start`), убедитесь что `.env` содержит `OPENROUTER_API_KEY` и/или `GROQ_API_KEY`.
+1. Поднимите сервер (`npm start`), убедитесь что `.env` содержит нужные ключи (`OPENROUTER_API_KEY`, `GROQ_API_KEY`, `GIGACHAT_AUTH_DATA` и др.).
 2. Выберите профиль модели (`CHEAP`, `FAST`, `RICH`) или конкретное имя из `/api/available-models`.
 3. Выполните POST-запрос на `/api/send-request` с JSON-телом.
 
@@ -41,16 +41,13 @@ curl -X POST http://localhost:3002/api/send-request ^
 
 ## Предустановленные профили моделей
 
-| Тип | Назначение | Модель по умолчанию | Провайдер | Как использовать |
-| --- | ---------- | ------------------- | --------- | ---------------- |
-| `CHEAP` | Бесплатные простые запросы | `google/gemini-2.0-flash-exp:free` | `openroute` | Укажите `model: "CHEAP"` или оставьте поле `model` пустым |
-| `FAST`  | Молниеносные ответы от GROQ | `llama3-70b-8192` | `groq` | Укажите `model: "FAST"` |
-| `RICH`  | Максимальное качество и контекст | `google/gemini-2.5-pro-exp-03-25` | `openroute` | Укажите `model: "RICH"` |
+| Тип | Назначение | Как использовать |
+| --- | ---------- | ---------------- |
+| `CHEAP` | Бесплатные простые запросы | Укажите `model: "CHEAP"` или оставьте поле `model` пустым |
+| `FAST`  | Молниеносные ответы от GROQ | Укажите `model: "FAST"` |
+| `RICH`  | Максимальное качество и контекст | Укажите `model: "RICH"` |
 
-Управляйте профилями через:
-- `GET /api/default-models` — все профили
-- `GET /api/default-models/{type}` — конкретный профиль (`cheap`, `fast`, `rich`)
-- `POST /api/default-models` — обновление профиля
+Профили определяются через поле `user_type` в конфигурации моделей. Список текущих профилей можно получить через `GET /api/user-types`.
 
 ## Структура ошибок
 
@@ -75,7 +72,7 @@ curl -X POST http://localhost:3002/api/send-request ^
 - `model` — полное имя модели или ключевые слова `CHEAP` / `FAST` / `RICH`. Пустое значение эквивалентно `CHEAP`.
 - `prompt` *(обязателен)* — системный промпт.
 - `inputText` *(обязателен)* — пользовательский запрос.
-- `provider` *(опционально)* — `groq` или `openroute` для принудительного выбора.
+- `provider` *(опционально)* — `groq`, `openroute`, `direct` или `gigachat` для принудительного выбора.
 - `useRag` *(boolean)* — добавить контекст из RAG.
 - `contextCode` — код набора документов для RAG.
 - `saveResponse` *(boolean, default=false)* — сохранить ответ в историю.
@@ -123,13 +120,23 @@ curl -X POST http://localhost:3002/api/send-request ^
 Добавляет новую модель в систему.
 Тело: `{ id, name, provider, context, ... }`
 
-### `/api/default-models*`
+### POST `/api/test-model`
 
-- `GET /api/default-models` — `{ success, defaultModels: { cheap, fast, rich } }`
-- `GET /api/default-models/{type}` — параметры: `type` ∈ `cheap|fast|rich`
-- `POST /api/default-models` — тело: `{ type, model, provider }`, обновляет профиль и синхронизирует `.env`
+Тестирует модель живым запросом ("Кто ты? Ответь в одном предложении на русском.").
+Тело: `{ modelId }`.
+Ответ: `{ success, result: { success, response_time_ms, sample_response, error_message, timestamp } }`.
+Результат сохраняется в поле `last_test` модели.
 
-Ошибка 400 возникает, если тип не входит в список или модель отсутствует в доступных.
+### POST `/api/about-model`
+
+Запрашивает у модели самоописание.
+Тело: `{ modelId }`.
+Ответ: `{ success, about }` — текст от модели о себе.
+
+### GET `/api/user-types`
+
+Возвращает список уникальных `user_type` из моделей (CHEAP, FAST, RICH и др.).
+Ответ: `{ success, count, types[], details[] }`.
 
 ## 2. Управление промптами
 

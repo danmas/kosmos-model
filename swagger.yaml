@@ -4,9 +4,11 @@ info:
   description: |
     REST API для управления промптами, историей ответов и взаимодействия с AI моделями.
     
-    Поддерживает два провайдера:
+    Поддерживает провайдеров:
     - **GROQ API** - высокоскоростной inference (в 5-10 раз быстрее)
     - **OpenRouter API** - большое разнообразие моделей (20+ моделей)
+    - **Direct API** - прямое подключение к API (например, z.ai)
+    - **GigaChat API** - Сбер GigaChat
     
     Система автоматически определяет провайдера по имени модели или позволяет принудительный выбор.
     Поддерживает RAG (Retrieval-Augmented Generation) для обоих провайдеров.
@@ -284,73 +286,90 @@ paths:
               schema:
                 $ref: '#/components/schemas/ModelInfo'
 
-  /api/default-models:
-    get:
-      tags:
-        - AI Models
-      summary: Получение моделей по умолчанию
-      description: |
-        Возвращает предустановленные профили моделей (`CHEAP`, `FAST`, `RICH`),
-        которые можно использовать в API вместо полного имени модели.
-      responses:
-        '200':
-          description: Информация о моделях по умолчанию
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DefaultModelsResponse'
+  /api/test-model:
     post:
       tags:
         - AI Models
-      summary: Обновление модели по умолчанию
-      description: Устанавливает новую модель и провайдера для выбранного профиля.
+      summary: Тестирование модели
+      description: |
+        Отправляет тестовый запрос к модели и возвращает результат.
+        Тестовый промпт: "Кто ты? Ответь в одном предложении на русском."
+        Результат сохраняется в поле last_test модели.
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DefaultModelUpdateBody'
-            example:
-              type: "fast"
-              model: "mixtral-8x7b-32768"
-              provider: "groq"
+              $ref: '#/components/schemas/TestModelBody'
       responses:
         '200':
-          description: Модель по умолчанию обновлена
+          description: Результат тестирования
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DefaultModelUpdateResult'
+                $ref: '#/components/schemas/TestModelResult'
         '400':
-          description: Некорректные данные
+          description: modelId не указан
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Внутренняя ошибка сервера
+        '404':
+          description: Модель не найдена
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponseDetailed'
+                $ref: '#/components/schemas/ErrorResponse'
 
-  /api/default-models/{type}:
+  /api/about-model:
+    post:
+      tags:
+        - AI Models
+      summary: Получение информации о модели от самой модели
+      description: |
+        Отправляет запрос модели с просьбой описать себя.
+        Промпт: "Привет! Что ты за модель? В чем твоя особенность? В чем твоё преимущество перед другими моделями?"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AboutModelBody'
+      responses:
+        '200':
+          description: Самоописание модели
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AboutModelResult'
+        '400':
+          description: modelId не указан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Модель не найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/user-types:
     get:
       tags:
         - AI Models
-      summary: Получение модели по умолчанию по типу
-      description: Возвращает конфигурацию конкретного профиля (`cheap`, `fast`, `rich`).
-      parameters:
-        - $ref: '#/components/parameters/DefaultModelType'
+      summary: Получение списка пользовательских типов моделей
+      description: Возвращает уникальные значения user_type из всех моделей с информацией о связанных моделях
       responses:
         '200':
-          description: Информация о выбранной модели по умолчанию
+          description: Список пользовательских типов
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DefaultModelResponse'
-        '400':
-          description: Некорректный тип модели
+                $ref: '#/components/schemas/UserTypesResponse'
+        '500':
+          description: Ошибка загрузки типов
           content:
             application/json:
               schema:
@@ -638,6 +657,60 @@ paths:
               schema:
                 $ref: '#/components/schemas/RagDebugInfo'
 
+  /api/markdown_files:
+    get:
+      tags:
+        - Files
+      summary: Получение списка markdown файлов
+      description: Возвращает список .md файлов в корневой директории проекта
+      responses:
+        '200':
+          description: Список markdown файлов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                example:
+                  - "README.md"
+                  - "README_REST.md"
+                  - "README_ADD_NEW_PROVIDER.md"
+
+  /get_md_content:
+    get:
+      tags:
+        - Files
+      summary: Получение содержимого markdown файла
+      description: Возвращает содержимое указанного .md файла
+      parameters:
+        - name: file
+          in: query
+          required: true
+          description: Имя markdown файла
+          schema:
+            type: string
+          example: "README.md"
+      responses:
+        '200':
+          description: Содержимое файла
+          content:
+            text/plain:
+              schema:
+                type: string
+        '400':
+          description: Файл не указан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Файл не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /api/save-markdown:
     post:
       tags:
@@ -713,11 +786,13 @@ components:
           example: "Объясни что такое машинное обучение"
         provider:
           type: string
-          enum: [groq, openroute]
+          enum: [groq, openroute, direct, gigachat]
           description: |
             Принудительный выбор провайдера:
             - groq: GROQ API (быстрый inference)
             - openroute: OpenRouter API (больше моделей)
+            - direct: Прямое подключение к API (например, z.ai)
+            - gigachat: Сбер GigaChat API
             - Не указан: автоматическое определение по модели
           example: "groq"
         saveResponse:
@@ -756,7 +831,7 @@ components:
           example: "function add(a, b) { return a + b; }"
         provider:
           type: string
-          enum: [groq, openroute]
+          enum: [groq, openroute, direct, gigachat]
           description: Принудительный выбор провайдера
         saveResponse:
           type: boolean
@@ -784,7 +859,7 @@ components:
           description: Входной текст
         provider:
           type: string
-          enum: [groq, openroute]
+          enum: [groq, openroute, direct, gigachat]
           description: Принудительный выбор провайдера
         useRag:
           type: boolean
@@ -892,7 +967,7 @@ components:
           example: "🚀 GROQ: Llama 3.3 70B (Versatile)"
         provider:
           type: string
-          enum: [groq, openroute, direct]
+          enum: [groq, openroute, direct, gigachat]
           description: Провайдер API
         context:
           type: integer
@@ -940,82 +1015,98 @@ components:
         api_key:
           type: string
 
-    DefaultModelEntry:
-      type: object
-      properties:
-        model:
-          type: string
-          description: Полное имя модели
-        provider:
-          type: string
-          enum: [groq, openroute]
-          description: Провайдер модели
-        description:
-          type: string
-          description: Назначение профиля
-
-    DefaultModelsResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-          example: true
-        defaultModels:
-          type: object
-          required:
-            - cheap
-            - fast
-            - rich
-          properties:
-            cheap:
-              $ref: '#/components/schemas/DefaultModelEntry'
-            fast:
-              $ref: '#/components/schemas/DefaultModelEntry'
-            rich:
-              $ref: '#/components/schemas/DefaultModelEntry'
-
-    DefaultModelUpdateBody:
+    TestModelBody:
       type: object
       required:
-        - type
-        - model
-        - provider
+        - modelId
       properties:
-        type:
+        modelId:
           type: string
-          enum: [cheap, fast, rich]
-          description: Профиль для обновления
-        model:
-          type: string
-          description: Полное имя модели, которая станет дефолтной
-        provider:
-          type: string
-          enum: [groq, openroute]
-          description: Провайдер выбранной модели
+          description: ID модели для тестирования
+          example: "groq-llama-3.3-70b-versatile"
 
-    DefaultModelUpdateResult:
+    TestModelResult:
       type: object
       properties:
         success:
           type: boolean
           example: true
-        message:
-          type: string
-          example: "Модель fast успешно обновлена"
-        updatedModel:
-          $ref: '#/components/schemas/DefaultModelEntry'
+        result:
+          type: object
+          properties:
+            success:
+              type: boolean
+              description: Успешность теста
+            response_time_ms:
+              type: integer
+              description: Время ответа в миллисекундах
+              example: 1234
+            sample_response:
+              type: string
+              nullable: true
+              description: Ответ модели на тестовый запрос
+              example: "Я - большая языковая модель Llama 3.3..."
+            error_message:
+              type: string
+              description: Сообщение об ошибке (если тест не прошёл)
+            timestamp:
+              type: string
+              format: date-time
 
-    DefaultModelResponse:
+    AboutModelBody:
+      type: object
+      required:
+        - modelId
+      properties:
+        modelId:
+          type: string
+          description: ID модели
+          example: "groq-llama-3.3-70b-versatile"
+
+    AboutModelResult:
       type: object
       properties:
         success:
           type: boolean
           example: true
-        type:
+        about:
           type: string
-          enum: [cheap, fast, rich]
-        model:
-          $ref: '#/components/schemas/DefaultModelEntry'
+          description: Самоописание модели
+          example: "Привет! Я Llama 3.3 70B — мощная языковая модель..."
+
+    UserTypesResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        count:
+          type: integer
+          description: Количество уникальных типов
+          example: 3
+        types:
+          type: array
+          items:
+            type: string
+          description: Список уникальных user_type
+          example: ["CHEAP", "FAST", "RICH"]
+        details:
+          type: array
+          items:
+            type: object
+            properties:
+              user_type:
+                type: string
+              model_id:
+                type: string
+              model_name:
+                type: string
+              visible_name:
+                type: string
+              provider:
+                type: string
+              enabled:
+                type: boolean
 
     ApiKeyStatus:
       type: object
@@ -1380,15 +1471,6 @@ components:
       description: Идентификатор записи ответа
       schema:
         type: string
-
-    DefaultModelType:
-      name: type
-      in: path
-      required: true
-      description: Тип модели по умолчанию (cheap, fast, rich)
-      schema:
-        type: string
-        enum: [cheap, fast, rich]
 
   examples:
     GroqRequest:
