@@ -26,6 +26,10 @@
     // Добавляем свойства для моделей по умолчанию
     this.defaultModels = null;
     this.selectedModelType = null; // cheap, fast, rich или null для ручного выбора
+    
+    // Добавляем свойства для user_type
+    this.userTypesList = [];
+    this.selectedUserType = null; // Выбранный user_type для отправки вместо модели
 
     this.init();
   }
@@ -89,22 +93,32 @@
 
   async loadModels() {
     try {
-      const [allRes, defaultsRes] = await Promise.all([
+      const [allRes, defaultsRes, userTypesRes] = await Promise.all([
         fetch('/api/all-models'),
-        fetch('/api/default-models')
+        fetch('/api/default-models'),
+        fetch('/api/user-types')
       ]);
 
       if (!allRes.ok || !defaultsRes.ok) throw new Error('Network error');
 
       const allModels = await allRes.json();
       const currentDefaults = await defaultsRes.json(); // { cheap, fast, rich }
+      
+      // Загружаем user_types (если запрос успешен)
+      if (userTypesRes.ok) {
+        const userTypesData = await userTypesRes.json();
+        this.userTypesList = userTypesData.details || [];
+      } else {
+        this.userTypesList = [];
+      }
 
       // Сохраняем данные для populateModelSelect()
       this.modelsList = allModels;
       this.defaultModelsData = currentDefaults;
 
-      // Заполняем селектор моделей
+      // Заполняем селекторы
       this.populateModelSelect();
+      this.populateUserTypeSelect();
 
       // Устанавливаем обработчик для назначения типа
       const assignSelect = document.getElementById('assignTypeSelect');
@@ -219,6 +233,36 @@
     }
   }
 
+  // Заполнение селекта user_type (вызывается после render())
+  populateUserTypeSelect() {
+    const select = document.getElementById('userTypeSelect');
+    if (!select) return;
+
+    // Очищаем старые опции
+    select.innerHTML = '<option value="">-- По модели --</option>';
+
+    // Добавляем все user_types
+    if (this.userTypesList && this.userTypesList.length > 0) {
+      this.userTypesList.forEach(item => {
+        const opt = document.createElement('option');
+        opt.value = item.user_type;
+        opt.textContent = `${item.user_type} → ${item.visible_name || item.model_name}`;
+        opt.title = `Модель: ${item.model_name} (${item.provider})`;
+        if (!item.enabled) {
+          opt.disabled = true;
+          opt.textContent += ' [выкл]';
+        }
+        select.appendChild(opt);
+      });
+    }
+
+    // Восстанавливаем выбор
+    const savedUserType = localStorage.getItem('selectedUserType');
+    if (savedUserType && this.userTypesList?.some(t => t.user_type === savedUserType)) {
+      select.value = savedUserType;
+    }
+  }
+
   async loadDefaultModels() {
     try {
       const response = await fetch('/api/default-models');
@@ -299,6 +343,13 @@
         <div class="form-group">
           <label>Тип модели / Модель:</label>
           <div class="model-selector-row" style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px; flex-wrap: wrap;">
+            <label style="white-space: nowrap; font-weight: bold; color: #aaa;">User Type:</label>
+            <select id="userTypeSelect" style="width: 220px; padding: 8px; border-radius: 4px; background: #2a3a4a; color: #fff; border: 1px solid #4a6a8a; font-weight: bold;" title="Выбор модели по метке user_type">
+              <option value="">-- По модели --</option>
+            </select>
+
+            <span style="font-size: 1.3em; color: #666;">или</span>
+
             <label style="white-space: nowrap; font-weight: bold; color: #aaa;">Модель:</label>
             
             <select id="modelSelect" style="flex: 2; min-width: 300px; padding: 8px; border-radius: 4px; background: #333; color: white; border: 1px solid #555;">
@@ -687,9 +738,45 @@
       modelSelect.addEventListener('change', (e) => {
         const selectedModel = e.target.value;
         this.model = selectedModel;
+        this.selectedUserType = null; // Сбрасываем user_type при ручном выборе модели
         localStorage.setItem('selectedModel', selectedModel);
+        localStorage.removeItem('selectedUserType');
+        
+        // Сбрасываем селектор user_type
+        const userTypeSelect = document.getElementById('userTypeSelect');
+        if (userTypeSelect) userTypeSelect.value = '';
         
         console.log('Выбрана модель:', selectedModel);
+        this.saveState();
+      });
+    }
+
+    // Обработчик для селектора user_type
+    const userTypeSelect = document.getElementById('userTypeSelect');
+    if (userTypeSelect) {
+      userTypeSelect.addEventListener('change', (e) => {
+        const selectedUserType = e.target.value;
+        this.selectedUserType = selectedUserType || null;
+        
+        if (selectedUserType) {
+          localStorage.setItem('selectedUserType', selectedUserType);
+          console.log('Выбран user_type:', selectedUserType);
+          
+          // Автоматически выбираем соответствующую модель в селекторе
+          const userTypeInfo = this.userTypesList?.find(t => t.user_type === selectedUserType);
+          if (userTypeInfo && userTypeInfo.model_name) {
+            const modelSelect = document.getElementById('modelSelect');
+            if (modelSelect) {
+              modelSelect.value = userTypeInfo.model_name;
+              this.model = userTypeInfo.model_name;
+              localStorage.setItem('selectedModel', userTypeInfo.model_name);
+              console.log('Автоматически выбрана модель:', userTypeInfo.model_name);
+            }
+          }
+        } else {
+          localStorage.removeItem('selectedUserType');
+          console.log('user_type сброшен, используется модель');
+        }
         this.saveState();
       });
     }
@@ -1361,7 +1448,7 @@
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: this.model,
+          model: this.selectedUserType || this.model, // Используем user_type если выбран
           prompt_name: promptSelect.value,
           inputText: inputText.value
         }),
@@ -1482,7 +1569,7 @@
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: this.model,
+          model: this.selectedUserType || this.model, // Используем user_type если выбран
           prompt: prompt.value,
           inputText: inputText.value,
           useRag: this.useRag,
@@ -2205,7 +2292,7 @@
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: this.model,
+          model: this.selectedUserType || this.model, // Используем user_type если выбран
           prompt: prompt.value,
           inputText: inputText.value,
           useRag: this.useRag,

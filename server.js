@@ -578,7 +578,11 @@ let lastRagDebugInfo = {
 };
 
 // Функция-хелпер для разрешения имени модели
-function resolveModelName(modelInput, providerInput) {
+// Поддерживает:
+// - Базовые типы: CHEAP, FAST, RICH (из config.defaultModels)
+// - Произвольные user_type: MY_FAST_EXPENSIVE и т.д. (из available-models.json)
+// - Прямое имя модели
+async function resolveModelName(modelInput, providerInput) {
   let resolvedModel = modelInput;
   let resolvedProvider = providerInput;
   
@@ -590,17 +594,37 @@ function resolveModelName(modelInput, providerInput) {
     return { model: resolvedModel, provider: resolvedProvider, wasResolved: true, resolvedType: 'cheap' };
   }
   
-  // Проверяем, не является ли это ключевым словом (CHEAP, FAST, RICH)
   const modelUpper = modelInput.trim().toUpperCase();
+  
+  // 1. Проверяем базовые типы (CHEAP, FAST, RICH) - для совместимости с config.defaultModels
   if (['CHEAP', 'FAST', 'RICH'].includes(modelUpper)) {
     const modelType = modelUpper.toLowerCase();
     resolvedModel = config.defaultModels[modelType].model;
     resolvedProvider = providerInput || config.defaultModels[modelType].provider;
-    console.log(`⚙️ Ключевое слово "${modelUpper}" преобразовано в модель: ${resolvedModel} (${resolvedProvider})`);
+    console.log(`⚙️ Базовый тип "${modelUpper}" преобразован в модель: ${resolvedModel} (${resolvedProvider})`);
     return { model: resolvedModel, provider: resolvedProvider, wasResolved: true, resolvedType: modelType };
   }
   
-  // Если это обычное имя модели, возвращаем как есть
+  // 2. Проверяем произвольные user_type из available-models.json
+  try {
+    const allModels = await loadModels();
+    const modelByUserType = allModels.find(m => m.user_type === modelUpper && m.enabled);
+    
+    if (modelByUserType) {
+      console.log(`⚙️ user_type "${modelUpper}" найден → модель: ${modelByUserType.name} (${modelByUserType.provider})`);
+      return { 
+        model: modelByUserType.name, 
+        provider: providerInput || modelByUserType.provider, 
+        wasResolved: true, 
+        resolvedType: modelUpper,
+        modelData: modelByUserType // Возвращаем данные модели для удобства
+      };
+    }
+  } catch (err) {
+    console.error('⚠️ Ошибка при поиске модели по user_type:', err.message);
+  }
+  
+  // 3. Если это обычное имя модели, возвращаем как есть
   return { model: resolvedModel, provider: resolvedProvider, wasResolved: false };
 }
 
@@ -655,8 +679,8 @@ app.post('/api/send-request', async (req, res) => {
         return res.status(400).json({ error: 'Поля prompt и inputText обязательны' });
       }
       
-      // Разрешаем имя модели (может быть CHEAP/FAST/RICH или пусто)
-      const resolved = resolveModelName(model, provider);
+      // Разрешаем имя модели (может быть CHEAP/FAST/RICH, произвольный user_type или пусто)
+      const resolved = await resolveModelName(model, provider);
       model = resolved.model;
       let selectedProvider = resolved.provider;
       
@@ -1036,8 +1060,8 @@ app.post('/api/send-request-sys', async (req, res) => {
         return res.status(400).json({ error: 'Поля prompt_name и inputText обязательны' });
       }
       
-      // Разрешаем имя модели (может быть CHEAP/FAST/RICH или пусто)
-      const resolved = resolveModelName(model, provider);
+      // Разрешаем имя модели (может быть CHEAP/FAST/RICH, произвольный user_type или пусто)
+      const resolved = await resolveModelName(model, provider);
       model = resolved.model;
       const selectedProvider = resolved.provider;
       
@@ -1490,8 +1514,8 @@ app.post('/analyze', async (req, res) => {
       return res.status(400).json({ error: 'Поля prompt и inputText обязательны' });
     }
     
-    // Разрешаем имя модели (может быть CHEAP/FAST/RICH или пусто)
-    const resolved = resolveModelName(model, provider);
+    // Разрешаем имя модели (может быть CHEAP/FAST/RICH, произвольный user_type или пусто)
+    const resolved = await resolveModelName(model, provider);
     model = resolved.model;
     const selectedProvider = resolved.provider;
     
@@ -1833,10 +1857,43 @@ app.post('/api/models/update/:id', async (req, res) => {
       return res.status(404).json({ error: 'Модель не найдена' });
     }
 
+    // === ПРОВЕРКА УНИКАЛЬНОСТИ user_type ===
+    if (updates.user_type !== undefined) {
+      const newUserType = updates.user_type ? updates.user_type.trim().toUpperCase() : null;
+      
+      if (newUserType) {
+        // Проверяем, не занят ли этот user_type другой моделью
+        const existingModel = models.find(m => 
+          m.user_type && 
+          m.user_type.toUpperCase() === newUserType && 
+          m.id !== id
+        );
+        
+        if (existingModel) {
+          return res.status(409).json({ 
+            error: `user_type "${newUserType}" уже используется моделью "${existingModel.visible_name || existingModel.name}" (${existingModel.id})`,
+            conflict: {
+              user_type: newUserType,
+              existing_model_id: existingModel.id,
+              existing_model_name: existingModel.name
+            }
+          });
+        }
+        
+        // Нормализуем user_type к верхнему регистру
+        updates.user_type = newUserType;
+      } else {
+        // Если передали пустую строку или null - очищаем user_type
+        updates.user_type = null;
+      }
+    }
+
     // Обновляем модель, сохраняя существующие поля
     models[modelIndex] = { ...models[modelIndex], ...updates };
 
     await saveModels(models);
+    
+    console.log(`✅ Модель ${id} обновлена:`, updates);
 
     res.json({ success: true, model: models[modelIndex] });
   } catch (error) {
@@ -1942,6 +1999,40 @@ app.get('/api/default-models/:type', (req, res) => {
         type,
         model: config.defaultModels[type]
     });
+});
+
+// === ЭНДПОИНТ ДЛЯ ПОЛУЧЕНИЯ ВСЕХ УНИКАЛЬНЫХ user_type ===
+// Возвращает список всех меток user_type, используемых в системе
+// Внешние системы могут использовать эти метки для обращения к моделям
+app.get('/api/user-types', async (req, res) => {
+  try {
+    const models = await loadModels();
+    // Собираем уникальные user_type, исключая null/undefined
+    const types = [...new Set(models.map(m => m.user_type).filter(Boolean))];
+    
+    // Возвращаем с информацией о связанных моделях
+    const typesWithModels = types.map(type => {
+      const model = models.find(m => m.user_type === type);
+      return {
+        user_type: type,
+        model_id: model?.id,
+        model_name: model?.name,
+        visible_name: model?.visible_name,
+        provider: model?.provider,
+        enabled: model?.enabled
+      };
+    });
+    
+    res.json({
+      success: true,
+      count: types.length,
+      types: types,
+      details: typesWithModels
+    });
+  } catch (err) {
+    console.error('Ошибка получения user_types:', err);
+    res.status(500).json({ error: 'Failed to load user types' });
+  }
 });
 
 async function refreshGroqModels() {
