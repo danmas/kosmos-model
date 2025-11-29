@@ -8,6 +8,7 @@
 - Альтернативный порт (если переопределён): `http://localhost:3000`
 - Формат данных: `application/json` для всех запросов и ответов
 - Аутентификация: на уровне внешних API (OpenRouter/GROQ). Сам REST-интерфейс не требует токена, но ожидает корректные ключи в `.env`.
+- **OpenAI-совместимый API**: `/v1/chat/completions` и `/v1/models` (опциональная Bearer Token аутентификация)
 
 ## Quick Start
 
@@ -37,6 +38,103 @@ curl -X POST http://localhost:3002/api/send-request ^
   },
   "rag": null
 }
+```
+
+## OpenAI-совместимый API
+
+Сервер поддерживает стандартный OpenAI Chat Completions API, что позволяет использовать его с OpenAI SDK, LangChain, LlamaIndex и другими клиентами.
+
+### POST `/v1/chat/completions`
+
+Полностью совместимый с OpenAI эндпоинт для chat completions.
+
+**Запрос:**
+```json
+{
+  "model": "llama-3.3-70b-versatile",
+  "messages": [
+    {"role": "system", "content": "You are a helpful assistant."},
+    {"role": "user", "content": "Hello!"}
+  ],
+  "temperature": 0.7,
+  "max_tokens": 1024
+}
+```
+
+**Ответ:**
+```json
+{
+  "id": "chatcmpl-abc123xyz",
+  "object": "chat.completion",
+  "created": 1700000000,
+  "model": "llama-3.3-70b-versatile",
+  "choices": [{
+    "index": 0,
+    "message": {"role": "assistant", "content": "Hello! How can I help?"},
+    "finish_reason": "stop"
+  }],
+  "usage": {
+    "prompt_tokens": 20,
+    "completion_tokens": 8,
+    "total_tokens": 28
+  }
+}
+```
+
+**Параметры:**
+- `model` — имя модели или алиас (`CHEAP`, `FAST`, `RICH`)
+- `messages` — массив сообщений с `role` (system/user/assistant) и `content`
+- `temperature` — температура генерации (0-2, по умолчанию 0.7)
+- `max_tokens` — максимум токенов в ответе (по умолчанию 1024)
+- `stream` — потоковый режим (пока не поддерживается, должен быть `false`)
+
+### GET `/v1/models`
+
+Возвращает список доступных моделей в формате OpenAI.
+
+**Ответ:**
+```json
+{
+  "object": "list",
+  "data": [
+    {"id": "llama-3.3-70b-versatile", "object": "model", "created": 1700000000, "owned_by": "groq"},
+    {"id": "GigaChat-Max", "object": "model", "created": 1700000000, "owned_by": "gigachat"}
+  ]
+}
+```
+
+### Аутентификация
+
+- Если `OPENAI_COMPAT_API_KEY` задан в `.env` — требуется заголовок `Authorization: Bearer <token>`
+- Если не задан — доступ без аутентификации
+
+### Пример с OpenAI Python SDK
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="http://localhost:3903/v1",
+    api_key="your-key"  # любая строка если аутентификация отключена
+)
+
+response = client.chat.completions.create(
+    model="FAST",
+    messages=[
+        {"role": "system", "content": "Ты помощник"},
+        {"role": "user", "content": "Привет!"}
+    ]
+)
+print(response.choices[0].message.content)
+```
+
+### Пример с curl
+
+```bash
+curl -X POST http://localhost:3903/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer your-key" \
+  -d '{"model":"FAST","messages":[{"role":"user","content":"Hello!"}]}'
 ```
 
 ## Предустановленные профили моделей
@@ -221,6 +319,22 @@ curl -X POST http://localhost:3002/api/send-request ^
 2. **RAG** — устанавливайте `useRag: true` и указывайте `contextCode`. В отладочных целях используйте `/api/rag/debug-info`.
 3. **Сохранение истории** — передайте `saveResponse: true`, чтобы сервер автоматически добавил запись в `/api/responses`.
 4. **Обновление профилей** — после `POST /api/default-models` значения синхронизируются в `props.env`, и UI начнёт использовать новую конфигурацию.
+5. **OpenAI SDK / LangChain** — используйте `/v1/chat/completions` как `base_url` для полной совместимости. Поддерживаются алиасы моделей (`CHEAP/FAST/RICH`).
+
+## 10. Конфигурация `.env`
+
+```env
+# Провайдеры
+OPENROUTER_API_KEY=sk-or-v1-xxxxx
+GROQ_API_KEY=gsk_xxxxx
+ZAI_API_KEY=xxxxx
+GIGACHAT_AUTH_DATA=base64_строка
+
+# OpenAI-совместимый API (опционально)
+# Если задан — требуется Bearer Token аутентификация
+# Если пустой — доступ без аутентификации
+OPENAI_COMPAT_API_KEY=your-secret-key
+```
 
 ---
 

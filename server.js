@@ -2248,6 +2248,392 @@ refreshOpenRouterModels();
 setInterval(refreshGroqModels, 8 * 60 * 60 * 1000);
 setInterval(refreshOpenRouterModels, 8 * 60 * 60 * 1000);
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// OpenAI-совместимый API (/v1/chat/completions, /v1/models)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Middleware для Bearer Token аутентификации (только для /v1/* путей)
+function openaiAuthMiddleware(req, res, next) {
+  const apiKey = process.env.OPENAI_COMPAT_API_KEY;
+  
+  // Если ключ не задан — пропускаем без проверки (обратная совместимость)
+  if (!apiKey) {
+    return next();
+  }
+  
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({
+      error: {
+        message: 'Missing or invalid Authorization header. Expected: Bearer <token>',
+        type: 'invalid_request_error',
+        code: 'invalid_api_key'
+      }
+    });
+  }
+  
+  const token = authHeader.slice(7); // Убираем "Bearer "
+  if (token !== apiKey) {
+    return res.status(401).json({
+      error: {
+        message: 'Invalid API key provided',
+        type: 'invalid_request_error',
+        code: 'invalid_api_key'
+      }
+    });
+  }
+  
+  next();
+}
+
+// Генерация уникального ID для ответа в стиле OpenAI
+function generateChatCompletionId() {
+  const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let id = 'chatcmpl-';
+  for (let i = 0; i < 29; i++) {
+    id += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return id;
+}
+
+// POST /v1/chat/completions - OpenAI-совместимый эндпоинт
+app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
+  try {
+    const { model, messages, temperature, max_tokens, stream } = req.body;
+    
+    // Проверка обязательных полей
+    if (!model) {
+      return res.status(400).json({
+        error: {
+          message: 'Missing required parameter: model',
+          type: 'invalid_request_error',
+          param: 'model',
+          code: 'missing_required_parameter'
+        }
+      });
+    }
+    
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      return res.status(400).json({
+        error: {
+          message: 'Missing required parameter: messages',
+          type: 'invalid_request_error',
+          param: 'messages',
+          code: 'missing_required_parameter'
+        }
+      });
+    }
+    
+    // Streaming пока не поддерживается
+    if (stream === true) {
+      return res.status(400).json({
+        error: {
+          message: 'Streaming is not supported yet. Set stream to false or omit it.',
+          type: 'invalid_request_error',
+          param: 'stream',
+          code: 'unsupported_parameter'
+        }
+      });
+    }
+    
+    // Извлекаем system prompt и формируем inputText из истории
+    let systemPrompt = 'You are a helpful assistant.';
+    let conversationHistory = [];
+    
+    for (const msg of messages) {
+      if (msg.role === 'system') {
+        systemPrompt = msg.content;
+      } else if (msg.role === 'user' || msg.role === 'assistant') {
+        conversationHistory.push(msg);
+      }
+    }
+    
+    // Формируем inputText: склеиваем историю, последний user message - основной вопрос
+    let inputText = '';
+    if (conversationHistory.length === 0) {
+      return res.status(400).json({
+        error: {
+          message: 'At least one user message is required',
+          type: 'invalid_request_error',
+          param: 'messages',
+          code: 'invalid_request_error'
+        }
+      });
+    }
+    
+    // Если есть история диалога (больше одного сообщения), склеиваем
+    if (conversationHistory.length > 1) {
+      const historyParts = conversationHistory.slice(0, -1).map(msg => 
+        `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}`
+      );
+      const lastUserMsg = conversationHistory[conversationHistory.length - 1];
+      inputText = `Previous conversation:\n${historyParts.join('\n')}\n\nCurrent message: ${lastUserMsg.content}`;
+    } else {
+      inputText = conversationHistory[0].content;
+    }
+    
+    console.log(`🔗 OpenAI-compat: Запрос к модели ${model}`);
+    
+    // Разрешаем имя модели через существующую логику
+    const resolved = await resolveModelName(model, null);
+    const resolvedModel = resolved.model;
+    let selectedProvider = resolved.provider;
+    
+    // Получаем данные модели для определения провайдера
+    const modelData = await getModelByName(resolvedModel);
+    if (!selectedProvider) {
+      selectedProvider = modelData?.provider || 'openroute';
+    }
+    
+    console.log(`🔗 OpenAI-compat: Провайдер ${selectedProvider}, модель ${resolvedModel}`);
+    
+    // Проверяем доступность провайдера
+    if (selectedProvider === 'groq' && !groqService) {
+      return res.status(503).json({
+        error: {
+          message: 'GROQ service is not configured',
+          type: 'server_error',
+          code: 'service_unavailable'
+        }
+      });
+    }
+    
+    if (selectedProvider === 'openroute' && !config.openRouterKey) {
+      return res.status(503).json({
+        error: {
+          message: 'OpenRouter API key is not configured',
+          type: 'server_error',
+          code: 'service_unavailable'
+        }
+      });
+    }
+    
+    if (selectedProvider === 'gigachat' && !gigachatService) {
+      return res.status(503).json({
+        error: {
+          message: 'GigaChat service is not configured',
+          type: 'server_error',
+          code: 'service_unavailable'
+        }
+      });
+    }
+    
+    // Формируем messages для провайдеров
+    const providerMessages = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: inputText }
+    ];
+    
+    const finalTemperature = temperature !== undefined ? temperature : 0.7;
+    const finalMaxTokens = max_tokens !== undefined ? max_tokens : 1024;
+    
+    let response;
+    
+    // Отправляем запрос в зависимости от провайдера
+    if (selectedProvider === 'groq') {
+      const groqResponse = await groqService.sendRequest({
+        model: resolvedModel,
+        messages: providerMessages,
+        temperature: finalTemperature,
+        maxTokens: finalMaxTokens
+      });
+      
+      response = {
+        content: groqResponse.content,
+        model: groqResponse.model,
+        usage: groqResponse.usage
+      };
+      
+    } else if (selectedProvider === 'openroute') {
+      const orResponse = await openRouterService.sendRequest({
+        model: resolvedModel,
+        messages: providerMessages,
+        temperature: finalTemperature,
+        maxTokens: finalMaxTokens
+      });
+      
+      response = {
+        content: orResponse.data.choices[0].message.content,
+        model: orResponse.data.model,
+        usage: orResponse.data.usage
+      };
+      
+    } else if (selectedProvider === 'direct') {
+      if (!modelData) {
+        return res.status(404).json({
+          error: {
+            message: `Model ${model} not found in available-models.json`,
+            type: 'invalid_request_error',
+            code: 'model_not_found'
+          }
+        });
+      }
+      
+      let apiKey = modelData.api_key;
+      if (typeof apiKey === 'string' && apiKey.startsWith('env:')) {
+        const envVar = apiKey.slice(4);
+        apiKey = process.env[envVar];
+        if (!apiKey) {
+          return res.status(503).json({
+            error: {
+              message: `Environment variable ${envVar} not found for direct provider`,
+              type: 'server_error',
+              code: 'configuration_error'
+            }
+          });
+        }
+      }
+      
+      const baseUrl = modelData.base_url;
+      if (!baseUrl) {
+        return res.status(503).json({
+          error: {
+            message: 'Base URL not configured for direct provider',
+            type: 'server_error',
+            code: 'configuration_error'
+          }
+        });
+      }
+      
+      const directService = new DirectService(apiKey, baseUrl);
+      const directResponse = await directService.sendRequest({
+        model: resolvedModel,
+        messages: providerMessages,
+        temperature: finalTemperature,
+        maxTokens: finalMaxTokens
+      });
+      
+      response = {
+        content: directResponse.content,
+        model: directResponse.model,
+        usage: directResponse.usage
+      };
+      
+    } else if (selectedProvider === 'gigachat') {
+      const gcResponse = await gigachatService.sendRequest({
+        model: resolvedModel,
+        messages: providerMessages,
+        temperature: finalTemperature,
+        maxTokens: finalMaxTokens
+      });
+      
+      response = {
+        content: gcResponse.content,
+        model: gcResponse.model,
+        usage: gcResponse.usage
+      };
+      
+    } else {
+      return res.status(400).json({
+        error: {
+          message: `Unknown provider: ${selectedProvider}`,
+          type: 'invalid_request_error',
+          code: 'unknown_provider'
+        }
+      });
+    }
+    
+    // Формируем OpenAI-совместимый ответ
+    const openaiResponse = {
+      id: generateChatCompletionId(),
+      object: 'chat.completion',
+      created: Math.floor(Date.now() / 1000),
+      model: response.model || resolvedModel,
+      choices: [
+        {
+          index: 0,
+          message: {
+            role: 'assistant',
+            content: response.content
+          },
+          finish_reason: 'stop'
+        }
+      ],
+      usage: {
+        prompt_tokens: response.usage?.prompt_tokens || response.usage?.input_tokens || 0,
+        completion_tokens: response.usage?.completion_tokens || response.usage?.output_tokens || 0,
+        total_tokens: response.usage?.total_tokens || 0
+      }
+    };
+    
+    console.log(`✅ OpenAI-compat: Ответ сформирован, ${openaiResponse.usage.total_tokens} токенов`);
+    
+    return res.json(openaiResponse);
+    
+  } catch (error) {
+    console.error('❌ OpenAI-compat error:', error);
+    
+    let statusCode = 500;
+    let errorMessage = 'Internal server error';
+    let errorType = 'server_error';
+    
+    if (error.response) {
+      statusCode = error.response.status || 500;
+      const apiError = error.response.data?.error;
+      if (apiError && typeof apiError === 'object' && apiError.message) {
+        errorMessage = apiError.message;
+      } else if (typeof apiError === 'string') {
+        errorMessage = apiError;
+      } else {
+        errorMessage = `API Error: ${error.response.status}`;
+      }
+    } else if (error.request) {
+      errorMessage = 'Network error - could not connect to AI service';
+      errorType = 'network_error';
+    } else {
+      errorMessage = error.message;
+    }
+    
+    return res.status(statusCode).json({
+      error: {
+        message: errorMessage,
+        type: errorType,
+        code: 'api_error'
+      }
+    });
+  }
+});
+
+// GET /v1/models - список моделей в формате OpenAI
+app.get('/v1/models', openaiAuthMiddleware, async (req, res) => {
+  try {
+    const models = await loadModels();
+    const enabledModels = models.filter(m => m.enabled);
+    
+    const openaiModels = enabledModels.map(m => ({
+      id: m.name,
+      object: 'model',
+      created: m.added_at ? Math.floor(new Date(m.added_at).getTime() / 1000) : Math.floor(Date.now() / 1000),
+      owned_by: m.provider || 'unknown'
+    }));
+    
+    return res.json({
+      object: 'list',
+      data: openaiModels
+    });
+    
+  } catch (error) {
+    console.error('❌ OpenAI-compat /v1/models error:', error);
+    return res.status(500).json({
+      error: {
+        message: 'Failed to load models',
+        type: 'server_error',
+        code: 'internal_error'
+      }
+    });
+  }
+});
+
+// Логируем статус OpenAI-совместимого API
+if (process.env.OPENAI_COMPAT_API_KEY) {
+  console.log('🔐 OpenAI-совместимый API: аутентификация ВКЛЮЧЕНА');
+} else {
+  console.log('🔓 OpenAI-совместимый API: аутентификация ОТКЛЮЧЕНА (OPENAI_COMPAT_API_KEY не задан)');
+}
+console.log('📡 OpenAI-совместимые эндпоинты: /v1/chat/completions, /v1/models');
+
+// ═══════════════════════════════════════════════════════════════════════════════
+
 const PORT = process.env.PORT || config.port;
 
 app.listen(PORT, () => {

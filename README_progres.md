@@ -1,6 +1,103 @@
 +
 # Прогресс разработки Kosmos Model Gateway
 
+## 2025-11-29: OpenAI-совместимый API
+
+### Суть изменений
+
+Добавлена полная совместимость со стандартом OpenAI Chat Completions API. Теперь сервер можно использовать как drop-in replacement для OpenAI с любыми клиентами: OpenAI Python SDK, LangChain, LlamaIndex и др.
+
+### Новые эндпоинты
+
+| Эндпоинт | Метод | Описание |
+|----------|-------|----------|
+| `/v1/chat/completions` | POST | Основной эндпоинт для chat completions |
+| `/v1/models` | GET | Список моделей в формате OpenAI |
+
+### Формат запроса (OpenAI-стандарт)
+
+```json
+{
+  "model": "llama-3.3-70b-versatile",
+  "messages": [
+    {"role": "system", "content": "You are a helpful assistant."},
+    {"role": "user", "content": "Hello!"}
+  ],
+  "temperature": 0.7,
+  "max_tokens": 1024
+}
+```
+
+### Формат ответа (OpenAI-стандарт)
+
+```json
+{
+  "id": "chatcmpl-abc123xyz",
+  "object": "chat.completion",
+  "created": 1700000000,
+  "model": "llama-3.3-70b-versatile",
+  "choices": [{
+    "index": 0,
+    "message": {"role": "assistant", "content": "Hello!"},
+    "finish_reason": "stop"
+  }],
+  "usage": {"prompt_tokens": 42, "completion_tokens": 10, "total_tokens": 52}
+}
+```
+
+### Аутентификация
+
+- Если `OPENAI_COMPAT_API_KEY` задан в `.env` — требуется Bearer Token
+- Если не задан — доступ без аутентификации (обратная совместимость)
+
+### Пример использования с OpenAI SDK
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="http://localhost:3903/v1",
+    api_key="your-key"  # или любая строка если аутентификация отключена
+)
+
+response = client.chat.completions.create(
+    model="FAST",  # поддерживаются алиасы CHEAP/FAST/RICH
+    messages=[
+        {"role": "system", "content": "Ты полезный помощник"},
+        {"role": "user", "content": "Привет!"}
+    ]
+)
+print(response.choices[0].message.content)
+```
+
+### Изменения в файлах
+
+**1. `server.js`**
+- Middleware `openaiAuthMiddleware()` для Bearer Token аутентификации
+- Эндпоинт `POST /v1/chat/completions` с конвертацией messages → prompt+inputText
+- Эндпоинт `GET /v1/models` со списком моделей в формате OpenAI
+- Функция `generateChatCompletionId()` для генерации ID в стиле OpenAI
+
+**2. `.env.example`**
+- Добавлена переменная `OPENAI_COMPAT_API_KEY`
+
+**3. `swagger.yaml`**
+- Новый тег `OpenAI Compatible`
+- Схемы `OpenAIChatCompletionRequest`, `OpenAIChatCompletionResponse`, `OpenAIModelList` и др.
+- SecurityScheme `BearerAuth`
+
+### Совместимость
+
+После реализации работает с:
+- ✅ OpenAI Python SDK
+- ✅ LangChain
+- ✅ LlamaIndex
+- ✅ Любые клиенты с OpenAI-совместимым API
+
+**Важно:** Старый REST API (`/api/send-request`, `/api/send-request-sys`, `/analyze`) полностью сохранён и работает для существующих клиентов.
+
+---
+
 ## 2025-11-29: Кнопка About для моделей
 
 ### Суть изменений

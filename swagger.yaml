@@ -24,6 +24,8 @@ servers:
     description: Альтернативный порт
 
 tags:
+  - name: OpenAI Compatible
+    description: OpenAI-совместимый API для интеграции с LangChain, OpenAI SDK и т.д.
   - name: AI Models
     description: Операции с AI моделями и отправка запросов
   - name: Prompts
@@ -38,6 +40,125 @@ tags:
     description: Конфигурация и информация о сервере
 
 paths:
+  /v1/chat/completions:
+    post:
+      tags:
+        - OpenAI Compatible
+      summary: Chat Completions (OpenAI-совместимый)
+      description: |
+        Полностью совместимый с OpenAI API эндпоинт для чат-комплитов.
+        Поддерживает стандартный формат запроса/ответа OpenAI.
+        
+        **Аутентификация:**
+        - Если `OPENAI_COMPAT_API_KEY` задан в .env — требуется Bearer Token
+        - Если не задан — доступ без аутентификации
+        
+        **Пример использования с OpenAI Python SDK:**
+        ```python
+        from openai import OpenAI
+        
+        client = OpenAI(
+            base_url="http://localhost:3002/v1",
+            api_key="your-key"
+        )
+        
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": "Hello!"}
+            ]
+        )
+        ```
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OpenAIChatCompletionRequest'
+            examples:
+              simple:
+                summary: Простой запрос
+                value:
+                  model: "llama-3.3-70b-versatile"
+                  messages:
+                    - role: "system"
+                      content: "You are a helpful assistant."
+                    - role: "user"
+                      content: "Hello!"
+              with_history:
+                summary: С историей диалога
+                value:
+                  model: "FAST"
+                  messages:
+                    - role: "system"
+                      content: "Ты полезный помощник"
+                    - role: "user"
+                      content: "Привет!"
+                    - role: "assistant"
+                      content: "Привет! Чем могу помочь?"
+                    - role: "user"
+                      content: "Расскажи о погоде"
+                  temperature: 0.8
+                  max_tokens: 500
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAIChatCompletionResponse'
+        '400':
+          description: Некорректный запрос
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAIError'
+        '401':
+          description: Ошибка аутентификации
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAIError'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAIError'
+
+  /v1/models:
+    get:
+      tags:
+        - OpenAI Compatible
+      summary: Список моделей (OpenAI-совместимый)
+      description: |
+        Возвращает список доступных моделей в формате OpenAI API.
+        Включает только активные модели (enabled: true).
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Список моделей
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAIModelList'
+        '401':
+          description: Ошибка аутентификации
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAIError'
+        '500':
+          description: Ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAIError'
+
   /api/send-request:
     post:
       tags:
@@ -1454,6 +1575,171 @@ components:
         details:
           type: object
           description: Дополнительная информация об ошибке
+
+    # OpenAI-совместимые схемы
+    OpenAIChatCompletionRequest:
+      type: object
+      required:
+        - model
+        - messages
+      properties:
+        model:
+          type: string
+          description: |
+            ID модели или алиас (CHEAP, FAST, RICH).
+            Примеры: llama-3.3-70b-versatile, deepseek/deepseek-chat:free, FAST
+          example: "llama-3.3-70b-versatile"
+        messages:
+          type: array
+          description: Массив сообщений диалога
+          items:
+            $ref: '#/components/schemas/OpenAIChatMessage'
+          minItems: 1
+        temperature:
+          type: number
+          minimum: 0
+          maximum: 2
+          default: 0.7
+          description: Температура генерации (0-2)
+        max_tokens:
+          type: integer
+          minimum: 1
+          default: 1024
+          description: Максимальное количество токенов в ответе
+        stream:
+          type: boolean
+          default: false
+          description: Потоковый режим (пока не поддерживается)
+
+    OpenAIChatMessage:
+      type: object
+      required:
+        - role
+        - content
+      properties:
+        role:
+          type: string
+          enum: [system, user, assistant]
+          description: Роль отправителя сообщения
+        content:
+          type: string
+          description: Содержимое сообщения
+
+    OpenAIChatCompletionResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Уникальный идентификатор ответа
+          example: "chatcmpl-abc123xyz"
+        object:
+          type: string
+          enum: [chat.completion]
+          example: "chat.completion"
+        created:
+          type: integer
+          description: Unix timestamp создания ответа
+          example: 1700000000
+        model:
+          type: string
+          description: Использованная модель
+          example: "llama-3.3-70b-versatile"
+        choices:
+          type: array
+          items:
+            $ref: '#/components/schemas/OpenAIChatChoice'
+        usage:
+          $ref: '#/components/schemas/OpenAIUsage'
+
+    OpenAIChatChoice:
+      type: object
+      properties:
+        index:
+          type: integer
+          example: 0
+        message:
+          $ref: '#/components/schemas/OpenAIChatMessage'
+        finish_reason:
+          type: string
+          enum: [stop, length, content_filter]
+          example: "stop"
+
+    OpenAIUsage:
+      type: object
+      properties:
+        prompt_tokens:
+          type: integer
+          example: 42
+        completion_tokens:
+          type: integer
+          example: 128
+        total_tokens:
+          type: integer
+          example: 170
+
+    OpenAIModelList:
+      type: object
+      properties:
+        object:
+          type: string
+          enum: [list]
+          example: "list"
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/OpenAIModel'
+
+    OpenAIModel:
+      type: object
+      properties:
+        id:
+          type: string
+          description: ID модели
+          example: "llama-3.3-70b-versatile"
+        object:
+          type: string
+          enum: [model]
+          example: "model"
+        created:
+          type: integer
+          description: Unix timestamp добавления модели
+          example: 1700000000
+        owned_by:
+          type: string
+          description: Провайдер модели
+          example: "groq"
+
+    OpenAIError:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            message:
+              type: string
+              description: Описание ошибки
+              example: "Invalid API key provided"
+            type:
+              type: string
+              description: Тип ошибки
+              example: "invalid_request_error"
+            param:
+              type: string
+              nullable: true
+              description: Параметр, вызвавший ошибку
+            code:
+              type: string
+              description: Код ошибки
+              example: "invalid_api_key"
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: |
+        Bearer Token аутентификация для OpenAI-совместимого API.
+        Токен должен совпадать со значением OPENAI_COMPAT_API_KEY в .env.
+        Если OPENAI_COMPAT_API_KEY не задан — аутентификация не требуется.
 
   parameters:
     PromptName:
