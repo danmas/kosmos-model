@@ -168,10 +168,9 @@ class ModelsPage {
         }
 
         const badges = [];
-        if (model.user_type) badges.push(`<span class="badge default">★ ${this.userTypeText(model.user_type)}</span>`);
+        if (model.user_type) badges.push(`<span class="badge default">🏷️ ${model.user_type}</span>`);
         if (model.isFast) badges.push(`<span class="badge fast">⚡ Быстрая</span>`);
         if (model.isFree) badges.push(`<span class="badge free">БЕСПЛАТНО</span>`);
-        if (model.cost_level === 'rich') badges.push(`<span class="badge rich">Мощная</span>`);
 
         return `
             <div class="model-card ${provider}" data-model-id="${this.escapeHtml(model.id)}">
@@ -187,11 +186,6 @@ class ModelsPage {
                         <span class="detail-label">Контекст:</span>
                         <span class="context-badge">${this.formatTokens(model.context)}</span>
                     </div>
-                    ${model.cost_level ? `
-                    <div class="model-detail">
-                        <span class="detail-label">Категория:</span>
-                        <span class="detail-value">${this.costLevelText(model.cost_level)}</span>
-                    </div>` : ''}
                     ${badges.length ? `<div class="badges">${badges.join(' ')}</div>` : ''}
                     ${testBadge}
                 </div>
@@ -202,15 +196,6 @@ class ModelsPage {
                             <input type="checkbox" id="enabled-${model.id}" ${model.enabled ? 'checked' : ''} onchange="modelsPage.toggleModelEnabled('${this.escapeForAttribute(model.id)}', this.checked)">
                             <span class="slider round"></span>
                         </label>
-                    </div>
-                    <div class="control-item">
-                        <label for="role-${model.id}" class="role-label">Роль:</label>
-                        <select id="role-${model.id}" onchange="modelsPage.setModelRole('${this.escapeForAttribute(model.id)}', this.value)">
-                            <option value="">Нет</option>
-                            <option value="rich" ${model.user_type === 'RICH' ? 'selected' : ''}>RICH</option>
-                            <option value="fast" ${model.user_type === 'FAST' ? 'selected' : ''}>FAST</option>
-                            <option value="cheap" ${model.user_type === 'CHEAP' ? 'selected' : ''}>CHEAP</option>
-                        </select>
                     </div>
                     <div class="control-item user-type-control">
                         <label for="usertype-${model.id}" class="role-label" title="Уникальная метка для внешних систем (например: MY_FAST_EXPENSIVE)">User Type:</label>
@@ -327,16 +312,6 @@ class ModelsPage {
         }
     }
 
-    userTypeText(userType) {
-        if (!userType) return '';
-        const lower = userType.toLowerCase();
-        return { cheap: 'Дешевая', fast: 'Быстрая', rich: 'Мощная' }[lower] || userType;
-    }
-
-    costLevelText(level) {
-        return { cheap: 'Дешёвая', fast: 'Быстрая', rich: 'Мощная' }[level] || level;
-    }
-
     formatTokens(n) {
         return n >= 1000 ? (n / 1000) + 'K' : n;
     }
@@ -386,7 +361,7 @@ class ModelsPage {
     // === НОВЫЕ МЕТОДЫ ДЛЯ УПРАВЛЕНИЯ МОДЕЛЯМИ ===
     async toggleModelEnabled(modelId, isEnabled) {
         try {
-            const res = await fetch(`/api/models/update/${modelId}`, {
+            const res = await fetch(`/api/models/update/${encodeURIComponent(modelId)}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ enabled: isEnabled })
@@ -402,39 +377,12 @@ class ModelsPage {
         }
     }
 
-    async setModelRole(modelId, role) {
-        if (!role) {
-            // TODO: Implement unsetting role
-            console.warn("Unsetting role is not fully implemented.");
-            return;
-        }
-
-        try {
-            const res = await fetch('/api/default-models/set', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ modelId, type: role })
-            });
-            const data = await res.json();
-            if (!data.success) throw new Error(data.error || 'Server error');
-            
-            await this.loadModels();
-            this.filterModels(document.getElementById('searchInput').value); // Re-filter and re-render
-        } catch (err) {
-            console.error('Failed to set model role:', err);
-            alert(`Ошибка назначения роли: ${err.message}`);
-            // Re-render to reset dropdown on failure
-            this.renderModels();
-        }
-    }
-
     // === Установка user_type (уникальной метки модели) ===
     async setUserType(modelId, userType) {
-        const inputElement = document.getElementById(`usertype-${modelId}`);
         const normalizedType = userType ? userType.trim().toUpperCase() : null;
         
         try {
-            const res = await fetch(`/api/models/update/${modelId}`, {
+            const res = await fetch(`/api/models/update/${encodeURIComponent(modelId)}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ user_type: normalizedType })
@@ -442,40 +390,19 @@ class ModelsPage {
             const data = await res.json();
             
             if (!res.ok) {
-                // Обработка конфликта уникальности
-                if (res.status === 409 && data.conflict) {
-                    alert(`Ошибка: метка "${data.conflict.user_type}" уже используется моделью "${data.conflict.existing_model_name}"`);
-                } else {
-                    alert(`Ошибка: ${data.error || 'Server error'}`);
-                }
-                // Восстанавливаем предыдущее значение
-                const model = this.allModels.find(m => m.id === modelId);
-                if (inputElement && model) {
-                    inputElement.value = model.user_type || '';
-                }
+                alert(`Ошибка: ${data.error || 'Server error'}`);
                 return;
             }
             
-            // Обновляем локальную модель
-            const model = this.allModels.find(m => m.id === modelId);
-            if (model) {
-                model.user_type = normalizedType;
-            }
-            
-            // Обновляем значение в поле ввода (нормализованное)
-            if (inputElement) {
-                inputElement.value = normalizedType || '';
-            }
-            
             console.log(`✅ user_type для ${modelId} установлен: ${normalizedType || 'null'}`);
+            
+            // Перезагружаем все модели чтобы обновить UI (старая модель сбросилась)
+            await this.loadModels();
+            this.filterModels(document.getElementById('searchInput')?.value || '');
+            
         } catch (err) {
             console.error('Failed to set user_type:', err);
             alert(`Ошибка установки user_type: ${err.message}`);
-            // Восстанавливаем предыдущее значение
-            const model = this.allModels.find(m => m.id === modelId);
-            if (inputElement && model) {
-                inputElement.value = model.user_type || '';
-            }
         }
     }
 

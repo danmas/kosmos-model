@@ -69,7 +69,6 @@
       }
       
       await this.loadPrompts();
-      await this.loadDefaultModels(); // Загружаем модели по умолчанию
       console.log('RAG enabled status before render:', this.ragEnabled);
       this.render();
       this.attachEventListeners();
@@ -93,16 +92,14 @@
 
   async loadModels() {
     try {
-      const [allRes, defaultsRes, userTypesRes] = await Promise.all([
+      const [allRes, userTypesRes] = await Promise.all([
         fetch('/api/all-models'),
-        fetch('/api/default-models'),
         fetch('/api/user-types')
       ]);
 
-      if (!allRes.ok || !defaultsRes.ok) throw new Error('Network error');
+      if (!allRes.ok) throw new Error('Network error');
 
       const allModels = await allRes.json();
-      const currentDefaults = await defaultsRes.json(); // { cheap, fast, rich }
       
       // Загружаем user_types (если запрос успешен)
       if (userTypesRes.ok) {
@@ -114,76 +111,15 @@
 
       // Сохраняем данные для populateModelSelect()
       this.modelsList = allModels;
-      this.defaultModelsData = currentDefaults;
 
       // Заполняем селекторы
       this.populateModelSelect();
       this.populateUserTypeSelect();
 
-      // Устанавливаем обработчик для назначения типа
-      const assignSelect = document.getElementById('assignTypeSelect');
-      if (assignSelect) {
-        // Удаляем старый обработчик если есть
-        const newAssignSelect = assignSelect.cloneNode(true);
-        assignSelect.parentNode.replaceChild(newAssignSelect, assignSelect);
-
-        newAssignSelect.addEventListener('change', async (e) => {
-          const type = e.target.value;
-          if (!type) return;
-
-          const selectedModelName = document.getElementById('modelSelect')?.value;
-          if (!selectedModelName) {
-            this.showError('Сначала выберите модель!');
-            newAssignSelect.value = '';
-            return;
-          }
-
-          const model = allModels.find(m => m.name === selectedModelName);
-          if (!model) {
-            this.showError('Модель не найдена!');
-            newAssignSelect.value = '';
-            return;
-          }
-
-          // Отправляем на сервер
-          try {
-            const res = await fetch('/api/default-models/set', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                modelId: model.id,
-                type: type
-              })
-            });
-
-            if (res.ok) {
-              const result = await res.json();
-              this.showMessage(`Модель "${model.visible_name || model.name}" теперь ${type.toUpperCase()} по умолчанию!`);
-              
-              // Обновляем UI: перезагружаем модели
-              await this.loadModels();
-              await this.loadDefaultModels();
-
-              // Сбрасываем селектор
-              newAssignSelect.value = '';
-            } else {
-              const err = await res.json();
-              this.showError(err.error || 'Ошибка');
-              newAssignSelect.value = '';
-            }
-          } catch (error) {
-            console.error('Ошибка назначения типа:', error);
-            this.showError('Ошибка при назначении типа модели');
-            newAssignSelect.value = '';
-          }
-        });
-      }
-
     } catch (err) {
       console.error('Ошибка загрузки моделей:', err);
       this.showError('Не удалось загрузить модели');
       this.modelsList = [];
-      this.defaultModelsData = {};
     }
   }
   
@@ -208,10 +144,9 @@
         textContent = 'GROQ → ' + textContent;
       }
 
-      // Подсвечиваем текущие дефолтные (добавляем после префикса провайдера)
-      if (model.is_default) {
-        const emoji = model.cost_level === 'cheap' ? '💸' : model.cost_level === 'fast' ? '⚡' : '💎';
-        textContent = `${emoji} ${textContent} ← ${model.cost_level.toUpperCase()}`;
+      // Подсвечиваем модели с user_type
+      if (model.user_type) {
+        textContent = `🏷️ ${textContent} ← ${model.user_type}`;
       }
 
       opt.textContent = textContent;
@@ -226,9 +161,10 @@
     if (saved && this.modelsList.some(m => m.name === saved)) {
       select.value = saved;
       this.model = saved;
-    } else if (this.defaultModelsData?.fast?.name) {
-      select.value = this.defaultModelsData.fast.name;
-      this.model = this.defaultModelsData.fast.name;
+    } else if (this.modelsList.length > 0) {
+      // Выбираем первую модель по умолчанию
+      select.value = this.modelsList[0].name;
+      this.model = this.modelsList[0].name;
       localStorage.setItem('selectedModel', this.model);
     }
   }
@@ -260,44 +196,6 @@
     const savedUserType = localStorage.getItem('selectedUserType');
     if (savedUserType && this.userTypesList?.some(t => t.user_type === savedUserType)) {
       select.value = savedUserType;
-    }
-  }
-
-  async loadDefaultModels() {
-    try {
-      const response = await fetch('/api/default-models');
-      if (!response.ok) {
-        throw new Error('Failed to load default models');
-      }
-      const data = await response.json();
-      // Новый формат: { cheap: {...}, fast: {...}, rich: {...} }
-      // Старый формат: { defaultModels: { cheap: {...}, ... } }
-      if (data.defaultModels) {
-        this.defaultModels = data.defaultModels;
-      } else {
-        // Новый формат - преобразуем в старый для совместимости
-        this.defaultModels = {
-          cheap: data.cheap ? {
-            model: data.cheap.name,
-            provider: data.cheap.provider,
-            description: data.cheap.visible_name || data.cheap.name
-          } : null,
-          fast: data.fast ? {
-            model: data.fast.name,
-            provider: data.fast.provider,
-            description: data.fast.visible_name || data.fast.name
-          } : null,
-          rich: data.rich ? {
-            model: data.rich.name,
-            provider: data.rich.provider,
-            description: data.rich.visible_name || data.rich.name
-          } : null
-        };
-      }
-      console.log('Loaded default models:', this.defaultModels);
-    } catch (error) {
-      console.error('Failed to load default models:', error);
-      this.defaultModels = null;
     }
   }
 
@@ -356,14 +254,6 @@
               <option value="">-- Загрузка моделей... --</option>
             </select>
 
-            <span style="font-size: 1.3em; color: #666;">→</span>
-
-            <select id="assignTypeSelect" style="width: 160px; padding: 8px; border-radius: 4px; background: #2a2a2a; color: white; border: 1px solid #555; font-weight: bold;">
-              <option value="">— Не назначать —</option>
-              <option value="cheap" style="background: #4a2a5a; color: #fff;">💸 Сделать CHEAP</option>
-              <option value="fast" style="background: #2a5a2a; color: #fff;">⚡ Сделать FAST</option>
-              <option value="rich" style="background: #5a2a2a; color: #ffaa00;">💎 Сделать RICH</option>
-            </select>
           </div>
         </div>
 

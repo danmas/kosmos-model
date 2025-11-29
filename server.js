@@ -1857,27 +1857,22 @@ app.post('/api/models/update/:id', async (req, res) => {
       return res.status(404).json({ error: 'Модель не найдена' });
     }
 
-    // === ПРОВЕРКА УНИКАЛЬНОСТИ user_type ===
+    // === ОБРАБОТКА user_type (автоматический перенос) ===
     if (updates.user_type !== undefined) {
       const newUserType = updates.user_type ? updates.user_type.trim().toUpperCase() : null;
       
       if (newUserType) {
-        // Проверяем, не занят ли этот user_type другой моделью
-        const existingModel = models.find(m => 
+        // Если этот user_type занят другой моделью - сбрасываем у неё
+        const existingModelIndex = models.findIndex(m => 
           m.user_type && 
           m.user_type.toUpperCase() === newUserType && 
           m.id !== id
         );
         
-        if (existingModel) {
-          return res.status(409).json({ 
-            error: `user_type "${newUserType}" уже используется моделью "${existingModel.visible_name || existingModel.name}" (${existingModel.id})`,
-            conflict: {
-              user_type: newUserType,
-              existing_model_id: existingModel.id,
-              existing_model_name: existingModel.name
-            }
-          });
+        if (existingModelIndex !== -1) {
+          const oldModel = models[existingModelIndex];
+          console.log(`🔄 user_type "${newUserType}" переназначен: ${oldModel.name} → ${models[modelIndex].name}`);
+          models[existingModelIndex].user_type = null;
         }
         
         // Нормализуем user_type к верхнему регистру
@@ -1921,7 +1916,7 @@ app.post('/api/models/add', async (req, res) => {
     // Добавляем поля по умолчанию
     const modelToAdd = {
       enabled: true,
-      is_default: false,
+      user_type: null,
       added_at: new Date().toISOString(),
       ...newModel
     };
@@ -1934,71 +1929,6 @@ app.post('/api/models/add', async (req, res) => {
     console.error('Ошибка при добавлении модели:', error);
     res.status(500).json({ error: 'Не удалось добавить модель' });
   }
-});
-
-// Текущие выбранные CHEAP / FAST / RICH
-app.get('/api/default-models', async (req, res) => {
-  const models = await loadModels();
-  const defaults = {
-    cheap: models.find(m => m.cost_level === 'cheap' && m.is_default) || null,
-    fast:  models.find(m => m.cost_level === 'fast'  && m.is_default) || null,
-    rich:  models.find(m => m.cost_level === 'rich'  && m.is_default) || null
-  };
-  res.json(defaults);
-});
-
-// Сменить дефолтную модель
-app.post('/api/default-models/set', async (req, res) => {
-  const { modelId, type } = req.body;
-
-  if (!['cheap', 'fast', 'rich'].includes(type)) {
-    return res.status(400).json({ error: 'Invalid type' });
-  }
-
-  let models = await loadModels();
-
-  const target = models.find(m => m.id === modelId);
-  if (!target) {
-    return res.status(400).json({ error: 'Model not found' });
-  }
-
-  // Сбрасываем все is_default этого типа
-  models = models.map(m => ({
-    ...m,
-    is_default: m.cost_level === type ? false : m.is_default
-  }));
-
-  // Меняем cost_level и устанавливаем is_default для выбранной модели
-  const targetIndex = models.findIndex(m => m.id === modelId);
-  if (targetIndex !== -1) {
-    models[targetIndex] = {
-      ...models[targetIndex],
-      cost_level: type,
-      is_default: true
-    };
-  }
-
-  await saveModels(models);
-
-  res.json({ success: true, selected: models[targetIndex] });
-});
-
-// Эндпоинт для получения конкретной модели по умолчанию по типу
-app.get('/api/default-models/:type', (req, res) => {
-    const { type } = req.params;
-    
-    if (!['cheap', 'fast', 'rich'].includes(type)) {
-        return res.status(400).json({ 
-            success: false,
-            error: 'Недопустимый тип модели. Используйте: cheap, fast, rich' 
-        });
-    }
-    
-    res.json({
-        success: true,
-        type,
-        model: config.defaultModels[type]
-    });
 });
 
 // === ЭНДПОИНТ ДЛЯ ПОЛУЧЕНИЯ ВСЕХ УНИКАЛЬНЫХ user_type ===
@@ -2082,9 +2012,8 @@ async function refreshGroqModels() {
           name: remote.id,
           visible_name: `GROQ → ${remote.id}`,
           context: context,
-          cost_level: "fast",
           fast: true,
-          is_default: false,
+          user_type: null,
           enabled: true,
           added_at: new Date().toISOString()
         };
@@ -2152,8 +2081,7 @@ async function refreshOpenRouterModels() {
           name: remote.id,
           visible_name: `OpenRouter → ${remote.name || remote.id}`,
           context: remote.context_length || 32768,
-          cost_level: "cheap",
-          is_default: false,
+          user_type: null,
           enabled: true,
           free: true,
           added_at: new Date().toISOString()
