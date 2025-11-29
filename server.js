@@ -589,6 +589,15 @@ async function resolveModelName(modelInput, providerInput) {
   // Если модель не указана, используем CHEAP по умолчанию
   if (!modelInput || modelInput.trim() === '') {
     console.log('⚙️ Модель не указана, используется CHEAP по умолчанию');
+    // Сначала ищем CHEAP в user_type
+    try {
+      const allModels = await loadModels();
+      const cheapModel = allModels.find(m => m.user_type === 'CHEAP' && m.enabled);
+      if (cheapModel) {
+        return { model: cheapModel.name, provider: cheapModel.provider, wasResolved: true, resolvedType: 'cheap', modelData: cheapModel };
+      }
+    } catch (err) { /* fallback to config */ }
+    // Fallback на config
     resolvedModel = config.defaultModels.cheap.model;
     resolvedProvider = providerInput || config.defaultModels.cheap.provider;
     return { model: resolvedModel, provider: resolvedProvider, wasResolved: true, resolvedType: 'cheap' };
@@ -596,19 +605,10 @@ async function resolveModelName(modelInput, providerInput) {
   
   const modelUpper = modelInput.trim().toUpperCase();
   
-  // 1. Проверяем базовые типы (CHEAP, FAST, RICH) - для совместимости с config.defaultModels
-  if (['CHEAP', 'FAST', 'RICH'].includes(modelUpper)) {
-    const modelType = modelUpper.toLowerCase();
-    resolvedModel = config.defaultModels[modelType].model;
-    resolvedProvider = providerInput || config.defaultModels[modelType].provider;
-    console.log(`⚙️ Базовый тип "${modelUpper}" преобразован в модель: ${resolvedModel} (${resolvedProvider})`);
-    return { model: resolvedModel, provider: resolvedProvider, wasResolved: true, resolvedType: modelType };
-  }
-  
-  // 2. Проверяем произвольные user_type из available-models.json
+  // 1. ПРИОРИТЕТ: Ищем по user_type в базе моделей (включая CHEAP/FAST/RICH)
   try {
     const allModels = await loadModels();
-    const modelByUserType = allModels.find(m => m.user_type === modelUpper && m.enabled);
+    const modelByUserType = allModels.find(m => m.user_type && m.user_type.toUpperCase() === modelUpper && m.enabled);
     
     if (modelByUserType) {
       console.log(`⚙️ user_type "${modelUpper}" найден → модель: ${modelByUserType.name} (${modelByUserType.provider})`);
@@ -617,11 +617,20 @@ async function resolveModelName(modelInput, providerInput) {
         provider: providerInput || modelByUserType.provider, 
         wasResolved: true, 
         resolvedType: modelUpper,
-        modelData: modelByUserType // Возвращаем данные модели для удобства
+        modelData: modelByUserType
       };
     }
   } catch (err) {
     console.error('⚠️ Ошибка при поиске модели по user_type:', err.message);
+  }
+  
+  // 2. FALLBACK: Базовые типы из config.defaultModels (если user_type не назначен в базе)
+  if (['CHEAP', 'FAST', 'RICH'].includes(modelUpper)) {
+    const modelType = modelUpper.toLowerCase();
+    resolvedModel = config.defaultModels[modelType].model;
+    resolvedProvider = providerInput || config.defaultModels[modelType].provider;
+    console.log(`⚙️ Базовый тип "${modelUpper}" (fallback config) → модель: ${resolvedModel} (${resolvedProvider})`);
+    return { model: resolvedModel, provider: resolvedProvider, wasResolved: true, resolvedType: modelType };
   }
   
   // 3. Если это обычное имя модели, возвращаем как есть
