@@ -167,6 +167,23 @@ class ModelsPage {
             }
         }
 
+        // About badge (last_about)
+        const about = model.last_about;
+        let aboutBadge = '';
+        if (about) {
+            const agoAbout = this.timeAgo(new Date(about.timestamp));
+            const aboutDataEscaped = this.escapeForAttribute(JSON.stringify(about));
+            if (about.success) {
+                aboutBadge = `<div class="test-badge about-badge success" onclick="modelsPage.showTestModal(${aboutDataEscaped}, true, 'about')" style="cursor:pointer">
+                    ℹ️ About (${agoAbout})
+                </div>`;
+            } else {
+                aboutBadge = `<div class="test-badge about-badge error" onclick="modelsPage.showTestModal(${aboutDataEscaped}, false, 'about')" style="cursor:pointer">
+                    ⚠️ About ошибка (${agoAbout})
+                </div>`;
+            }
+        }
+
         const badges = [];
         if (model.user_type) badges.push(`<span class="badge default">🏷️ ${model.user_type}</span>`);
         if (model.isFast) badges.push(`<span class="badge fast">⚡ Быстрая</span>`);
@@ -188,6 +205,7 @@ class ModelsPage {
                     </div>
                     ${badges.length ? `<div class="badges">${badges.join(' ')}</div>` : ''}
                     ${testBadge}
+                    ${aboutBadge}
                 </div>
                 <div class="model-controls">
                     <div class="control-item">
@@ -217,6 +235,9 @@ class ModelsPage {
                         <button class="test-button" onclick="modelsPage.testModel('${this.escapeForAttribute(model.id)}', this)">
                             <i class="fas fa-play"></i> Test
                         </button>
+                        <button class="test-button about-button" onclick="modelsPage.aboutModel('${this.escapeForAttribute(model.id)}', this)">
+                            <i class="fas fa-info-circle"></i> About
+                        </button>
                     </div>
                 </div>
             </div>
@@ -224,7 +245,7 @@ class ModelsPage {
     }
 
     // === НОВАЯ ФУНКЦИЯ: модальное окно с результатом ===
-    showTestModal(testData, success) {
+    showTestModal(testData, success, type = 'test') {
         // Создаём модалку, если ещё нет
         let modal = document.getElementById('testResultModal');
         if (!modal) {
@@ -241,7 +262,7 @@ class ModelsPage {
             };
             modal.innerHTML = `
                 <div onclick="event.stopPropagation()" style="background:#222; color:#eee; padding:20px; border-radius:12px; max-width:90%; width:700px; max-height:90%; overflow:auto; position:relative">
-                    <h2 style="margin-top:0; display:flex; justify-content:space-between; align-items:center">
+                    <h2 id="testModalTitle" style="margin-top:0; display:flex; justify-content:space-between; align-items:center">
                         Результат теста модели
                         <span onclick="document.getElementById('testResultModal').style.display='none'" style="cursor:pointer; font-size:1.5em">×</span>
                     </h2>
@@ -255,6 +276,13 @@ class ModelsPage {
         const content = success
             ? `<pre style="background:#000; padding:15px; border-radius:8px; overflow-x:auto; margin:15px 0; border:1px solid #0f0; white-space:pre-wrap; word-wrap:break-word">${this.escapeHtml(testData.sample_response || 'Пустой ответ')}</pre>`
             : `<pre style="background:#300; padding:15px; border-radius:8px; overflow-x:auto; margin:15px 0; border:1px solid #f33; color:#fcc; white-space:pre-wrap; word-wrap:break-word">${this.escapeHtml(testData.error_message || 'Неизвестная ошибка')}</pre>`;
+
+        // Заголовок зависит от типа
+        const titleText = type === 'about' ? 'Информация о модели (About)' : 'Результат теста модели';
+        const titleEl = document.getElementById('testModalTitle');
+        if (titleEl) {
+            titleEl.innerHTML = `${titleText}<span onclick="document.getElementById('testResultModal').style.display='none'" style="cursor:pointer; font-size:1.5em">×</span>`;
+        }
 
         document.getElementById('testModalContent').innerHTML = `
             <p><strong>Время:</strong> ${time}</p>
@@ -297,7 +325,7 @@ class ModelsPage {
 
                 // Находим место для бейджа и вставляем
                 const details = card.querySelector('.model-details');
-                const oldBadge = details.querySelector('.test-badge');
+                const oldBadge = details.querySelector('.test-badge:not(.about-badge)');
                 if (oldBadge) oldBadge.remove();
                 details.insertAdjacentHTML('beforeend', badgeHtml);
             } else {
@@ -309,6 +337,67 @@ class ModelsPage {
         } finally {
             button.disabled = false;
             button.innerHTML = '<i class="fas fa-play"></i> Test';
+        }
+    }
+
+    // === ABOUT МОДЕЛИ — ПОДРОБНАЯ ИНФОРМАЦИЯ ===
+    // Если есть кэш (last_about) — показываем его, иначе запрашиваем у модели
+    async aboutModel(modelId, button) {
+        // Проверяем, есть ли уже сохранённый результат
+        const model = this.allModels.find(m => m.id === modelId);
+        if (model && model.last_about && model.last_about.success) {
+            // Показываем сохранённый результат без запроса
+            this.showTestModal(model.last_about, true, 'about');
+            return;
+        }
+
+        // Нет кэша — делаем запрос
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> About...';
+
+        try {
+            const res = await fetch('/api/about-model', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ modelId })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                // Обновляем только эту карточку
+                const card = button.closest('.model-card');
+                const newAbout = data.result;
+                const ago = this.timeAgo(new Date(newAbout.timestamp));
+                const aboutDataEscaped = this.escapeForAttribute(JSON.stringify(newAbout));
+                
+                const badgeHtml = newAbout.success
+                    ? `<div class="test-badge about-badge success" onclick="modelsPage.showTestModal(${aboutDataEscaped}, true, 'about')" style="cursor:pointer">
+                        ℹ️ About (${ago})
+                       </div>`
+                    : `<div class="test-badge about-badge error" onclick="modelsPage.showTestModal(${aboutDataEscaped}, false, 'about')" style="cursor:pointer">
+                        ⚠️ About ошибка (${ago})
+                       </div>`;
+
+                // Находим место для бейджа и вставляем
+                const details = card.querySelector('.model-details');
+                const oldAboutBadge = details.querySelector('.about-badge');
+                if (oldAboutBadge) oldAboutBadge.remove();
+                details.insertAdjacentHTML('beforeend', badgeHtml);
+
+                // Обновляем локальный кэш
+                if (model) model.last_about = newAbout;
+
+                // Сразу показываем модальное окно с результатом
+                this.showTestModal(newAbout, newAbout.success, 'about');
+            } else {
+                alert('Ошибка About: ' + (data.error || 'Неизвестная ошибка'));
+            }
+        } catch (err) {
+            alert('Нет связи с сервером');
+            console.error(err);
+        } finally {
+            button.disabled = false;
+            button.innerHTML = '<i class="fas fa-info-circle"></i> About';
         }
     }
 

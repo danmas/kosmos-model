@@ -1849,6 +1849,141 @@ app.post('/api/test-model', async (req, res) => {
   res.json({ success: true, result });
 });
 
+// === ABOUT МОДЕЛИ — ПОДРОБНАЯ ИНФОРМАЦИЯ О МОДЕЛИ ===
+const ABOUT_MODEL_PROMPT = "Привет! Что ты за модель? В чем твоя особенность? В чем твоё преимущество перед другими моделями?";
+
+app.post('/api/about-model', async (req, res) => {
+  const { modelId } = req.body;
+  if (!modelId) return res.status(400).json({ error: 'modelId required' });
+
+  let models = await loadModels();
+  const model = models.find(m => m.id === modelId);
+  if (!model) return res.status(404).json({ error: 'Model not found' });
+
+  const startTime = Date.now();
+  let result = {
+    success: false,
+    response_time_ms: 0,
+    sample_response: null,
+    error_message: 'Неизвестная ошибка'
+  };
+
+  try {
+    let apiRes;
+
+    if (model.provider === 'groq') {
+      apiRes = await axios.post(
+        'https://api.groq.com/openai/v1/chat/completions',
+        {
+          model: model.name,
+          messages: [{ role: "user", content: ABOUT_MODEL_PROMPT }],
+          max_tokens: 512,
+          temperature: 0.7
+        },
+        {
+          headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
+          timeout: 30000
+        }
+      );
+    } else if (model.provider === 'openroute') {
+      apiRes = await axios.post(
+        'https://openrouter.ai/api/v1/chat/completions',
+        {
+          model: model.name,
+          messages: [{ role: "user", content: ABOUT_MODEL_PROMPT }],
+          max_tokens: 512
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+            "HTTP-Referer": "http://localhost:3000",
+            "X-Title": "AI Models About"
+          },
+          timeout: 40000
+        }
+      );
+    } else if (model.provider === 'direct') {
+      let apiKey = model.api_key;
+      if (typeof apiKey === 'string' && apiKey.startsWith('env:')) {
+        const envVar = apiKey.slice(4);
+        apiKey = process.env[envVar];
+        if (!apiKey) {
+          throw new Error(`Переменная окружения ${envVar} не найдена`);
+        }
+      } else {
+        apiKey = process.env['ZAI_API_KEY'] || apiKey;
+      }
+      
+      if (!apiKey) {
+        throw new Error('Не удалось найти API ключ для модели direct');
+      }
+
+      const baseUrl = model.base_url || "https://api.z.ai/api/paas/v4";
+      const modelName = model.name;
+      
+      apiRes = await axios.post(
+        `${baseUrl}/chat/completions`,
+        {
+          model: modelName,
+          messages: [{ role: "user", content: ABOUT_MODEL_PROMPT }],
+          max_tokens: 512
+        },
+        { headers: { Authorization: `Bearer ${apiKey}` }, timeout: 90000 }
+      );
+    } else if (model.provider === 'gigachat') {
+      if (!gigachatService) {
+        throw new Error('GigaChat сервис не инициализирован. Добавьте GIGACHAT_AUTH_DATA в .env');
+      }
+      
+      const gcResponse = await gigachatService.sendRequest({
+        model: model.name,
+        messages: [{ role: "user", content: ABOUT_MODEL_PROMPT }],
+        temperature: 0.7,
+        maxTokens: 512
+      });
+      
+      apiRes = {
+        data: {
+          choices: [{ message: { content: gcResponse.content } }]
+        }
+      };
+    } else {
+      throw new Error(`Unsupported provider: ${model.provider}`);
+    }
+
+    const content = apiRes.data.choices?.[0]?.message?.content?.trim();
+    if (content) {
+      result.success = true;
+      result.sample_response = content;
+    } else {
+      result.error_message = "Пустой ответ от модели";
+    }
+  } catch (err) {
+    if (err.code === 'ECONNABORTED') {
+      result.error_message = 'Таймаут — модель не ответила вовремя';
+    } else if (err.response) {
+      const status = err.response.status;
+      const data = err.response.data;
+      if (status === 429) result.error_message = '429 Too Many Requests — лимит';
+      else if (status === 403 || status === 401) result.error_message = '403/401 — нет доступа (ключи/баланс)';
+      else if (data?.error?.message) result.error_message = data.error.message;
+      else result.error_message = `HTTP ${status}: ${JSON.stringify(data)}`;
+    } else {
+      result.error_message = err.message || 'Ошибка сети';
+    }
+  }
+
+  result.response_time_ms = Date.now() - startTime;
+  result.timestamp = new Date().toISOString();
+
+  // Сохраняем в last_about
+  const idx = models.findIndex(m => m.id === modelId);
+  models[idx].last_about = result;
+  await saveModels(models);
+
+  res.json({ success: true, result });
+});
+
 // === НОВЫЙ ЭНДПОИНТ ДЛЯ ОБНОВЛЕНИЯ МОДЕЛИ ===
 app.post('/api/models/update/:id', async (req, res) => {
   const { id } = req.params;
