@@ -13,6 +13,7 @@ const langchainPgService = require('./rag');
 // Добавляем GROQ и direct сервис
 const GroqService = require('./groq-service');
 const DirectService = require('./direct-service');
+const GigaChatService = require('./gigachat-service');
 
 // Добавляем библиотеку CORS
 const cors = require('cors');
@@ -177,6 +178,19 @@ if (config.groqKey) {
     console.warn('⚠️ GROQ_API_KEY не настроен');
 }
 
+// Инициализируем GigaChat сервис если данные авторизации доступны
+let gigachatService = null;
+if (process.env.GIGACHAT_AUTH_DATA) {
+    try {
+        gigachatService = new GigaChatService(process.env.GIGACHAT_AUTH_DATA);
+        console.log('✅ GigaChat сервис инициализирован');
+    } catch (error) {
+        console.warn('⚠️ GigaChat сервис не инициализирован:', error.message);
+    }
+} else {
+    console.warn('⚠️ GIGACHAT_AUTH_DATA не настроен');
+}
+
 // Добавим проверку загруженных переменных
 console.log('Loaded N8N_WEBHOOK_URL:', process.env.N8N_WEBHOOK_URL);
 console.log('Loaded config N8N_WEBHOOK_URL:', config.n8nWebhookUrl);
@@ -208,7 +222,8 @@ app.get('/api/config', (req, res) => {
         groqKey: config.groqKey ? '***' : null, // Скрываем ключ для безопасности
         providers: {
             openroute: !!config.openRouterKey,
-            groq: !!config.groqKey
+            groq: !!config.groqKey,
+            gigachat: !!gigachatService
         }, 
       logging: {
           level: config.logging.level,
@@ -668,6 +683,10 @@ app.post('/api/send-request', async (req, res) => {
         return res.status(500).json({ error: 'Модель не найдена в available-models.json' });
       }
       
+      if (selectedProvider === 'gigachat' && !gigachatService) {
+        return res.status(500).json({ error: 'GigaChat сервис не настроен. Добавьте GIGACHAT_AUTH_DATA в .env' });
+      }
+      
       let finalInputText = inputText;
       let ragInfo = null;
       
@@ -827,6 +846,24 @@ app.post('/api/send-request', async (req, res) => {
             }],
             model: directResponse.model,
             usage: directResponse.usage
+          }
+        };
+        
+      } else if (selectedProvider === 'gigachat') {
+        const gigachatResponse = await gigachatService.sendRequest({
+          model,
+          messages,
+          temperature: finalTemperature,
+          maxTokens: finalMaxTokens
+        });
+        
+        response = {
+          data: {
+            choices: [{
+              message: { content: gigachatResponse.content }
+            }],
+            model: gigachatResponse.model,
+            usage: gigachatResponse.usage
           }
         };
         
@@ -1724,6 +1761,23 @@ app.post('/api/test-model', async (req, res) => {
         },
         { headers: { Authorization: `Bearer ${apiKey}` }, timeout: 60000 } // Увеличено до 60 секунд
       );
+    } else if (model.provider === 'gigachat') {
+      if (!gigachatService) {
+        throw new Error('GigaChat сервис не инициализирован. Добавьте GIGACHAT_AUTH_DATA в .env');
+      }
+      
+      const gcResponse = await gigachatService.sendRequest({
+        model: model.name,
+        messages: [{ role: "user", content: "Кто ты? Ответь в одном предложении на русском." }],
+        temperature: 0,
+        maxTokens: 120
+      });
+      
+      apiRes = {
+        data: {
+          choices: [{ message: { content: gcResponse.content } }]
+        }
+      };
     } else {
       throw new Error(`Unsupported provider: ${model.provider}`);
     }
