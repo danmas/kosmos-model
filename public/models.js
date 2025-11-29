@@ -273,9 +273,11 @@ class ModelsPage {
         }
 
         const time = new Date(testData.timestamp).toLocaleString('ru-RU');
+        // Конвертируем литеральные \n в реальные переносы строк
+        const formatResponse = (text) => this.escapeHtml(text || '').replace(/\\n/g, '\n');
         const content = success
-            ? `<pre style="background:#000; padding:15px; border-radius:8px; overflow-x:auto; margin:15px 0; border:1px solid #0f0; white-space:pre-wrap; word-wrap:break-word">${this.escapeHtml(testData.sample_response || 'Пустой ответ')}</pre>`
-            : `<pre style="background:#300; padding:15px; border-radius:8px; overflow-x:auto; margin:15px 0; border:1px solid #f33; color:#fcc; white-space:pre-wrap; word-wrap:break-word">${this.escapeHtml(testData.error_message || 'Неизвестная ошибка')}</pre>`;
+            ? `<pre style="background:#000; padding:15px; border-radius:8px; overflow-x:auto; margin:15px 0; border:1px solid #0f0; white-space:pre-wrap; word-wrap:break-word">${formatResponse(testData.sample_response) || 'Пустой ответ'}</pre>`
+            : `<pre style="background:#300; padding:15px; border-radius:8px; overflow-x:auto; margin:15px 0; border:1px solid #f33; color:#fcc; white-space:pre-wrap; word-wrap:break-word">${formatResponse(testData.error_message) || 'Неизвестная ошибка'}</pre>`;
 
         // Заголовок зависит от типа
         const titleText = type === 'about' ? 'Информация о модели (About)' : 'Результат теста модели';
