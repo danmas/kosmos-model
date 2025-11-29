@@ -36,8 +36,8 @@ h2 {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 15px;
-  padding-bottom: 10px;
+  margin-bottom: 5px;
+  padding-bottom: 5px;
   border-bottom: 1px solid #404040;
 }
 
@@ -76,6 +76,17 @@ h2 {
   font-weight: bold;
   color: #b8b8b8;
   font-size: 12px; /* Уменьшенный размер текста меток */
+}
+
+.api-mode-controls {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+}
+
+.api-mode-controls label {
+  display: inline-flex !important;
+  margin-bottom: 0 !important;
 }
 
 .form-group textarea,

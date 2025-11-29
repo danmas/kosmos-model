@@ -242,6 +242,24 @@
           </div>
         </div>
         
+        <div class="form-group api-mode-controls" style="display: flex !important; flex-direction: row !important; align-items: center; gap: 15px; padding: 8px; background: #1a2a3a; border-radius: 6px; margin-bottom: 10px; flex-wrap: nowrap !important; white-space: nowrap;">
+          <label style="display: inline-flex; align-items: center; font-weight: bold; color: #8ab4f8; margin: 0; white-space: nowrap;">API режим:</label>
+          <label style="display: inline-flex; align-items: center; gap: 4px; cursor: pointer; margin: 0; white-space: nowrap;">
+            <input type="radio" name="apiMode" value="legacy" ${this.apiMode === 'legacy' ? 'checked' : ''}>
+            <span style="color: #aaa;">Legacy</span>
+          </label>
+          <label style="display: inline-flex; align-items: center; gap: 4px; cursor: pointer; margin: 0; white-space: nowrap;">
+            <input type="radio" name="apiMode" value="openai" ${this.apiMode === 'openai' ? 'checked' : ''}>
+            <span style="color: #4ade80;">OpenAI</span>
+          </label>
+          <div id="streamingOption" style="display: ${this.apiMode === 'openai' ? 'inline-flex' : 'none'}; align-items: center; gap: 6px; padding-left: 15px; border-left: 1px solid #4a6a8a; margin: 0; white-space: nowrap;">
+            <label style="display: inline-flex; align-items: center; gap: 4px; cursor: pointer; margin: 0; white-space: nowrap;">
+              <input type="checkbox" id="useStreamingCheckbox" ${this.useStreaming ? 'checked' : ''}>
+              <span style="color: #fbbf24;">⚡ Streaming</span>
+            </label>
+          </div>
+        </div>
+
         <div class="form-group">
           <label>Тип модели / Модель:</label>
           <div class="model-selector-row" style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px; flex-wrap: wrap;">
@@ -279,26 +297,6 @@
           </div>
         </div>
         ` : ''}
-
-        <div class="form-group api-mode-controls" style="display: flex; align-items: center; gap: 20px; padding: 10px; background: #1a2a3a; border-radius: 6px; margin-bottom: 15px;">
-          <div style="display: flex; align-items: center; gap: 10px;">
-            <label style="font-weight: bold; color: #8ab4f8;">API режим:</label>
-            <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
-              <input type="radio" name="apiMode" value="legacy" ${this.apiMode === 'legacy' ? 'checked' : ''}>
-              <span style="color: #aaa;">Legacy</span>
-            </label>
-            <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
-              <input type="radio" name="apiMode" value="openai" ${this.apiMode === 'openai' ? 'checked' : ''}>
-              <span style="color: #4ade80;">OpenAI</span>
-            </label>
-          </div>
-          <div id="streamingOption" style="display: ${this.apiMode === 'openai' ? 'flex' : 'none'}; align-items: center; gap: 6px; padding-left: 15px; border-left: 1px solid #4a6a8a;">
-            <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
-              <input type="checkbox" id="useStreamingCheckbox" ${this.useStreaming ? 'checked' : ''}>
-              <span style="color: #fbbf24;">⚡ Streaming</span>
-            </label>
-          </div>
-        </div>
 
         <div class="form-group">
           <div class="input-with-button">
