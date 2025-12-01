@@ -2242,11 +2242,234 @@ async function refreshOpenRouterModels() {
   }
 }
 
+async function refreshDirectModels() {
+  try {
+    console.log('Обновляем список Direct моделей...');
+    
+    let localModels = await loadModels();
+    
+    // 1. Находим все модели с provider: "direct"
+    const directModels = localModels.filter(m => m.provider === 'direct' && m.base_url);
+    
+    if (directModels.length === 0) {
+      console.log('Direct модели не найдены, пропускаем синхронизацию.');
+      return;
+    }
+    
+    // 2. Группируем по base_url
+    const baseUrlGroups = new Map();
+    for (const model of directModels) {
+      const baseUrl = model.base_url;
+      if (!baseUrlGroups.has(baseUrl)) {
+        baseUrlGroups.set(baseUrl, []);
+      }
+      baseUrlGroups.get(baseUrl).push(model);
+    }
+    
+    let totalAdded = 0;
+    let totalDisabled = 0;
+    let skippedUrls = 0;
+    
+    // 3. Для каждого base_url пытаемся получить список моделей
+    for (const [baseUrl, modelsForUrl] of baseUrlGroups) {
+      try {
+        // Получаем API ключ из первой модели с этим base_url
+        const sampleModel = modelsForUrl[0];
+        let apiKey = sampleModel.api_key;
+        
+        if (typeof apiKey === 'string' && apiKey.startsWith('env:')) {
+          const envVar = apiKey.slice(4);
+          apiKey = process.env[envVar];
+          if (!apiKey) {
+            console.log(`  ⚠️ Пропускаем ${baseUrl}: переменная окружения ${envVar} не найдена`);
+            skippedUrls++;
+            continue;
+          }
+        } else if (!apiKey) {
+          // Пробуем найти ключ по стандартному паттерну
+          try {
+            const urlHost = new URL(baseUrl).hostname.replace(/\./g, '_').toUpperCase();
+            apiKey = process.env[`${urlHost}_API_KEY`] || process.env['DIRECT_API_KEY'];
+          } catch (urlErr) {
+            // Если не удалось распарсить URL, пропускаем
+            console.log(`  ⚠️ Пропускаем ${baseUrl}: некорректный URL`);
+            skippedUrls++;
+            continue;
+          }
+        }
+        
+        // Формируем URL для запроса списка моделей
+        const modelsUrl = baseUrl.endsWith('/v1') || baseUrl.endsWith('/v1/') 
+          ? `${baseUrl}/models`
+          : `${baseUrl}/v1/models`;
+        
+        console.log(`  Проверяем ${baseUrl}...`);
+        
+        // Запрашиваем список моделей
+        const headers = {};
+        if (apiKey) {
+          headers['Authorization'] = `Bearer ${apiKey}`;
+        }
+        
+        const { data } = await axios.get(modelsUrl, {
+          headers,
+          timeout: 10000 // 10 секунд таймаут
+        });
+        
+        // Универсальная обработка разных форматов /v1/models
+        let remoteModels = [];
+        
+        // Вариант 1: OpenAI-совместимый формат (Groq, Ollama, Fireworks и т.д.)
+        if (data && data.data && Array.isArray(data.data)) {
+          remoteModels = data.data;
+        // Вариант 2: Together AI — возвращает сразу массив моделей
+        } else if (Array.isArray(data)) {
+          remoteModels = data;
+        // Вариант 3: На всякий случай — если вдруг в data.models или другом поле
+        } else if (data && data.models && Array.isArray(data.models)) {
+          remoteModels = data.models;
+        } else {
+          console.log(`  ⚠️ ${baseUrl}: неподдерживаемый формат /v1/models`);
+          console.log(`  📋 Ответ от API:`, JSON.stringify(data, null, 2).slice(0, 500) + (JSON.stringify(data).length > 500 ? '...' : ''));
+          skippedUrls++;
+          continue;
+        }
+        
+        if (remoteModels.length === 0) {
+          console.log(`  ⚠️ ${baseUrl}: пустой список моделей`);
+          skippedUrls++;
+          continue;
+        }
+        
+        // 4. Создаем Map активных моделей для этого base_url
+        const activeRemoteMap = new Map();
+        
+        // Генерируем slug из base_url для уникальности ID
+        let urlSlug;
+        try {
+          urlSlug = new URL(baseUrl).hostname.replace(/\./g, '-').replace(/^www-/, '');
+        } catch (urlErr) {
+          // Если не удалось распарсить, используем упрощенный вариант
+          urlSlug = baseUrl.replace(/https?:\/\//, '').replace(/[^a-zA-Z0-9-]/g, '-').toLowerCase();
+        }
+        
+        for (const remote of remoteModels) {
+          // Генерируем внутренний ID: {urlSlug}-{model_id}
+          // Заменяем недопустимые символы в model.id
+          const modelIdSlug = remote.id.replace(/[^a-zA-Z0-9-_]/g, '-').toLowerCase();
+          const internalId = `direct-${urlSlug}-${modelIdSlug}`;
+          activeRemoteMap.set(internalId, remote);
+        }
+        
+        let addedCount = 0;
+        let disabledCount = 0;
+        
+        // 5. Обновляем существующие модели для этого base_url
+        localModels = localModels.map(model => {
+          if (model.provider === 'direct' && model.base_url === baseUrl) {
+            if (!activeRemoteMap.has(model.id)) {
+              if (model.enabled) {
+                disabledCount++;
+                return { ...model, enabled: false };
+              }
+            }
+            // Сохраняем все настройки существующей модели
+            return model;
+          }
+          return model;
+        });
+        
+        // 6. Добавляем новые модели для этого base_url
+        for (const [id, remote] of activeRemoteMap) {
+          const exists = localModels.some(m => m.id === id);
+          if (!exists) {
+            // Определяем context из данных модели или по умолчанию
+            let context = 8192; // По умолчанию
+            if (remote.context_length) {
+              context = remote.context_length;
+            } else if (remote.context_window) {
+              context = remote.context_window;
+            } else {
+              // Fallback на парсинг из ID (для других провайдеров)
+              const contextMatch = remote.id.match(/-(\d+)k/i) || remote.id.match(/-(\d{4,5})/);
+              if (contextMatch) {
+                context = parseInt(contextMatch[1], 10) * (contextMatch[0].toLowerCase().includes('k') ? 1024 : 1);
+              }
+            }
+            
+            // Формируем visible_name
+            const modelName = remote.name || remote.id;
+            const providerName = baseUrl.includes('together.xyz') ? 'Together' : 
+                               baseUrl.includes('ollama') ? 'Ollama' :
+                               baseUrl.includes('fireworks') ? 'Fireworks' : 'Direct';
+            const visibleName = `${providerName} → ${modelName}`;
+            
+            const newModel = {
+              id: id,
+              provider: "direct",
+              name: remote.id,
+              visible_name: visibleName,
+              base_url: baseUrl,
+              api_key: sampleModel.api_key, // Используем тот же формат API ключа
+              context: context,
+              user_type: null,
+              enabled: true,
+              added_at: new Date().toISOString()
+            };
+            
+            localModels.push(newModel);
+            addedCount++;
+          }
+        }
+        
+        totalAdded += addedCount;
+        totalDisabled += disabledCount;
+        
+        if (addedCount > 0 || disabledCount > 0) {
+          console.log(`  ✅ ${baseUrl}: ${addedCount} новых, ${disabledCount} отключено`);
+        } else {
+          console.log(`  ✓ ${baseUrl}: актуально`);
+        }
+        
+      } catch (err) {
+        // Тихая обработка ошибок - просто пропускаем этот base_url
+        if (err.response && err.response.status === 404) {
+          console.log(`  ⚠️ ${baseUrl}: /v1/models не поддерживается, пропускаем`);
+        } else if (err.code === 'ECONNABORTED' || err.code === 'ETIMEDOUT') {
+          console.log(`  ⚠️ ${baseUrl}: таймаут при запросе, пропускаем`);
+        } else if (err.response && (err.response.status === 401 || err.response.status === 403)) {
+          console.log(`  ⚠️ ${baseUrl}: ошибка авторизации, пропускаем`);
+        } else {
+          // Только для неожиданных ошибок выводим сообщение
+          console.log(`  ⚠️ ${baseUrl}: ошибка (${err.message}), пропускаем`);
+        }
+        skippedUrls++;
+      }
+    }
+    
+    // 7. Сохраняем обновленные модели
+    await saveModels(localModels);
+    
+    if (totalAdded > 0 || totalDisabled > 0) {
+      console.log(`Direct синхронизирован: ${totalAdded} новых добавлено, ${totalDisabled} устаревших отключено.`);
+    } else if (skippedUrls === 0) {
+      console.log(`Direct синхронизирован: все модели актуальны.`);
+    } else {
+      console.log(`Direct синхронизирован: ${skippedUrls} URL пропущено (не поддерживают /v1/models или ошибки).`);
+    }
+    
+  } catch (err) {
+    console.error('Ошибка автообновления Direct:', err.message);
+  }
+}
+
 // При старте и каждые 8 часов
 refreshGroqModels();
 refreshOpenRouterModels();
+refreshDirectModels();
 setInterval(refreshGroqModels, 8 * 60 * 60 * 1000);
 setInterval(refreshOpenRouterModels, 8 * 60 * 60 * 1000);
+setInterval(refreshDirectModels, 8 * 60 * 60 * 1000);
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // OpenAI-совместимый API (/v1/chat/completions, /v1/models)
