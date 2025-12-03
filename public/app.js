@@ -1297,21 +1297,29 @@
   }
 
   validateInputs() {
+    console.log('[CLIENT] validateInputs вызван');
+    
     const inputText = document.getElementById('inputText');
     const prompt = document.getElementById('prompt');
 
-    if (!inputText || !prompt) return false;
+    if (!inputText || !prompt) {
+      console.warn('[CLIENT] validateInputs: inputText или prompt не найдены');
+      return false;
+    }
 
     if (!inputText.value.trim()) {
+      console.warn('[CLIENT] validateInputs: inputText пуст');
       this.showError('Please enter input text');
       return false;
     }
 
     if (!prompt.value.trim()) {
+      console.warn('[CLIENT] validateInputs: prompt пуст');
       this.showError('Please enter a prompt');
       return false;
     }
 
+    console.log('[CLIENT] validateInputs: валидация прошла успешно');
     return true;
   }
 
@@ -1606,7 +1614,13 @@
 
   // OpenAI-совместимый режим с поддержкой streaming
   async handleSubmitOpenAI(inputText, prompt, responseArea, saveResponseButton) {
-    console.log('DEBUG: OpenAI API mode, streaming:', this.useStreaming);
+    console.log('[CLIENT] ========================================');
+    console.log('[CLIENT] handleSubmitOpenAI вызван');
+    console.log('[CLIENT] DEBUG: OpenAI API mode, streaming:', this.useStreaming);
+    console.log('[CLIENT] Model:', this.selectedUserType || this.model);
+    console.log('[CLIENT] Prompt length:', prompt.value?.length || 0);
+    console.log('[CLIENT] Input text length:', inputText.value?.length || 0);
+    console.log('[CLIENT] ResponseArea element:', responseArea ? 'найден' : 'не найден');
     
     this.updateUIState(true);
     this.abortController = new AbortController();
@@ -1623,8 +1637,15 @@
       stream: this.useStreaming
     };
 
+    console.log('[CLIENT] Request body prepared:', {
+      model: requestBody.model,
+      messagesCount: requestBody.messages.length,
+      stream: requestBody.stream
+    });
+
     try {
       if (this.useStreaming) {
+        console.log('[CLIENT] Отправка streaming запроса на /v1/chat/completions');
         // Streaming режим - читаем SSE
         responseArea.value = '';
         responseArea.style.color = '#e0e0e0';
@@ -1636,47 +1657,157 @@
           signal: this.abortController.signal
         });
 
+        console.log('[CLIENT] Streaming response получен');
+        console.log('[CLIENT] Response status:', response.status);
+        console.log('[CLIENT] Response ok:', response.ok);
+        console.log('[CLIENT] Response headers:', {
+          'content-type': response.headers.get('content-type')
+        });
+
         if (!response.ok) {
           const errorData = await response.json();
+          console.error('[CLIENT] Ошибка streaming ответа:', errorData);
           throw new Error(errorData.error?.message || 'Failed to get response');
         }
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let fullContent = '';
+        let chunkCount = 0;
+        let contentChunksCount = 0;
+        let streamError = null;
+
+        console.log('[CLIENT] Начало чтения streaming данных...');
 
         while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
+            const { done, value } = await reader.read();
+            if (done) {
+              console.log('[CLIENT] Streaming чтение завершено. Всего чанков:', chunkCount, 'С контентом:', contentChunksCount);
+              break;
+            }
 
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split('\n');
+            chunkCount++;
+            const chunk = decoder.decode(value, { stream: true });
+            const lines = chunk.split('\n');
 
-          for (const line of lines) {
-            const trimmed = line.trim();
-            if (trimmed.startsWith('data: ')) {
-              const data = trimmed.slice(6);
-              if (data === '[DONE]') continue;
+            console.log(`[CLIENT] Raw chunk #${chunkCount} received, length: ${chunk.length}`);
+            console.log(`[CLIENT] Raw chunk preview:`, chunk.substring(0, 500));
 
-              try {
-                const parsed = JSON.parse(data);
+            for (const line of lines) {
+              const trimmed = line.trim();
+              
+              // Логируем каждую строку для отладки
+              if (trimmed) {
+                console.log('[CLIENT] Raw line:', trimmed.substring(0, 200));
+              }
+              
+              if (trimmed.startsWith('data: ')) {
+                const data = trimmed.slice(6);
+                
+                // Логируем raw data
+                console.log('[CLIENT] Raw data (first 300 chars):', data.substring(0, 300));
+                
+                if (data === '[DONE]') {
+                  console.log('[CLIENT] Получен маркер [DONE]');
+                  continue;
+                }
+
+                try {
+                  const parsed = JSON.parse(data);
+                  
+                  // ПРОВЕРКА НА ОШИБКУ - должна быть первой!
+                  if (parsed.error) {
+                    console.error('[CLIENT] ❌ Ошибка в SSE потоке!');
+                    console.error('[CLIENT] Error object:', parsed.error);
+                    
+                    const errorMessage = parsed.error.message || 'Неизвестная ошибка';
+                    console.error('[CLIENT] Error message:', errorMessage);
+                    
+                    // Сохраняем ошибку для обработки после выхода из циклов
+                    streamError = new Error(errorMessage);
+                    
+                    // Показываем ошибку пользователю
+                    responseArea.value = `ОШИБКА: ${errorMessage}`;
+                    responseArea.style.color = '#ff6b6b';
+                    
+                    // Прерываем чтение потока
+                    reader.cancel();
+                    break; // Выходим из цикла for
+                  }
+                
+                // ДЕТАЛЬНОЕ ЛОГИРОВАНИЕ
+                console.log('[CLIENT] Parsed chunk structure:');
+                console.log('[CLIENT] - Full parsed:', JSON.stringify(parsed, null, 2).substring(0, 800));
+                console.log('[CLIENT] - Has choices:', !!parsed.choices);
+                console.log('[CLIENT] - Choices length:', parsed.choices?.length || 0);
+                
+                if (parsed.choices && parsed.choices.length > 0) {
+                  console.log('[CLIENT] - Choice[0]:', JSON.stringify(parsed.choices[0], null, 2).substring(0, 500));
+                  console.log('[CLIENT] - Has delta:', !!parsed.choices[0].delta);
+                  
+                  if (parsed.choices[0].delta) {
+                    console.log('[CLIENT] - Delta:', JSON.stringify(parsed.choices[0].delta, null, 2).substring(0, 500));
+                    console.log('[CLIENT] - Delta keys:', Object.keys(parsed.choices[0].delta));
+                    console.log('[CLIENT] - Delta.content:', parsed.choices[0].delta.content);
+                    console.log('[CLIENT] - Delta.role:', parsed.choices[0].delta.role);
+                  }
+                  
+                  console.log('[CLIENT] - Finish reason:', parsed.choices[0].finish_reason);
+                }
+                
                 const content = parsed.choices?.[0]?.delta?.content;
+                
                 if (content) {
+                  contentChunksCount++;
                   fullContent += content;
                   responseArea.value = fullContent;
                   // Автопрокрутка вниз
                   responseArea.scrollTop = responseArea.scrollHeight;
+                  
+                  console.log(`[CLIENT] ✅ Получен контент чанк #${contentChunksCount}, длина: ${content.length}, общая длина: ${fullContent.length}`);
+                  console.log(`[CLIENT] Контент чанка:`, content.substring(0, 100));
+                } else {
+                  // Важно: логируем, если контента нет, но чанк есть
+                  console.log('[CLIENT] ⚠️ Чанк получен, но content отсутствует');
+                  if (parsed.choices?.[0]?.delta) {
+                    console.log('[CLIENT] Delta без content:', JSON.stringify(parsed.choices[0].delta));
+                  }
                 }
               } catch (e) {
-                // Игнорируем невалидный JSON
+                console.error('[CLIENT] ❌ Ошибка парсинга JSON чанка:', e);
+                console.error('[CLIENT] Ошибка message:', e.message);
+                console.error('[CLIENT] Data что не распарсилось:', data.substring(0, 200));
               }
+              
+              // Если есть ошибка, выходим из цикла for
+              if (streamError) {
+                break;
+              }
+            } else if (trimmed && !trimmed.startsWith('data: ')) {
+              // Логируем строки, которые не начинаются с "data: "
+              console.log('[CLIENT] ⚠️ Неожиданная строка (не data:):', trimmed.substring(0, 100));
             }
+          }
+          
+          // Если есть ошибка, выходим из цикла while
+          if (streamError) {
+            break;
           }
         }
 
-        console.log('✅ OpenAI streaming завершён');
+        // Если была ошибка в потоке, выбрасываем её
+        if (streamError) {
+          throw streamError;
+        }
+
+        console.log('[CLIENT] ✅ OpenAI streaming завершён');
+        console.log('[CLIENT] Итоговая длина контента:', fullContent.length);
+        console.log('[CLIENT] ResponseArea.value length:', responseArea.value?.length || 0);
+        console.log('[CLIENT] ResponseArea.value preview:', responseArea.value?.substring(0, 100) || '(пусто)');
+        console.log('[CLIENT] ========================================');
         
       } else {
+        console.log('[CLIENT] Отправка обычного (не-streaming) запроса на /v1/chat/completions');
         // Обычный режим без streaming
         responseArea.value = 'Отправка запроса...';
         
@@ -1687,16 +1818,28 @@
           signal: this.abortController.signal
         });
 
+        console.log('[CLIENT] Response получен');
+        console.log('[CLIENT] Response status:', response.status);
+        console.log('[CLIENT] Response ok:', response.ok);
+
         if (!response.ok) {
           const errorData = await response.json();
+          console.error('[CLIENT] Ошибка ответа:', errorData);
           throw new Error(errorData.error?.message || 'Failed to get response');
         }
 
         const data = await response.json();
-        responseArea.value = data.choices?.[0]?.message?.content || 'Пустой ответ';
+        console.log('[CLIENT] Response data keys:', Object.keys(data));
+        console.log('[CLIENT] Choices count:', data.choices?.length || 0);
+        console.log('[CLIENT] Content length:', data.choices?.[0]?.message?.content?.length || 0);
+        
+        const finalContent = data.choices?.[0]?.message?.content || 'Пустой ответ';
+        responseArea.value = finalContent;
         responseArea.style.color = '#e0e0e0';
         
-        console.log('✅ OpenAI запрос завершён, токенов:', data.usage?.total_tokens);
+        console.log('[CLIENT] ✅ OpenAI запрос завершён, токенов:', data.usage?.total_tokens);
+        console.log('[CLIENT] ResponseArea.value length:', responseArea.value?.length || 0);
+        console.log('[CLIENT] ========================================');
       }
 
       if (saveResponseButton) {
@@ -1704,14 +1847,31 @@
       }
 
     } catch (error) {
+      console.error('[CLIENT] ========================================');
+      console.error('[CLIENT] Ошибка в handleSubmitOpenAI:', error);
+      console.error('[CLIENT] Error name:', error.name);
+      console.error('[CLIENT] Error message:', error.message);
+      if (error.stack) {
+        console.error('[CLIENT] Error stack:', error.stack.substring(0, 500));
+      }
+      console.error('[CLIENT] ========================================');
+      
       if (error.name === 'AbortError') {
+        console.log('[CLIENT] Запрос отменен пользователем');
         responseArea.value = 'Запрос отменён';
       } else {
-        responseArea.value = `Ошибка: ${error.message}`;
+        // Если ошибка уже была установлена в responseArea (например, из SSE потока), не перезаписываем
+        if (!responseArea.value || !responseArea.value.startsWith('ОШИБКА:')) {
+          responseArea.value = `Ошибка: ${error.message}`;
+        }
         responseArea.style.color = '#ff6b6b';
-        console.error('OpenAI API Error:', error);
+      }
+      
+      if (saveResponseButton) {
+        saveResponseButton.disabled = true;
       }
     } finally {
+      console.log('[CLIENT] Завершение handleSubmitOpenAI (finally)');
       this.updateUIState(false);
       this.abortController = null;
     }
@@ -2326,7 +2486,13 @@
 
   // Добавьте этот метод в класс AITestApp после метода handleSubmit()
   async handleServerSubmit() {
-    if (!this.validateInputs()) {
+    console.log('[CLIENT] handleServerSubmit вызван');
+    
+    const validationResult = this.validateInputs();
+    console.log('[CLIENT] Результат валидации:', validationResult);
+    
+    if (!validationResult) {
+      console.log('[CLIENT] Валидация не прошла, выход из метода');
       return;
     }
 
@@ -2336,9 +2502,16 @@
     const saveResponseButton = document.getElementById('saveResponseButton');
 
     if (!inputText || !prompt || !responseArea) {
-      console.error('Required DOM elements not found');
+      console.error('[CLIENT] Required DOM elements not found');
       return;
     }
+
+    console.log('[CLIENT] DOM элементы найдены');
+    console.log('[CLIENT] inputText.value length:', inputText.value?.length || 0);
+    console.log('[CLIENT] prompt.value length:', prompt.value?.length || 0);
+    console.log('[CLIENT] apiMode:', this.apiMode);
+    console.log('[CLIENT] useRag:', this.useRag);
+    console.log('[CLIENT] selectedContextCode:', this.selectedContextCode);
 
     // Деактивируем кнопку сохранения до получения ответа
     if (saveResponseButton) {
@@ -2347,16 +2520,32 @@
 
     // Проверяем режим API - для OpenAI используем handleSubmitOpenAI
     if (this.apiMode === 'openai') {
+      console.log('[CLIENT] Переход в режим OpenAI');
       return this.handleSubmitOpenAI(inputText, prompt, responseArea, saveResponseButton);
     }
 
     // Legacy режим
-    console.log('DEBUG SERVER: Legacy API mode');
-    console.log('DEBUG SERVER: this.useRag =', this.useRag);
-    console.log('DEBUG SERVER: this.selectedContextCode =', this.selectedContextCode);
+    console.log('[CLIENT] DEBUG SERVER: Legacy API mode');
+    console.log('[CLIENT] DEBUG SERVER: this.useRag =', this.useRag);
+    console.log('[CLIENT] DEBUG SERVER: this.selectedContextCode =', this.selectedContextCode);
 
     this.updateUIState(true);
     this.abortController = new AbortController();
+
+    const requestBody = {
+      model: this.selectedUserType || this.model, // Используем user_type если выбран
+      prompt: prompt.value,
+      inputText: inputText.value,
+      useRag: this.useRag,
+      contextCode: this.selectedContextCode
+    };
+
+    console.log('[CLIENT] Отправка запроса на /api/send-request');
+    console.log('[CLIENT] Request body:', {
+      ...requestBody,
+      prompt: requestBody.prompt?.substring(0, 100) + (requestBody.prompt?.length > 100 ? '...' : ''),
+      inputText: requestBody.inputText?.substring(0, 100) + (requestBody.inputText?.length > 100 ? '...' : '')
+    });
 
     try {
       const response = await fetch('/api/send-request', {
@@ -2364,37 +2553,44 @@
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          model: this.selectedUserType || this.model, // Используем user_type если выбран
-          prompt: prompt.value,
-          inputText: inputText.value,
-          useRag: this.useRag,
-          contextCode: this.selectedContextCode
-        }),
+        body: JSON.stringify(requestBody),
         signal: this.abortController.signal
       });
 
+      console.log('[CLIENT] Получен ответ от сервера');
+      console.log('[CLIENT] Response status:', response.status);
+      console.log('[CLIENT] Response ok:', response.ok);
+
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('[CLIENT] Ошибка ответа сервера:', errorData);
         throw new Error(errorData.error || `Server error: ${response.status}`);
       }
 
       const data = await response.json();
+      console.log('[CLIENT] Успешный ответ получен');
+      console.log('[CLIENT] Response data keys:', Object.keys(data));
+      console.log('[CLIENT] Response content length:', data.content?.length || 0);
 
       // Обновляем поле ответа
       responseArea.value = data.content;
       responseArea.style.color = '#e0e0e0';
 
       // Показываем дополнительную информацию
-      console.log(`Response from model: ${data.model}`);
-      console.log(`Tokens used: ${data.usage?.total_tokens || 'N/A'}`);
+      console.log(`[CLIENT] Response from model: ${data.model}`);
+      console.log(`[CLIENT] Tokens used: ${data.usage?.total_tokens || 'N/A'}`);
 
       // Активируем кнопку сохранения после получения ответа
       if (saveResponseButton) {
         saveResponseButton.disabled = false;
       }
     } catch (error) {
+      console.error('[CLIENT] Ошибка в handleServerSubmit:', error);
+      console.error('[CLIENT] Error name:', error.name);
+      console.error('[CLIENT] Error message:', error.message);
+      
       if (error.name === 'AbortError') {
+        console.log('[CLIENT] Запрос отменен пользователем');
         responseArea.value = 'Request cancelled by user';
       } else {
         this.showError(error.message);
@@ -2405,6 +2601,7 @@
         saveResponseButton.disabled = true;
       }
     } finally {
+      console.log('[CLIENT] Завершение handleServerSubmit');
       this.updateUIState(false);
       this.abortController = null;
     }
