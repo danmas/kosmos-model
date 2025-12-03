@@ -612,12 +612,14 @@ async function resolveModelName(modelInput, providerInput) {
     
     if (modelByUserType) {
       console.log(`⚙️ user_type "${modelUpper}" найден → модель: ${modelByUserType.name} (${modelByUserType.provider})`);
+      // user_type имеет АБСОЛЮТНЫЙ приоритет - игнорируем providerInput
       return { 
         model: modelByUserType.name, 
-        provider: providerInput || modelByUserType.provider, 
+        provider: modelByUserType.provider,  // ВСЕГДА берём из модели
         wasResolved: true, 
         resolvedType: modelUpper,
-        modelData: modelByUserType
+        modelData: modelByUserType,
+        userTypeMatch: true  // флаг что это match по user_type
       };
     }
   } catch (err) {

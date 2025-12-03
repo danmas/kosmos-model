@@ -944,9 +944,12 @@ components:
           type: string
           description: |
             Идентификатор модели AI для использования.
-            Вместо полного имени можно указать ключевые слова `CHEAP`, `FAST` или `RICH`
-            для использования предустановленных моделей по умолчанию.
+            Вместо полного имени можно указать ключевые слова `CHEAP`, `FAST`, `RICH`
+            или произвольный `user_type` для использования предустановленных моделей.
             Если поле не указано или пустое, используется профиль `CHEAP`.
+            
+            **Важно:** При совпадении с `user_type` параметры `model` и `provider` 
+            игнорируются — используются значения из найденной модели.
           example: "llama-3.3-70b-versatile"
         prompt:
           type: string
@@ -966,6 +969,9 @@ components:
             - direct: Прямое подключение к API (например, z.ai)
             - gigachat: Сбер GigaChat API
             - Не указан: автоматическое определение по модели
+            
+            **Примечание:** При использовании `user_type` в поле `model` 
+            этот параметр игнорируется — провайдер берётся из конфигурации модели.
           example: "groq"
         saveResponse:
           type: boolean
@@ -990,8 +996,9 @@ components:
         model:
           type: string
           description: |
-            Идентификатор модели AI для использования. Поддерживаются ключевые слова
-            `CHEAP`, `FAST`, `RICH`, а также пустое значение (эквивалентно `CHEAP`).
+            Идентификатор модели AI или `user_type` (`CHEAP`, `FAST`, `RICH`, произвольная метка).
+            При совпадении с `user_type` параметр `provider` игнорируется.
+            Пустое значение эквивалентно `CHEAP`.
           example: "llama-3.3-70b-versatile"
         prompt_name:
           type: string
@@ -1004,7 +1011,9 @@ components:
         provider:
           type: string
           enum: [groq, openroute, direct, gigachat]
-          description: Принудительный выбор провайдера
+          description: |
+            Принудительный выбор провайдера.
+            **Игнорируется** при использовании `user_type` в поле `model`.
         saveResponse:
           type: boolean
           default: true
@@ -1020,9 +1029,9 @@ components:
         model:
           type: string
           description: |
-            Идентификатор модели AI.
-            Можно использовать ключевые слова `CHEAP`, `FAST`, `RICH` или оставить поле пустым
-            для выбора соответствующей предустановленной модели.
+            Идентификатор модели AI или `user_type` (`CHEAP`, `FAST`, `RICH`, произвольная метка).
+            При совпадении с `user_type` модель и провайдер берутся из конфигурации.
+            Пустое значение эквивалентно `CHEAP`.
         prompt:
           type: string
           description: Системный промпт
@@ -1032,7 +1041,9 @@ components:
         provider:
           type: string
           enum: [groq, openroute, direct, gigachat]
-          description: Принудительный выбор провайдера
+          description: |
+            Принудительный выбор провайдера.
+            **Игнорируется** при использовании `user_type` в поле `model`.
         useRag:
           type: boolean
           default: false
@@ -1637,7 +1648,9 @@ components:
         model:
           type: string
           description: |
-            ID модели или алиас (CHEAP, FAST, RICH).
+            ID модели или алиас (CHEAP, FAST, RICH, произвольный user_type).
+            При указании user_type модель и провайдер берутся из конфигурации,
+            переданные значения игнорируются. temperature и max_tokens сохраняют приоритет клиента.
             Примеры: llama-3.3-70b-versatile, deepseek/deepseek-chat:free, FAST
           example: "llama-3.3-70b-versatile"
         messages:
