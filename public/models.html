@@ -423,6 +423,51 @@
 
         /* --- Стили для новых элементов --- */
 
+        .provider-toggle {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .provider-toggle:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.1);
+        }
+
+        .refresh-provider-btn {
+            background: rgba(255, 255, 255, 0.8);
+            color: #333;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .refresh-provider-btn:hover {
+            transform: scale(1.1) rotate(180deg);
+            background: white;
+        }
+
+        .refresh-provider-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
         .add-model-btn {
             background: rgba(255, 255, 255, 0.8);
             color: #333;
@@ -444,6 +489,19 @@
         .add-model-btn:hover {
             transform: scale(1.1);
             background: white;
+        }
+
+        .provider-section.collapsed .provider-models-container {
+            display: none;
+        }
+
+        .provider-info-button {
+            background: #9c27b0;
+            color: white;
+        }
+
+        .provider-info-button:hover {
+            background: #7b1fa2;
         }
 
         .model-controls {

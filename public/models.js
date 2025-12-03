@@ -136,14 +136,21 @@ class ModelsPage {
 
         const section = document.createElement('div');
         section.className = 'provider-section';
+        section.dataset.provider = provider;
         section.innerHTML = `
             <div class="provider-header" style="background:linear-gradient(135deg, ${info.color} 0%, ${info.color}cc 100%)">
+                <button class="provider-toggle" onclick="modelsPage.toggleProviderSection('${provider}')" title="Свернуть/развернуть">
+                    <i class="fas fa-chevron-down"></i>
+                </button>
                 <i class="${info.icon} provider-icon"></i>
                 <h2 class="provider-title">${info.name}</h2>
+                <button class="refresh-provider-btn" onclick="modelsPage.refreshProviderModels('${provider}')" title="Обновить модели провайдера">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
                 <button class="add-model-btn" onclick="modelsPage.openAddModelModal('${provider}')" title="Добавить новую модель">+</button>
                 <div class="provider-stats">${models.length} модел${this.plural(models.length)}</div>
             </div>
-            <div class="models-grid">
+            <div class="models-grid provider-models-container">
                 ${models.map(m => this.createModelCard(m, provider)).join('')}
             </div>
         `;
@@ -238,6 +245,9 @@ class ModelsPage {
                         <button class="test-button about-button" onclick="modelsPage.aboutModel('${this.escapeForAttribute(model.id)}', this)">
                             <i class="fas fa-info-circle"></i> About
                         </button>
+                        ${model.provider_info ? `<button class="test-button provider-info-button" onclick="modelsPage.showProviderInfo('${this.escapeForAttribute(model.id)}')" title="Информация от провайдера">
+                            <i class="fas fa-database"></i> Provider Info
+                        </button>` : ''}
                     </div>
                 </div>
             </div>
@@ -579,6 +589,117 @@ class ModelsPage {
         }
     }
 
+
+    // === ПОКАЗ ИНФОРМАЦИИ ОТ ПРОВАЙДЕРА ===
+    showProviderInfo(modelId) {
+        const model = this.allModels.find(m => m.id === modelId);
+        if (!model || !model.provider_info) {
+            alert('Информация от провайдера недоступна для этой модели');
+            return;
+        }
+
+        // Используем существующую модалку или создаем новую
+        let modal = document.getElementById('testResultModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'testResultModal';
+            modal.style.cssText = `
+                display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8);
+                z-index:10000; justify-content:center; align-items:center;
+            `;
+            modal.onclick = (e) => {
+                if (e.target === modal) {
+                    modal.style.display = 'none';
+                }
+            };
+            modal.innerHTML = `
+                <div onclick="event.stopPropagation()" style="background:#222; color:#eee; padding:20px; border-radius:12px; max-width:90%; width:700px; max-height:90%; overflow:auto; position:relative">
+                    <h2 id="testModalTitle" style="margin-top:0; display:flex; justify-content:space-between; align-items:center">
+                        Информация от провайдера
+                        <span onclick="document.getElementById('testResultModal').style.display='none'" style="cursor:pointer; font-size:1.5em">×</span>
+                    </h2>
+                    <div id="testModalContent"></div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        const titleEl = document.getElementById('testModalTitle');
+        if (titleEl) {
+            titleEl.innerHTML = `Информация от провайдера: ${this.escapeHtml(model.visible_name || model.name)}<span onclick="document.getElementById('testResultModal').style.display='none'" style="cursor:pointer; font-size:1.5em">×</span>`;
+        }
+
+        document.getElementById('testModalContent').innerHTML = `
+            <pre style="background:#000; padding:15px; border-radius:8px; overflow-x:auto; margin:15px 0; border:1px solid #9c27b0; white-space:pre-wrap; word-wrap:break-word; font-size:12px">${this.escapeHtml(JSON.stringify(model.provider_info, null, 2))}</pre>
+        `;
+
+        modal.style.display = 'flex';
+    }
+
+    // === СВОРАЧИВАНИЕ/РАЗВОРАЧИВАНИЕ РАЗДЕЛА ПРОВАЙДЕРА ===
+    toggleProviderSection(provider) {
+        const section = document.querySelector(`.provider-section[data-provider="${provider}"]`);
+        if (!section) return;
+
+        const container = section.querySelector('.provider-models-container');
+        const toggleBtn = section.querySelector('.provider-toggle i');
+        
+        if (container.style.display === 'none') {
+            container.style.display = '';
+            toggleBtn.className = 'fas fa-chevron-down';
+            section.classList.remove('collapsed');
+        } else {
+            container.style.display = 'none';
+            toggleBtn.className = 'fas fa-chevron-right';
+            section.classList.add('collapsed');
+        }
+    }
+
+    // === ОБНОВЛЕНИЕ МОДЕЛЕЙ ПРОВАЙДЕРА ===
+    async refreshProviderModels(provider) {
+        const section = document.querySelector(`.provider-section[data-provider="${provider}"]`);
+        const btn = section ? section.querySelector('.refresh-provider-btn') : null;
+        
+        const originalHtml = btn ? btn.innerHTML : '';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        }
+
+        try {
+            let endpoint = '';
+            if (provider === 'groq') {
+                endpoint = '/api/refresh-groq-models';
+            } else if (provider === 'openroute') {
+                endpoint = '/api/refresh-openrouter-models';
+            } else if (provider === 'direct') {
+                endpoint = '/api/refresh-direct-models';
+            } else {
+                alert(`Обновление для провайдера ${provider} не поддерживается`);
+                return;
+            }
+
+            const res = await fetch(endpoint, { method: 'POST' });
+            const data = await res.json();
+
+            if (data.success) {
+                // Перезагружаем модели
+                await this.loadModels();
+                this.filterModels(document.getElementById('searchInput').value);
+                alert(`Модели провайдера ${provider} успешно обновлены`);
+            } else {
+                alert(`Ошибка обновления: ${data.error || 'Неизвестная ошибка'}`);
+            }
+        } catch (err) {
+            console.error('Ошибка обновления моделей:', err);
+            alert('Не удалось обновить модели: ' + err.message);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
+        }
+    }
 
     showError(msg) {
         document.getElementById('errorMessage').style.display = 'block';
