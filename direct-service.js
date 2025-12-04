@@ -21,9 +21,13 @@ class DirectService {
                 model,
                 messages,
                 temperature,
-                max_tokens: maxTokens,
-                stream
+                max_tokens: maxTokens
             };
+            
+            // Добавляем stream только если true (некоторые API не любят stream: false явно)
+            if (stream) {
+                payload.stream = true;
+            }
 
             // Специфика Z.AI: добавляем "thinking" если нужно (опционально, включи по флагу)
             if (process.env.ZAI_THINKING_ENABLED === 'true') {

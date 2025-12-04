@@ -1,5 +1,60 @@
 # Прогресс разработки Kosmos Model Gateway
 
+## 2025-12-04: Кнопка CURL и унификация тестирования моделей
+
+### Суть изменений
+
+Добавлена кнопка **CURL** для тестирования моделей через OpenAI-совместимый API (`/v1/chat/completions`). Унифицирована архитектура: теперь Test и CURL используют одинаковые пути к провайдерам.
+
+### Изменения
+
+**1. Новая кнопка CURL в UI**
+- Расположена между кнопками Test и About
+- Тестирует модель через `/v1/chat/completions` эндпоинт
+- Показывает результат в модальном окне
+- Генерирует готовую curl команду для копирования
+
+**2. Унификация DirectService**
+- `/api/test-model` теперь использует `DirectService` вместо прямого axios
+- Оба пути (Test и CURL) отправляют идентичные запросы к провайдерам
+- Это гарантирует консистентное поведение
+
+**3. System prompt больше не добавляется автоматически**
+- Ранее `/v1/chat/completions` всегда добавлял `"You are a helpful assistant."` даже если клиент не передавал system
+- Теперь system prompt добавляется **только если явно передан в запросе**
+- Это важно для моделей, которые не поддерживают system role
+
+### Изменения в файлах
+
+**`public/models.js`**
+- Новая кнопка CURL в карточке модели
+- Метод `curlTest()` — тест через OpenAI API
+- Метод `showCurlModal()` — отображение результата с curl командой
+
+**`server.js`**
+- `/api/test-model` использует `DirectService` для direct провайдера
+- `/v1/chat/completions` не добавляет дефолтный system prompt
+- Флаг `hasExplicitSystemPrompt` для отслеживания явного system message
+
+**`direct-service.js`**
+- Параметр `stream` добавляется только если `true` (некоторые API не любят `stream: false` явно)
+
+### Архитектура до и после
+
+**Было:**
+```
+Test (/api/test-model) → прямой axios запрос (без system, без temperature)
+CURL (/v1/chat/completions) → DirectService (с system, с temperature)
+```
+
+**Стало:**
+```
+Test (/api/test-model) → DirectService (унифицировано)
+CURL (/v1/chat/completions) → DirectService (унифицировано)
+```
+
+---
+
 ## 2025-12-03: Абсолютный приоритет `user_type`
 
 ### Суть изменений

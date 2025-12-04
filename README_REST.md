@@ -88,6 +88,11 @@ curl -X POST http://localhost:3002/api/send-request ^
 - `max_tokens` — максимум токенов в ответе (по умолчанию 1024)
 - `stream` — потоковый режим SSE (по умолчанию `false`)
 
+**Важно про system prompt:**
+- System message добавляется **только если явно передан** в `messages`
+- Если system не передан — запрос идёт к провайдеру без system role
+- Это важно для моделей, которые не поддерживают system role (например, некоторые Together модели)
+
 ### Streaming (SSE)
 
 При `stream: true` ответ приходит в формате Server-Sent Events:
@@ -267,6 +272,15 @@ curl -X POST http://localhost:3002/api/send-request ^
 Тело: `{ modelId }`.
 Ответ: `{ success, result: { success, response_time_ms, sample_response, error_message, timestamp } }`.
 Результат сохраняется в поле `last_test` модели.
+
+**UI кнопки тестирования:**
+| Кнопка | Эндпоинт | Описание |
+|--------|----------|----------|
+| **Test** | `/api/test-model` | Прямой тест через провайдера |
+| **CURL** | `/v1/chat/completions` | Тест через OpenAI-совместимый API |
+| **About** | `/api/about-model` | Самоописание модели |
+
+Кнопка CURL также показывает готовую curl команду для копирования.
 
 ### POST `/api/about-model`
 

@@ -1,0 +1,100 @@
+﻿{
+  "name": "AI Analytics Interface → OpenAI Compatible API",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "1",
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://usa:3002/v1/chat/completions",
+        "method": "POST",
+        "responseFormat": "json",
+        "jsonParameters": true,
+        "options": {
+          "bodyContentType": "json",
+          "timeout": 300000
+        },
+        "bodyParametersJson": {
+          "model": "FAST",
+          "messages": [
+            {
+              "role": "system",
+              "content": "You are a helpful assistant."
+            },
+            {
+              "role": "user",
+              "content": "What is the capital of France? Answer in one word."
+            }
+          ],
+          "temperature": 0.7,
+          "max_tokens": 50,
+          "stream": false
+        },
+        "headerParametersJson": [
+          {
+            "name": "Content-Type",
+            "value": "application/json"
+          }
+        ]
+      },
+      "id": "2",
+      "name": "Call AI (OpenAI Compatible)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "return [\n  {\n    json: {\n      answer: items[0].json.choices[0].message.content.trim(),\n      model: items[0].json.model,\n      usage: items[0].json.usage,\n      fullResponse: items[0].json\n    }\n  }\n];"
+      },
+      "id": "3",
+      "name": "Extract Answer",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        680,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Call AI (OpenAI Compatible)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call AI (OpenAI Compatible)": {
+      "main": [
+        [
+          {
+            "node": "Extract Answer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "tags": []
+}

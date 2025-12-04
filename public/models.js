@@ -242,6 +242,9 @@ class ModelsPage {
                         <button class="test-button" onclick="modelsPage.testModel('${this.escapeForAttribute(model.id)}', this)">
                             <i class="fas fa-play"></i> Test
                         </button>
+                        <button class="test-button curl-button" onclick="modelsPage.curlTest('${this.escapeForAttribute(model.id)}', '${this.escapeForAttribute(model.name)}', this)">
+                            <i class="fas fa-terminal"></i> CURL
+                        </button>
                         <button class="test-button about-button" onclick="modelsPage.aboutModel('${this.escapeForAttribute(model.id)}', this)">
                             <i class="fas fa-info-circle"></i> About
                         </button>
@@ -350,6 +353,128 @@ class ModelsPage {
             button.disabled = false;
             button.innerHTML = '<i class="fas fa-play"></i> Test';
         }
+    }
+
+    // === CURL ТЕСТ (OpenAI-compat версия) ===
+    async curlTest(modelId, modelName, button) {
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> CURL...';
+
+        try {
+            // Берем текущий хост
+            const baseUrl = window.location.origin;
+            
+            // Выполняем тест через OpenAI-совместимый эндпоинт
+            // Без Authorization хедера - если OPENAI_COMPAT_API_KEY не задан, он не нужен
+            const startTime = Date.now();
+            const res = await fetch(`${baseUrl}/v1/chat/completions`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    model: modelName,
+                    messages: [{ role: "user", content: "Кто ты? Ответь в одном предложении на русском." }],
+                    max_tokens: 120,
+                    temperature: 0,
+                    stream: false
+                })
+            });
+            
+            const responseTime = Date.now() - startTime;
+            const data = await res.json();
+            
+            // Формируем результат
+            const success = res.ok && data.choices?.[0]?.message?.content;
+            let content;
+            if (success) {
+                content = data.choices[0].message.content;
+            } else if (data.error?.message) {
+                content = data.error.message;
+            } else if (data.error) {
+                content = JSON.stringify(data.error, null, 2);
+            } else {
+                content = JSON.stringify(data, null, 2);
+            }
+            
+            // Генерируем curl команду для показа (с опциональной авторизацией)
+            const curlCommand = `curl -X POST "${baseUrl}/v1/chat/completions" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "model": "${modelName}",
+    "messages": [{"role": "user", "content": "Test message"}],
+    "stream": false
+  }'
+
+# Если включена авторизация (OPENAI_COMPAT_API_KEY), добавьте:
+# -H "Authorization: Bearer YOUR_API_KEY"`;
+            
+            // Показываем результат в модалке
+            this.showCurlModal(modelName, success, content, responseTime, curlCommand, res.status);
+            
+        } catch (err) {
+            alert('Ошибка CURL теста: ' + err.message);
+            console.error(err);
+        } finally {
+            button.disabled = false;
+            button.innerHTML = '<i class="fas fa-terminal"></i> CURL';
+        }
+    }
+
+    // Модальное окно для CURL результата
+    showCurlModal(modelName, success, content, responseTime, curlCommand, httpStatus = 200) {
+        let modal = document.getElementById('testResultModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'testResultModal';
+            modal.style.cssText = `
+                display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8);
+                z-index:10000; justify-content:center; align-items:center;
+            `;
+            modal.onclick = (e) => { if (e.target === modal) modal.style.display = 'none'; };
+            modal.innerHTML = `
+                <div onclick="event.stopPropagation()" style="background:#222; color:#eee; padding:20px; border-radius:12px; max-width:90%; width:700px; max-height:90%; overflow:auto; position:relative">
+                    <h2 id="testModalTitle" style="margin-top:0; display:flex; justify-content:space-between; align-items:center">
+                        CURL Test
+                        <span onclick="document.getElementById('testResultModal').style.display='none'" style="cursor:pointer; font-size:1.5em">×</span>
+                    </h2>
+                    <div id="testModalContent"></div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        const titleEl = document.getElementById('testModalTitle');
+        if (titleEl) {
+            titleEl.innerHTML = `CURL Test: ${this.escapeHtml(modelName)}<span onclick="document.getElementById('testResultModal').style.display='none'" style="cursor:pointer; font-size:1.5em">×</span>`;
+        }
+
+        const statusHtml = success 
+            ? '<span style="color:#0f0">✅ OpenAI-совместимый API работает</span>'
+            : `<span style="color:#f33">❌ HTTP ${httpStatus}</span>`;
+        
+        const responseHtml = success
+            ? `<pre style="background:#000; padding:15px; border-radius:8px; overflow-x:auto; margin:15px 0; border:1px solid #0f0; white-space:pre-wrap; word-wrap:break-word">${this.escapeHtml(content)}</pre>`
+            : `<pre style="background:#300; padding:15px; border-radius:8px; overflow-x:auto; margin:15px 0; border:1px solid #f33; color:#fcc; white-space:pre-wrap; word-wrap:break-word">${this.escapeHtml(content)}</pre>`;
+
+        // Экранируем curlCommand для использования в onclick
+        const escapedCurlCommand = curlCommand.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
+
+        document.getElementById('testModalContent').innerHTML = `
+            <p><strong>Статус:</strong> ${statusHtml}</p>
+            <p><strong>Время ответа:</strong> ${responseTime} мс</p>
+            <hr style="border-color:#444">
+            <h4>Ответ:</h4>
+            ${responseHtml}
+            <hr style="border-color:#444">
+            <h4>CURL команда для копирования:</h4>
+            <pre style="background:#111; padding:15px; border-radius:8px; overflow-x:auto; margin:15px 0; border:1px solid #666; white-space:pre-wrap; word-wrap:break-word; font-size:12px">${this.escapeHtml(curlCommand)}</pre>
+            <button onclick="navigator.clipboard.writeText('${escapedCurlCommand}'); this.innerHTML='✅ Скопировано!'" style="background:#333; color:#eee; border:1px solid #666; padding:8px 16px; border-radius:4px; cursor:pointer">
+                <i class="fas fa-copy"></i> Копировать CURL
+            </button>
+        `;
+
+        modal.style.display = 'flex';
     }
 
     // === ABOUT МОДЕЛИ — ПОДРОБНАЯ ИНФОРМАЦИЯ ===

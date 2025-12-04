@@ -79,7 +79,9 @@
 
 ## OpenAI-совместимый API
 
-Сервер поддерживает стандартный OpenAI Chat Completions API:
+Сервер поддерживает стандартный OpenAI Chat Completions API.
+
+**Важно:** System prompt добавляется только если явно передан в `messages`. Это обеспечивает совместимость с моделями, которые не поддерживают system role.
 
 ```python
 from openai import OpenAI

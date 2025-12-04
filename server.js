@@ -1831,6 +1831,7 @@ app.post('/api/test-model', async (req, res) => {
         }
       );
     } else if (model.provider === 'direct') {
+      // Используем DirectService для унификации с /v1/chat/completions
       let apiKey = model.api_key;
       if (typeof apiKey === 'string' && apiKey.startsWith('env:')) {
         const envVar = apiKey.slice(4);
@@ -1839,7 +1840,6 @@ app.post('/api/test-model', async (req, res) => {
           throw new Error(`Переменная окружения ${envVar} не найдена для теста модели`);
         }
       } else {
-        // Fallback for older config or direct key
         apiKey = process.env['ZAI_API_KEY'] || apiKey;
       }
       
@@ -1848,17 +1848,21 @@ app.post('/api/test-model', async (req, res) => {
       }
 
       const baseUrl = model.base_url || "https://api.z.ai/api/paas/v4";
-      // Убираем некорректную замену. API ожидает полное имя модели.
-      const modelName = model.name; 
+      const directService = new DirectService(apiKey, baseUrl);
       
-      apiRes = await axios.post(
-        `${baseUrl}/chat/completions`,
-        {
-          model: modelName,
-          messages: [{ role: "user", content: "Кто ты? Ответь в одном предложении на русском." }]
-        },
-        { headers: { Authorization: `Bearer ${apiKey}` }, timeout: 60000 } // Увеличено до 60 секунд
-      );
+      // Унифицированный вызов через DirectService (как в /v1/chat/completions)
+      const directResponse = await directService.sendRequest({
+        model: model.name,
+        messages: [{ role: "user", content: "Кто ты? Ответь в одном предложении на русском." }],
+        temperature: 0.7,  // дефолтный
+        maxTokens: 120
+      });
+      
+      apiRes = {
+        data: {
+          choices: [{ message: { content: directResponse.content } }]
+        }
+      };
     } else if (model.provider === 'gigachat') {
       if (!gigachatService) {
         throw new Error('GigaChat сервис не инициализирован. Добавьте GIGACHAT_AUTH_DATA в .env');
@@ -2687,18 +2691,21 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
     }
     
     // Извлекаем system prompt и формируем inputText из истории
-    let systemPrompt = 'You are a helpful assistant.';
+    // ВАЖНО: не добавляем дефолтный system prompt - некоторые модели его не поддерживают
+    let systemPrompt = null;  // null = не был передан
+    let hasExplicitSystemPrompt = false;
     let conversationHistory = [];
     
     for (const msg of messages) {
       if (msg.role === 'system') {
         systemPrompt = msg.content;
+        hasExplicitSystemPrompt = true;
       } else if (msg.role === 'user' || msg.role === 'assistant') {
         conversationHistory.push(msg);
       }
     }
     
-    console.log('[SERVER] System prompt length:', systemPrompt.length);
+    console.log('[SERVER] System prompt length:', systemPrompt?.length || 0, hasExplicitSystemPrompt ? '(explicit)' : '(none)');
     console.log('[SERVER] Conversation history length:', conversationHistory.length);
     
     // Формируем inputText: склеиваем историю, последний user message - основной вопрос
@@ -2781,10 +2788,12 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
     }
     
     // Формируем messages для провайдеров
-    const providerMessages = [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: inputText }
-    ];
+    // Добавляем system только если был явно передан (некоторые модели не поддерживают system role)
+    const providerMessages = [];
+    if (hasExplicitSystemPrompt && systemPrompt) {
+      providerMessages.push({ role: 'system', content: systemPrompt });
+    }
+    providerMessages.push({ role: 'user', content: inputText });
     
     const finalTemperature = temperature !== undefined ? temperature : 0.7;
     const finalMaxTokens = max_tokens !== undefined ? max_tokens : 32768 ;
@@ -3345,7 +3354,7 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
           console.log('[SERVER] Попытка сохранить ошибку (внешний catch) в историю...');
           console.log('[SERVER] resolvedModel:', typeof resolvedModel !== 'undefined' ? resolvedModel : 'undefined');
           console.log('[SERVER] selectedProvider:', typeof selectedProvider !== 'undefined' ? selectedProvider : 'undefined');
-          console.log('[SERVER] systemPrompt:', typeof systemPrompt !== 'undefined' ? systemPrompt.substring(0, 100) : 'undefined');
+          console.log('[SERVER] systemPrompt:', systemPrompt ? systemPrompt.substring(0, 100) : 'null/undefined');
           console.log('[SERVER] inputText:', typeof inputText !== 'undefined' ? inputText.substring(0, 100) : 'undefined');
           console.log('[SERVER] streamErrorMessage:', streamErrorMessage);
           
