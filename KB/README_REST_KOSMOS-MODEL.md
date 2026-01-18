@@ -1,11 +1,10 @@
-# AI Analytics Interface REST API
+# Kosmos-model REST API
 
-Полноценная документация по REST-интерфейсу приложения AI Analytics Interface. Описывает все маршруты, поддерживаемые провайдерами (GROQ, OpenRouter, Direct, GigaChat), работу с промптами, историей ответов, RAG и файловыми операциями.
+Полноценная документация по REST-интерфейсу приложения Kosmos-model. Описывает все маршруты, поддерживаемые провайдерами (GROQ, OpenRouter, Direct, GigaChat, Togeter), работу с промптами, историей ответов, RAG и файловыми операциями.
 
 ## Базовая информация
 
 - Базовый URL (по умолчанию): `http://localhost:3002`
-- Альтернативный порт (если переопределён): `http://localhost:3000`
 - Формат данных: `application/json` для всех запросов и ответов
 - Аутентификация: на уровне внешних API (OpenRouter/GROQ). Сам REST-интерфейс не требует токена, но ожидает корректные ключи в `.env`.
 - **OpenAI-совместимый API**: `/v1/chat/completions` и `/v1/models` (опциональная Bearer Token аутентификация)
@@ -15,33 +14,8 @@
 ### Шаги
 1. Поднимите сервер (`npm start`), убедитесь что `.env` содержит нужные ключи (`OPENROUTER_API_KEY`, `GROQ_API_KEY`, `GIGACHAT_AUTH_DATA` и др.).
 2. Выберите профиль модели (`CHEAP`, `FAST`, `RICH`) или конкретное имя из `/api/available-models`.
-3. Выполните POST-запрос на `/api/send-request` с JSON-телом.
-
-### Пример запроса
-```powershell
-curl -X POST http://localhost:3002/api/send-request ^
-  -H "Content-Type: application/json" ^
-  -d "{\"model\":\"CHEAP\",\"prompt\":\"Ты помощник\",\"inputText\":\"Привет\"}"
-```
-
-### Пример ответа
-```json
-{
-  "success": true,
-  "content": "Привет! Чем могу помочь?",
-  "model": "google/gemini-2.0-flash-exp:free",
-  "provider": "openroute",
-  "usage": {
-    "prompt_tokens": 12,
-    "completion_tokens": 18,
-    "total_tokens": 30
-  },
-  "rag": null
-}
-```
 
 ## OpenAI-совместимый API
-
 Сервер поддерживает стандартный OpenAI Chat Completions API, что позволяет использовать его с OpenAI SDK, LangChain, LlamaIndex и другими клиентами.
 
 ### POST `/v1/chat/completions`
