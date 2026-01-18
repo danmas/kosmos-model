@@ -1,6 +1,7 @@
 // rag.js - Сервис для взаимодействия с langchain-pg API
 
 const axios = require('axios');
+const logger = require('./logger');
 
 class LangchainPgService {
   constructor(baseUrl = 'http://localhost:3005') {
@@ -24,7 +25,7 @@ class LangchainPgService {
 
       return response.data;
     } catch (error) {
-      console.error('Ошибка при запросе к langchain-pg:', error);
+      logger.error('Ошибка при запросе к langchain-pg:', error);
       throw error;
     }
   }
@@ -38,7 +39,7 @@ class LangchainPgService {
       const response = await axios.get(`${this.baseUrl}/context-codes`);
       return response.data;
     } catch (error) {
-      console.error('Ошибка при получении контекстных кодов:', error);
+      logger.error('Ошибка при получении контекстных кодов:', error);
       throw error;
     }
   }
@@ -52,7 +53,7 @@ class LangchainPgService {
       const response = await axios.get(`${this.baseUrl}/documents`);
       return response.data;
     } catch (error) {
-      console.error('Ошибка при получении списка документов:', error);
+      logger.error('Ошибка при получении списка документов:', error);
       throw error;
     }
   }

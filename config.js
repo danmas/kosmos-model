@@ -1,6 +1,7 @@
 // config.js
 const fs = require('fs');
 const path = require('path');
+const logger = require('./logger');
 
 function loadModelsFromFile(filePath) {
     try {
@@ -15,7 +16,7 @@ function loadModelsFromFile(filePath) {
             return [];
         }
         // Для других ошибок (например, синтаксическая ошибка JSON) выводим предупреждение
-        console.warn(`⚠️ Предупреждение при загрузке моделей из файла ${filePath}:`, error.message);
+        logger.warn(`⚠️ Предупреждение при загрузке моделей из файла ${filePath}:`, error.message);
         return [];
     }
 }

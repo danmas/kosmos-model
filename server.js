@@ -5,6 +5,9 @@ const fsPromises = require('fs').promises;
 // Подключаем dotenv для загрузки переменных окружения из .env файла
 require('dotenv').config();
 
+// Подключаем логгер
+const logger = require('./logger');
+
 const axios = require('axios');
 //const config = require('./config');
 const { createConfig } = require('./config');
@@ -29,17 +32,17 @@ const DATA_DIR = path.join(__dirname, 'data');
 try {
     if (!fs.existsSync(DATA_DIR)) {
         fs.mkdirSync(DATA_DIR, { recursive: true });
-        console.log(`Создана директория для данных: ${DATA_DIR}`);
+        logger.info(`Создана директория для данных: ${DATA_DIR}`);
     }
 } catch (err) {
-    console.error(`Ошибка при создании директории ${DATA_DIR}:`, err);
+    logger.error(`Ошибка при создании директории ${DATA_DIR}:`, err);
 }
 async function loadModels() {
   try {
     const data = await fsPromises.readFile(MODELS_FILE, 'utf8');
     return JSON.parse(data);
   } catch (err) {
-    console.error('Ошибка чтения available-models.json, создаём пустой');
+    logger.error('Ошибка чтения available-models.json, создаём пустой');
     return [];
   }
 }
@@ -56,10 +59,10 @@ const OUTPUT_DOCS_DIR = process.env.OUTPUT_DOCS_DIR || path.join(__dirname, 'out
 try {
     if (!fs.existsSync(OUTPUT_DOCS_DIR)) {
         fs.mkdirSync(OUTPUT_DOCS_DIR, { recursive: true });
-        console.log(`Создана директория для сохранения файлов: ${OUTPUT_DOCS_DIR}`);
+        logger.info(`Создана директория для сохранения файлов: ${OUTPUT_DOCS_DIR}`);
     }
 } catch (err) {
-    console.error(`Ошибка при создании директории ${OUTPUT_DOCS_DIR}:`, err);
+    logger.error(`Ошибка при создании директории ${OUTPUT_DOCS_DIR}:`, err);
 }
 
 const app = express();
@@ -96,7 +99,7 @@ app.get('/main', (req, res) => {
 app.get('/api/markdown_files', (req, res) => {
     fs.readdir(__dirname, (err, files) => {
         if (err) {
-            console.error('Error reading directory:', err);
+            logger.error('Error reading directory:', err);
             return res.status(500).json({ error: 'Could not list files' });
         }
         const mdFiles = files.filter(file => file.endsWith('.md'));
@@ -125,7 +128,7 @@ app.get('/get_md_content', (req, res) => {
 
     fs.readFile(filePath, 'utf8', (err, data) => {
         if (err) {
-            console.error(`Error reading file: ${filename}`, err);
+            logger.error(`Error reading file: ${filename}`, err);
             return res.status(404).json({ error: 'File not found' });
         }
         res.json({ content: data });
@@ -134,7 +137,7 @@ app.get('/get_md_content', (req, res) => {
 
 
 // Вывод загруженных переменных окружения для отладки
-console.log('Loaded environment variables:', {
+logger.info('Loaded environment variables:', {
     N8N_WEBHOOK_URL: process.env.N8N_WEBHOOK_URL,
     N8N_WEBHOOK_TEST_URL: process.env.N8N_WEBHOOK_TEST_URL,
     PORT: process.env.PORT,
@@ -148,34 +151,34 @@ console.log('Loaded environment variables:', {
 const config = createConfig(process.env);
 
 // Вывод настроек моделей по умолчанию при старте
-console.log('\n═══════════════════════════════════════════════════════');
-console.log('🤖 НАСТРОЙКИ МОДЕЛЕЙ ПО УМОЛЧАНИЮ:');
-console.log('═══════════════════════════════════════════════════════');
-console.log(`💰 CHEAP (дешёвая):
+logger.info('\n═══════════════════════════════════════════════════════');
+logger.info('🤖 НАСТРОЙКИ МОДЕЛЕЙ ПО УМОЛЧАНИЮ:');
+logger.info('═══════════════════════════════════════════════════════');
+logger.info(`💰 CHEAP (дешёвая):
    Модель: ${config.defaultModels.cheap.model}
    Провайдер: ${config.defaultModels.cheap.provider}
    Описание: ${config.defaultModels.cheap.description}`);
-console.log(`⚡ FAST (быстрая):
+logger.info(`⚡ FAST (быстрая):
    Модель: ${config.defaultModels.fast.model}
    Провайдер: ${config.defaultModels.fast.provider}
    Описание: ${config.defaultModels.fast.description}`);
-console.log(`💎 RICH (мощная):
+logger.info(`💎 RICH (мощная):
    Модель: ${config.defaultModels.rich.model}
    Провайдер: ${config.defaultModels.rich.provider}
    Описание: ${config.defaultModels.rich.description}`);
-console.log('═══════════════════════════════════════════════════════\n');
+logger.info('═══════════════════════════════════════════════════════\n');
 
 // Инициализируем GROQ сервис если ключ доступен
 let groqService = null;
 if (config.groqKey) {
     try {
         groqService = new GroqService(config.groqKey);
-        console.log('✅ GROQ сервис инициализирован');
+        logger.info('✅ GROQ сервис инициализирован');
     } catch (error) {
-        console.warn('⚠️ GROQ сервис не инициализирован:', error.message);
+        logger.warn('⚠️ GROQ сервис не инициализирован:', error.message);
     }
 } else {
-    console.warn('⚠️ GROQ_API_KEY не настроен');
+    logger.warn('⚠️ GROQ_API_KEY не настроен');
 }
 
 // Инициализируем GigaChat сервис если данные авторизации доступны
@@ -183,23 +186,23 @@ let gigachatService = null;
 if (process.env.GIGACHAT_AUTH_DATA) {
     try {
         gigachatService = new GigaChatService(process.env.GIGACHAT_AUTH_DATA);
-        console.log('✅ GigaChat сервис инициализирован');
+        logger.info('✅ GigaChat сервис инициализирован');
     } catch (error) {
-        console.warn('⚠️ GigaChat сервис не инициализирован:', error.message);
+        logger.warn('⚠️ GigaChat сервис не инициализирован:', error.message);
     }
 } else {
-    console.warn('⚠️ GIGACHAT_AUTH_DATA не настроен');
+    logger.warn('⚠️ GIGACHAT_AUTH_DATA не настроен');
 }
 
 // Добавим проверку загруженных переменных
-console.log('Loaded N8N_WEBHOOK_URL:', process.env.N8N_WEBHOOK_URL);
-console.log('Loaded config N8N_WEBHOOK_URL:', config.n8nWebhookUrl);
-console.log('Loaded PORT:', process.env.PORT);
-console.log('Loaded LOG_LEVEL:', process.env.LOG_LEVEL);
-console.log('openRouterKey:', config.openRouterKey ? '***' : null); // Маскируем ключ для безопасности
+logger.info('Loaded N8N_WEBHOOK_URL:', process.env.N8N_WEBHOOK_URL);
+logger.info('Loaded config N8N_WEBHOOK_URL:', config.n8nWebhookUrl);
+logger.info('Loaded PORT:', process.env.PORT);
+logger.info('Loaded LOG_LEVEL:', process.env.LOG_LEVEL);
+logger.info('openRouterKey:', config.openRouterKey ? '***' : null); // Маскируем ключ для безопасности
 
 // После пересоздания конфигурации
-console.log('Final configuration:', {
+logger.info('Final configuration:', {
     n8nWebhookUrl: config.n8nWebhookUrl,
     port: config.port,
     logging: config.logging,
@@ -251,7 +254,7 @@ async function readResponses() {
         const data = await fsPromises.readFile(RESPONSES_FILE, 'utf8');
         return JSON.parse(data);
     } catch (error) {
-        console.error('Error reading responses:', error);
+        logger.error('Error reading responses:', error);
         return { responses: [] };
     }
 }
@@ -396,7 +399,7 @@ app.get('/api/responses', async (req, res) => {
             hasMore: offsetInt + limitInt < totalItems
         });
     } catch (error) {
-        console.error('Error reading responses:', error);
+        logger.error('Error reading responses:', error);
         res.status(500).json({ error: 'Failed to read responses' });
     }
 });
@@ -464,14 +467,14 @@ async function initializePromptsFile() {
     try {
         await fsPromises.access(PROMPTS_FILE);
     } catch {
-        console.log('Файл prompts.json не найден.');
+        logger.info('Файл prompts.json не найден.');
         // Пытаемся скопировать из дефолтного файла
         try {
             await fsPromises.access(PROMPTS_DEFAULTS_FILE);
-            console.log('Создаем prompts.json из шаблона prompts.defaults.json');
+            logger.info('Создаем prompts.json из шаблона prompts.defaults.json');
             await fsPromises.copyFile(PROMPTS_DEFAULTS_FILE, PROMPTS_FILE);
         } catch (err) {
-            console.warn('Файл prompts.defaults.json не найден, создаем пустой список промптов.');
+            logger.warn('Файл prompts.defaults.json не найден, создаем пустой список промптов.');
             await fsPromises.writeFile(PROMPTS_FILE, JSON.stringify({ prompts: [] }));
         }
     }
@@ -483,7 +486,7 @@ async function readPrompts() {
         const data = await fsPromises.readFile(PROMPTS_FILE, 'utf8');
         return JSON.parse(data);
     } catch (error) {
-        console.error('Error reading prompts:', error);
+        logger.error('Error reading prompts:', error);
         return { prompts: [] };
     }
 }
@@ -588,7 +591,7 @@ async function resolveModelName(modelInput, providerInput) {
   
   // Если модель не указана, используем CHEAP по умолчанию
   if (!modelInput || modelInput.trim() === '') {
-    console.log('⚙️ Модель не указана, используется CHEAP по умолчанию');
+    logger.info('⚙️ Модель не указана, используется CHEAP по умолчанию');
     // Сначала ищем CHEAP в user_type
     try {
       const allModels = await loadModels();
@@ -611,7 +614,7 @@ async function resolveModelName(modelInput, providerInput) {
     const modelByUserType = allModels.find(m => m.user_type && m.user_type.toUpperCase() === modelUpper && m.enabled);
     
     if (modelByUserType) {
-      console.log(`⚙️ user_type "${modelUpper}" найден → модель: ${modelByUserType.name} (${modelByUserType.provider})`);
+      logger.info(`⚙️ user_type "${modelUpper}" найден → модель: ${modelByUserType.name} (${modelByUserType.provider})`);
       // user_type имеет АБСОЛЮТНЫЙ приоритет - игнорируем providerInput
       return { 
         model: modelByUserType.name, 
@@ -623,7 +626,7 @@ async function resolveModelName(modelInput, providerInput) {
       };
     }
   } catch (err) {
-    console.error('⚠️ Ошибка при поиске модели по user_type:', err.message);
+    logger.error('⚠️ Ошибка при поиске модели по user_type:', err.message);
   }
   
   // 2. FALLBACK: Базовые типы из config.defaultModels (если user_type не назначен в базе)
@@ -631,7 +634,7 @@ async function resolveModelName(modelInput, providerInput) {
     const modelType = modelUpper.toLowerCase();
     resolvedModel = config.defaultModels[modelType].model;
     resolvedProvider = providerInput || config.defaultModels[modelType].provider;
-    console.log(`⚙️ Базовый тип "${modelUpper}" (fallback config) → модель: ${resolvedModel} (${resolvedProvider})`);
+    logger.info(`⚙️ Базовый тип "${modelUpper}" (fallback config) → модель: ${resolvedModel} (${resolvedProvider})`);
     return { model: resolvedModel, provider: resolvedProvider, wasResolved: true, resolvedType: modelType };
   }
   
@@ -645,9 +648,32 @@ async function getModelByName(modelName) {
     const models = await loadModels();
     return models.find(m => m.name === modelName || m.id === modelName);
   } catch (error) {
-    console.error('Ошибка при поиске модели:', error);
+    logger.error('Ошибка при поиске модели:', error);
     return null;
   }
+}
+
+// Функция для получения безопасного maxTokens с учётом context модели
+// Если context известен — используем его минус запас (20%), но не меньше 1024
+// Если неизвестен — fallback на DEFAULT_MAX_TOKENS
+const DEFAULT_MAX_TOKENS = 4096;
+
+function getSafeMaxTokens(requestedMaxTokens, modelContext) {
+  // Если context модели известен, ограничиваем
+  if (modelContext && modelContext > 0) {
+    // Резервируем 20% на input токены, минимум 1024 output
+    const safeLimit = Math.max(1024, Math.floor(modelContext * 0.8));
+    
+    if (requestedMaxTokens !== undefined) {
+      // Пользователь запросил конкретное значение — ограничиваем до safeLimit
+      return Math.min(requestedMaxTokens, safeLimit);
+    }
+    // Дефолт — либо safeLimit, либо DEFAULT_MAX_TOKENS (что меньше)
+    return Math.min(DEFAULT_MAX_TOKENS, safeLimit);
+  }
+  
+  // Context неизвестен — используем запрошенное или дефолт
+  return requestedMaxTokens !== undefined ? requestedMaxTokens : DEFAULT_MAX_TOKENS;
 }
 
 // Простая обертка для OpenRouter (для совместимости с кодом пользователя)
@@ -677,10 +703,10 @@ const openRouterService = {
 
 // Маршрут для прямой обработки запросов к AI моделям с поддержкой GROQ
 app.post('/api/send-request', async (req, res) => {
-    console.log('[SERVER] ========================================');
-    console.log('[SERVER] /api/send-request запрос получен');
-    console.log('[SERVER] Timestamp:', new Date().toISOString());
-    console.log('[SERVER] Request headers:', {
+    logger.info('[SERVER] ========================================');
+    logger.info('[SERVER] /api/send-request запрос получен');
+    logger.info('[SERVER] Timestamp:', new Date().toISOString());
+    logger.info('[SERVER] Request headers:', {
       'content-type': req.headers['content-type'],
       'user-agent': req.headers['user-agent']?.substring(0, 50) + '...'
     });
@@ -688,17 +714,17 @@ app.post('/api/send-request', async (req, res) => {
     try {
       let { model, prompt, inputText, useRag, contextCode, saveResponse = false, provider, temperature, maxTokens } = req.body;
       
-      console.log('[SERVER] Request body получен');
-      console.log('[SERVER] DEBUG SERVER: Received request with parameters:');
-      console.log('[SERVER] DEBUG SERVER: model =', model);
-      console.log('[SERVER] DEBUG SERVER: provider =', provider);
-      console.log('[SERVER] DEBUG SERVER: useRag =', useRag);
-      console.log('[SERVER] DEBUG SERVER: contextCode =', contextCode);
-      console.log('[SERVER] DEBUG SERVER: prompt length =', prompt?.length || 0);
-      console.log('[SERVER] DEBUG SERVER: inputText length =', inputText?.length || 0);
+      logger.info('[SERVER] Request body получен');
+      logger.info('[SERVER] DEBUG SERVER: Received request with parameters:');
+      logger.info('[SERVER] DEBUG SERVER: model =', model);
+      logger.info('[SERVER] DEBUG SERVER: provider =', provider);
+      logger.info('[SERVER] DEBUG SERVER: useRag =', useRag);
+      logger.info('[SERVER] DEBUG SERVER: contextCode =', contextCode);
+      logger.info('[SERVER] DEBUG SERVER: prompt length =', prompt?.length || 0);
+      logger.info('[SERVER] DEBUG SERVER: inputText length =', inputText?.length || 0);
       
       if (!prompt || !inputText) {
-        console.error('[SERVER] Ошибка валидации: prompt или inputText отсутствуют');
+        logger.error('[SERVER] Ошибка валидации: prompt или inputText отсутствуют');
         return res.status(400).json({ error: 'Поля prompt и inputText обязательны' });
       }
       
@@ -716,7 +742,7 @@ app.post('/api/send-request', async (req, res) => {
         selectedProvider = modelData?.provider || 'openroute';
       }
       
-      console.log(`📡 Используем провайдера: ${selectedProvider} для модели: ${model}`);
+      logger.info(`📡 Используем провайдера: ${selectedProvider} для модели: ${model}`);
       
       // Проверяем доступность провайдера
       if (selectedProvider === 'groq' && !groqService) {
@@ -741,7 +767,7 @@ app.post('/api/send-request', async (req, res) => {
       // Если включен RAG и сервис доступен, обогащаем запрос контекстом из RAG
       if (useRag && config.langchainPg.enabled) {
         try {
-          console.log(`Using RAG with context code: ${contextCode || 'all'}`);
+          logger.info(`Using RAG with context code: ${contextCode || 'all'}`);
           const ragResponse = await langchainPgService.askQuestion(inputText, contextCode, true);
           
           // Если есть документы, добавляем их контекст к запросу
@@ -762,16 +788,16 @@ app.post('/api/send-request', async (req, res) => {
             };
           }
           else {
-            console.log('!!! No documents found in RAG response');
+            logger.info('!!! No documents found in RAG response');
           }
     
         } catch (ragError) {
-          console.error('Error using RAG:', ragError);
+          logger.error('Error using RAG:', ragError);
           // Продолжаем без RAG в случае ошибки
         }
       }
       else {
-        console.log('!!! Without RAGs');
+        logger.info('!!! Without RAGs');
       }
 
       // Сохраняем отладочную информацию
@@ -790,28 +816,30 @@ app.post('/api/send-request', async (req, res) => {
       
       // Устанавливаем значения по умолчанию для temperature и maxTokens
       const finalTemperature = temperature !== undefined ? temperature : 0.7;
-      const finalMaxTokens = maxTokens !== undefined ? maxTokens : 32768 ;
+      // Получаем context модели для безопасного ограничения maxTokens
+      const modelContext = modelData?.context || null;
+      const finalMaxTokens = getSafeMaxTokens(maxTokens, modelContext);
       
       // Детальное логирование для отладки (особенно для direct провайдера)
       if (selectedProvider === 'direct') {
-        console.log('🔍 DEBUG DIRECT: Исходные данные запроса:');
-        console.log('  model:', model);
-        console.log('  prompt:', prompt);
-        console.log('  inputText:', inputText);
-        console.log('  provider:', selectedProvider);
-        console.log('  temperature:', temperature, '->', finalTemperature);
-        console.log('  maxTokens:', maxTokens, '->', finalMaxTokens);
-        console.log('  finalInputText (после RAG):', finalInputText);
+        logger.info('🔍 DEBUG DIRECT: Исходные данные запроса:');
+        logger.info('  model:', model);
+        logger.info('  prompt:', prompt);
+        logger.info('  inputText:', inputText);
+        logger.info('  provider:', selectedProvider);
+        logger.info('  temperature:', temperature, '->', finalTemperature);
+        logger.info('  maxTokens:', maxTokens, '->', finalMaxTokens);
+        logger.info('  finalInputText (после RAG):', finalInputText);
       }
       
       let response;
       
-      console.log('[SERVER] Готовимся отправить запрос к провайдеру:', selectedProvider);
-      console.log('[SERVER] Messages подготовлены, количество:', messages.length);
+      logger.info('[SERVER] Готовимся отправить запрос к провайдеру:', selectedProvider);
+      logger.info('[SERVER] Messages подготовлены, количество:', messages.length);
       
       // Отправляем запрос в зависимости от провайдера
       if (selectedProvider === 'groq') {
-        console.log('[SERVER] Отправка запроса в GROQ...');
+        logger.info('[SERVER] Отправка запроса в GROQ...');
         const groqResponse = await groqService.sendRequest({ 
           model, 
           messages, 
@@ -819,7 +847,7 @@ app.post('/api/send-request', async (req, res) => {
           maxTokens: finalMaxTokens 
         });
         
-        console.log('[SERVER] Ответ от GROQ получен');
+        logger.info('[SERVER] Ответ от GROQ получен');
         
         response = {
           data: {
@@ -832,17 +860,17 @@ app.post('/api/send-request', async (req, res) => {
         };
         
       } else if (selectedProvider === 'openroute') {
-        console.log('[SERVER] Отправка запроса в OpenRouter...');
+        logger.info('[SERVER] Отправка запроса в OpenRouter...');
         response = await openRouterService.sendRequest({ 
           model, 
           messages, 
           temperature: finalTemperature, 
           maxTokens: finalMaxTokens 
         });
-        console.log('[SERVER] Ответ от OpenRouter получен');
+        logger.info('[SERVER] Ответ от OpenRouter получен');
         
       } else if (selectedProvider === 'direct') {
-        console.log('[SERVER] Отправка запроса через Direct провайдер...');
+        logger.info('[SERVER] Отправка запроса через Direct провайдер...');
         // Получаем API ключ из env или из модели
         let apiKey = modelData.api_key;
         let envVar = null;
@@ -852,7 +880,7 @@ app.post('/api/send-request', async (req, res) => {
           apiKey = process.env[envVar];
           if (!apiKey) {
             const errorMsg = `Переменная окружения "${envVar}" не найдена для провайдера 'direct'. Проверьте .env файл.`;
-            console.error(`❌ ${errorMsg}`);
+            logger.error(`❌ ${errorMsg}`);
             // Логируем в файл, если есть логгер, иначе просто в консоль
             // fs.appendFileSync('error.log', `${new Date().toISOString()} - ${errorMsg}\n`); // Раскомментируй, если нужно в файл
             throw new Error(errorMsg);
@@ -861,14 +889,14 @@ app.post('/api/send-request', async (req, res) => {
           apiKey = process.env[`${selectedProvider.toUpperCase()}_API_KEY`] || apiKey;
           if (!apiKey) {
             const errorMsg = `API ключ не найден: ни в модели, ни в env как "${selectedProvider.toUpperCase()}_API_KEY".`;
-            console.error(`❌ ${errorMsg}`);
+            logger.error(`❌ ${errorMsg}`);
             throw new Error(errorMsg);
           }
         }
         
         const baseUrl = modelData.base_url;
         
-        console.log('🔍 DEBUG DIRECT: Данные модели из available-models.json:', {
+        logger.info('🔍 DEBUG DIRECT: Данные модели из available-models.json:', {
           model: model,
           modelData: modelData,
           apiKey: apiKey ? `${apiKey.substring(0, 10)}...` : 'не найден',
@@ -877,12 +905,12 @@ app.post('/api/send-request', async (req, res) => {
         
         if (!baseUrl) {
           const errorMsg = `Base URL не найден для провайдера 'direct' в модели.`;
-          console.error(`❌ ${errorMsg}`);
+          logger.error(`❌ ${errorMsg}`);
           throw new Error(errorMsg);
         }
         
-        console.log('🔍 DEBUG DIRECT: Формируем messages:', JSON.stringify(messages, null, 2));
-        console.log('🔍 DEBUG DIRECT: Параметры запроса:', {
+        logger.info('🔍 DEBUG DIRECT: Формируем messages:', JSON.stringify(messages, null, 2));
+        logger.info('🔍 DEBUG DIRECT: Параметры запроса:', {
           model: model,
           temperature: finalTemperature,
           maxTokens: finalMaxTokens
@@ -896,7 +924,7 @@ app.post('/api/send-request', async (req, res) => {
           maxTokens: finalMaxTokens 
         });
         
-        console.log('[SERVER] Ответ от Direct провайдера получен');
+        logger.info('[SERVER] Ответ от Direct провайдера получен');
         
         response = {
           data: {
@@ -909,7 +937,7 @@ app.post('/api/send-request', async (req, res) => {
         };
         
       } else if (selectedProvider === 'gigachat') {
-        console.log('[SERVER] Отправка запроса в GigaChat...');
+        logger.info('[SERVER] Отправка запроса в GigaChat...');
         const gigachatResponse = await gigachatService.sendRequest({
           model,
           messages,
@@ -917,7 +945,7 @@ app.post('/api/send-request', async (req, res) => {
           maxTokens: finalMaxTokens
         });
         
-        console.log('[SERVER] Ответ от GigaChat получен');
+        logger.info('[SERVER] Ответ от GigaChat получен');
         
         response = {
           data: {
@@ -930,26 +958,26 @@ app.post('/api/send-request', async (req, res) => {
         };
         
       } else {
-        console.error('[SERVER] Неизвестный провайдер:', selectedProvider);
+        logger.error('[SERVER] Неизвестный провайдер:', selectedProvider);
         throw new Error(`Неизвестный провайдер: ${selectedProvider}`);
       }
       
       // Обработка ответа (унифицированная)
-      console.log('[SERVER] Ответ от провайдера получен');
-      console.log('[SERVER] Проверка структуры ответа...');
+      logger.info('[SERVER] Ответ от провайдера получен');
+      logger.info('[SERVER] Проверка структуры ответа...');
       
       if (response.data && response.data.choices && response.data.choices.length > 0) {
         const modelResponse = response.data.choices[0].message.content;
         
-        console.log('[SERVER] ✅ Ответ валиден, содержимое получено');
-        console.log(`[SERVER] ${selectedProvider.toUpperCase()}: Получен ответ:`, modelResponse.substring(0, 200) + '...');
-        console.log(`[SERVER] 📊 ${selectedProvider.toUpperCase()}: Usage:`, response.data.usage);
-        console.log(`[SERVER] 🤖 ${selectedProvider.toUpperCase()}: Model:`, response.data.model);
-        console.log(`[SERVER] Длина ответа: ${modelResponse.length} символов`);
+        logger.info('[SERVER] ✅ Ответ валиден, содержимое получено');
+        logger.info(`[SERVER] ${selectedProvider.toUpperCase()}: Получен ответ:`, modelResponse.substring(0, 200) + '...');
+        logger.info(`[SERVER] 📊 ${selectedProvider.toUpperCase()}: Usage:`, response.data.usage);
+        logger.info(`[SERVER] 🤖 ${selectedProvider.toUpperCase()}: Model:`, response.data.model);
+        logger.info(`[SERVER] Длина ответа: ${modelResponse.length} символов`);
         
         // Всегда сохраняем ответ в историю
         try {
-            console.log('[SERVER] Попытка сохранить ответ в историю...');
+            logger.info('[SERVER] Попытка сохранить ответ в историю...');
             const responseData = await readResponses();
             const tokens = buildTokensInfo({
                 usage: response.data.usage,
@@ -970,12 +998,12 @@ app.post('/api/send-request', async (req, res) => {
             };
             responseData.responses.push(newResponse);
             await writeResponses(responseData);
-            console.log(`[SERVER] 💾 Ответ автоматически сохранен в историю: ${newResponse.id}`);
+            logger.info(`[SERVER] 💾 Ответ автоматически сохранен в историю: ${newResponse.id}`);
         } catch (error) {
-            console.error('[SERVER] ❌ Ошибка сохранения в историю:', error);
+            logger.error('[SERVER] ❌ Ошибка сохранения в историю:', error);
         }
 
-        console.log('[SERVER] Отправка успешного ответа клиенту...');
+        logger.info('[SERVER] Отправка успешного ответа клиенту...');
         const responseToClient = {
           success: true, 
           content: modelResponse,
@@ -984,13 +1012,13 @@ app.post('/api/send-request', async (req, res) => {
           provider: selectedProvider,
           rag: ragInfo
         };
-        console.log('[SERVER] Response to client keys:', Object.keys(responseToClient));
-        console.log('[SERVER] ========================================');
+        logger.info('[SERVER] Response to client keys:', Object.keys(responseToClient));
+        logger.info('[SERVER] ========================================');
         
         return res.json(responseToClient);
       } else {
-        console.error('[SERVER] ❌ Невалидный ответ от провайдера - нет choices');
-        console.error('[SERVER] Response structure:', JSON.stringify(response, null, 2).substring(0, 500));
+        logger.error('[SERVER] ❌ Невалидный ответ от провайдера - нет choices');
+        logger.error('[SERVER] Response structure:', JSON.stringify(response, null, 2).substring(0, 500));
         
         // Сохраняем ошибку невалидного ответа в историю
         try {
@@ -1015,13 +1043,13 @@ app.post('/api/send-request', async (req, res) => {
           
           responseData.responses.push(newResponse);
           await writeResponses(responseData);
-          console.log(`[SERVER] 💾 Ошибка невалидного ответа сохранена в историю: ${newResponse.id}`);
+          logger.info(`[SERVER] 💾 Ошибка невалидного ответа сохранена в историю: ${newResponse.id}`);
         } catch (saveError) {
-          console.error('[SERVER] ❌ Ошибка сохранения ошибки в историю:', saveError);
+          logger.error('[SERVER] ❌ Ошибка сохранения ошибки в историю:', saveError);
         }
         
-        console.error('[SERVER] Отправка ответа с ошибкой клиенту');
-        console.error('[SERVER] ========================================');
+        logger.error('[SERVER] Отправка ответа с ошибкой клиенту');
+        logger.error('[SERVER] ========================================');
         
         return res.status(500).json({ 
           error: 'Invalid response from AI model',
@@ -1030,23 +1058,23 @@ app.post('/api/send-request', async (req, res) => {
         });
       }
     } catch (error) {
-      console.error('[SERVER] ========================================');
-      console.error('[SERVER] ❌ ОШИБКА в /api/send-request');
-      console.error('[SERVER] Error name:', error.name);
-      console.error('[SERVER] Error message:', error.message);
-      console.error(`[SERVER] Error with provider:`, error);
+      logger.error('[SERVER] ========================================');
+      logger.error('[SERVER] ❌ ОШИБКА в /api/send-request');
+      logger.error('[SERVER] Error name:', error.name);
+      logger.error('[SERVER] Error message:', error.message);
+      logger.error(`[SERVER] Error with provider:`, error);
       
       if (error.stack) {
-        console.error('[SERVER] Error stack:', error.stack.substring(0, 500));
+        logger.error('[SERVER] Error stack:', error.stack.substring(0, 500));
       }
       
       let errorMessage = 'Failed to process request';
       let errorDetails = null;
       
       if (error.response) {
-        console.error('[SERVER] Ошибка API ответа');
-        console.error('[SERVER] Response status:', error.response.status);
-        console.error('[SERVER] Response data:', JSON.stringify(error.response.data, null, 2).substring(0, 500));
+        logger.error('[SERVER] Ошибка API ответа');
+        logger.error('[SERVER] Response status:', error.response.status);
+        logger.error('[SERVER] Response data:', JSON.stringify(error.response.data, null, 2).substring(0, 500));
         
         // Улучшенная обработка ошибок API
         let apiError = error.response.data.error;
@@ -1075,18 +1103,18 @@ app.post('/api/send-request', async (req, res) => {
         
         errorDetails = error.response.data;
       } else if (error.request) {
-        console.error('[SERVER] Ошибка сети - запрос не доставлен');
+        logger.error('[SERVER] Ошибка сети - запрос не доставлен');
         errorMessage = 'Network error. Could not connect to AI service.';
         errorDetails = { request: error.request };
       } else {
-        console.error('[SERVER] Другая ошибка:', error.message);
+        logger.error('[SERVER] Другая ошибка:', error.message);
         errorMessage = error.message;
         errorDetails = { stack: error.stack };
       }
       
       // Сохраняем ошибку в историю
       try {
-        console.log('[SERVER] Попытка сохранить ошибку в историю...');
+        logger.info('[SERVER] Попытка сохранить ошибку в историю...');
         const responseData = await readResponses();
         const newResponse = {
           id: Date.now().toString(),
@@ -1108,13 +1136,13 @@ app.post('/api/send-request', async (req, res) => {
         
         responseData.responses.push(newResponse);
         await writeResponses(responseData);
-        console.log(`[SERVER] 💾 Ошибка сохранена в историю: ${newResponse.id}`);
+        logger.info(`[SERVER] 💾 Ошибка сохранена в историю: ${newResponse.id}`);
       } catch (saveError) {
-        console.error('[SERVER] ❌ Ошибка сохранения ошибки в историю:', saveError);
+        logger.error('[SERVER] ❌ Ошибка сохранения ошибки в историю:', saveError);
       }
       
-      console.error('[SERVER] Отправка ответа с ошибкой клиенту');
-      console.error('[SERVER] ========================================');
+      logger.error('[SERVER] Отправка ответа с ошибкой клиенту');
+      logger.error('[SERVER] ========================================');
       
       return res.status(500).json({ 
         error: errorMessage,
@@ -1158,7 +1186,7 @@ app.post('/api/send-request-sys', async (req, res) => {
       }
       
       // Логируем информацию о запросе
-      console.log(`📤 Отправка запроса с промптом "${prompt_name}" к модели: ${model} (${selectedProvider})`);
+      logger.info(`📤 Отправка запроса с промптом "${prompt_name}" к модели: ${model} (${selectedProvider})`);
       
       let response;
       
@@ -1206,10 +1234,10 @@ app.post('/api/send-request-sys', async (req, res) => {
       // Проверяем и возвращаем результат
       if (response.data && response.data.choices && response.data.choices.length > 0) {
         const modelResponse = response.data.choices[0].message.content;
-        console.log('DEBUG SERVER: Model response via /api/send-request-sys:', modelResponse.substring(0, 500) + (modelResponse.length > 500 ? '...' : ''));
-        console.log('DEBUG SERVER: Usage via /api/send-request-sys:', response.data.usage);
-        console.log('DEBUG SERVER: Model used via /api/send-request-sys:', response.data.model);
-        console.log('DEBUG SERVER: Prompt used:', prompt_name);
+        logger.info('DEBUG SERVER: Model response via /api/send-request-sys:', modelResponse.substring(0, 500) + (modelResponse.length > 500 ? '...' : ''));
+        logger.info('DEBUG SERVER: Usage via /api/send-request-sys:', response.data.usage);
+        logger.info('DEBUG SERVER: Model used via /api/send-request-sys:', response.data.model);
+        logger.info('DEBUG SERVER: Prompt used:', prompt_name);
 
         // Всегда сохраняем ответ в историю
         try {
@@ -1237,9 +1265,9 @@ app.post('/api/send-request-sys', async (req, res) => {
           responseData.responses.push(newResponse);
           await writeResponses(responseData);
           
-          console.log(`Response automatically saved to history with ID: ${newResponse.id}`);
+          logger.info(`Response automatically saved to history with ID: ${newResponse.id}`);
         } catch (error) {
-          console.error('Error saving response to history:', error);
+          logger.error('Error saving response to history:', error);
           // Продолжаем выполнение даже при ошибке сохранения в историю
         }
         
@@ -1254,7 +1282,7 @@ app.post('/api/send-request-sys', async (req, res) => {
           }
         });
       } else {
-        console.log('DEBUG SERVER: Invalid response structure from AI model via /api/send-request-sys:', response.data);
+        logger.info('DEBUG SERVER: Invalid response structure from AI model via /api/send-request-sys:', response.data);
         
         // Сохраняем ошибку невалидного ответа в историю
         try {
@@ -1270,7 +1298,7 @@ app.post('/api/send-request-sys', async (req, res) => {
               promptText = promptObj.text;
             }
           } catch (e) {
-            console.error('Error reading prompt for error save:', e);
+            logger.error('Error reading prompt for error save:', e);
           }
           
           const newResponse = {
@@ -1294,9 +1322,9 @@ app.post('/api/send-request-sys', async (req, res) => {
           
           responseData.responses.push(newResponse);
           await writeResponses(responseData);
-          console.log(`💾 Ошибка невалидного ответа сохранена в историю: ${newResponse.id}`);
+          logger.info(`💾 Ошибка невалидного ответа сохранена в историю: ${newResponse.id}`);
         } catch (saveError) {
-          console.error('❌ Ошибка сохранения ошибки в историю:', saveError);
+          logger.error('❌ Ошибка сохранения ошибки в историю:', saveError);
         }
         
         return res.status(500).json({ 
@@ -1305,7 +1333,7 @@ app.post('/api/send-request-sys', async (req, res) => {
         });
       }
     } catch (error) {
-      console.error('Error sending request to AI model:', error);
+      logger.error('Error sending request to AI model:', error);
       
       // Форматируем ошибку для клиента и логируем детали
       let errorMessage = 'Failed to process request';
@@ -1327,7 +1355,7 @@ app.post('/api/send-request-sys', async (req, res) => {
         
       errorMessage = `API Error: ${error.response.status} - ${detailedMessage}`;
       errorDetails = error.response.data;
-      console.log('DEBUG SERVER: API error details via /api/send-request-sys:', {
+      logger.info('DEBUG SERVER: API error details via /api/send-request-sys:', {
           status: error.response.status,
           data: error.response.data
         });
@@ -1335,11 +1363,11 @@ app.post('/api/send-request-sys', async (req, res) => {
         // Ошибка сети
         errorMessage = 'Network error. Could not connect to AI service.';
         errorDetails = { request: error.request };
-        console.log('DEBUG SERVER: Network error via /api/send-request-sys - no response received');
+        logger.info('DEBUG SERVER: Network error via /api/send-request-sys - no response received');
       } else {
         errorMessage = error.message;
         errorDetails = { stack: error.stack };
-        console.log('DEBUG SERVER: General error via /api/send-request-sys:', error.message, error.stack);
+        logger.info('DEBUG SERVER: General error via /api/send-request-sys:', error.message, error.stack);
       }
       
       // Сохраняем ошибку в историю
@@ -1356,7 +1384,7 @@ app.post('/api/send-request-sys', async (req, res) => {
             promptText = promptObj.text;
           }
         } catch (e) {
-          console.error('Error reading prompt for error save:', e);
+          logger.error('Error reading prompt for error save:', e);
         }
         
         const newResponse = {
@@ -1380,9 +1408,9 @@ app.post('/api/send-request-sys', async (req, res) => {
         
         responseData.responses.push(newResponse);
         await writeResponses(responseData);
-        console.log(`💾 Ошибка сохранена в историю: ${newResponse.id}`);
+        logger.info(`💾 Ошибка сохранена в историю: ${newResponse.id}`);
       } catch (saveError) {
-        console.error('❌ Ошибка сохранения ошибки в историю:', saveError);
+        logger.error('❌ Ошибка сохранения ошибки в историю:', saveError);
       }
       
       return res.status(500).json({ 
@@ -1399,7 +1427,7 @@ app.post('/api/send-request-sys', async (req, res) => {
       // Возвращаем полные промпты вместо только имен
       res.json(promptsData.prompts);
     } catch (error) {
-      console.error('Error fetching available prompts:', error);
+      logger.error('Error fetching available prompts:', error);
       res.status(500).json({ error: 'Failed to fetch available prompts' });
     }
   });
@@ -1426,7 +1454,7 @@ app.get('/api/rag/context-codes', async (req, res) => {
     const contextCodes = await langchainPgService.getContextCodes();
     res.json(contextCodes);
   } catch (error) {
-    console.error('Ошибка при получении контекстных кодов:', error);
+    logger.error('Ошибка при получении контекстных кодов:', error);
     res.status(500).json({ error: 'Не удалось получить контекстные коды' });
   }
 });
@@ -1441,7 +1469,7 @@ app.get('/api/rag/documents', async (req, res) => {
     const documents = await langchainPgService.getDocuments();
     res.json(documents);
   } catch (error) {
-    console.error('Ошибка при получении списка документов:', error);
+    logger.error('Ошибка при получении списка документов:', error);
     res.status(500).json({ error: 'Не удалось получить список документов' });
   }
 });
@@ -1462,7 +1490,7 @@ app.post('/api/rag/ask', async (req, res) => {
     const response = await langchainPgService.askQuestion(question, contextCode, showDetails);
     res.json(response);
   } catch (error) {
-    console.error('Ошибка при запросе к RAG:', error);
+    logger.error('Ошибка при запросе к RAG:', error);
     res.status(500).json({ error: 'Не удалось получить ответ от RAG' });
   }
 });
@@ -1533,7 +1561,7 @@ app.post('/api/save-markdown', async (req, res) => {
       message: `Файл успешно сохранен: ${filePath}` 
     });
   } catch (error) {
-    console.error('Ошибка при сохранении файла:', error);
+    logger.error('Ошибка при сохранении файла:', error);
     res.status(500).json({ 
       error: 'Не удалось сохранить файл', 
       details: error.message 
@@ -1563,7 +1591,7 @@ app.get('/api/output-dir-info', (req, res) => {
     
     res.json(dirInfo);
   } catch (error) {
-    console.error('Ошибка при получении информации о директории:', error);
+    logger.error('Ошибка при получении информации о директории:', error);
     res.status(500).json({ 
       error: 'Не удалось получить информацию о директории', 
       details: error.message 
@@ -1576,7 +1604,7 @@ app.post('/analyze', async (req, res) => {
   try {
     let { model, prompt, inputText, useRag, contextCode, provider } = req.body;
     
-    console.log('DEBUG: Received request to /analyze endpoint with params:', {
+    logger.info('DEBUG: Received request to /analyze endpoint with params:', {
       model,
       promptLength: prompt ? prompt.length : 0,
       inputTextLength: inputText ? inputText.length : 0,
@@ -1603,7 +1631,7 @@ app.post('/analyze', async (req, res) => {
     }
     
     // Логируем информацию о запросе
-    console.log(`Sending request to model via /analyze: ${model}`);
+    logger.info(`Sending request to model via /analyze: ${model}`);
     
     let finalInputText = inputText;
     let ragInfo = null;
@@ -1611,7 +1639,7 @@ app.post('/analyze', async (req, res) => {
     // Если включен RAG и сервис доступен, обогащаем запрос контекстом из RAG
     if (useRag && config.langchainPg.enabled) {
       try {
-        console.log(`Using RAG with context code: ${contextCode || 'all'}`);
+        logger.info(`Using RAG with context code: ${contextCode || 'all'}`);
         const ragResponse = await langchainPgService.askQuestion(inputText, contextCode, true);
         
         // Если есть документы, добавляем их контекст к запросу
@@ -1632,16 +1660,16 @@ app.post('/analyze', async (req, res) => {
           };
         }
         else {
-          console.log('!!! No documents found in RAG response');
+          logger.info('!!! No documents found in RAG response');
         }
   
       } catch (ragError) {
-        console.error('Error using RAG:', ragError);
+        logger.error('Error using RAG:', ragError);
         // Продолжаем без RAG в случае ошибки
       }
     }
     else {
-      console.log('!!! Without RAGs');
+      logger.info('!!! Without RAGs');
     }
 
     // Сохраняем отладочную информацию
@@ -1698,9 +1726,9 @@ app.post('/analyze', async (req, res) => {
     // Проверяем и возвращаем результат
     if (response.data && response.data.choices && response.data.choices.length > 0) {
       const modelResponse = response.data.choices[0].message.content;
-      console.log('DEBUG SERVER: Model response via /analyze:', modelResponse.substring(0, 500) + (modelResponse.length > 500 ? '...' : ''));
-      console.log('DEBUG SERVER: Usage via /analyze:', response.data.usage);
-      console.log('DEBUG SERVER: Model used via /analyze:', response.data.model);
+      logger.info('DEBUG SERVER: Model response via /analyze:', modelResponse.substring(0, 500) + (modelResponse.length > 500 ? '...' : ''));
+      logger.info('DEBUG SERVER: Usage via /analyze:', response.data.usage);
+      logger.info('DEBUG SERVER: Model used via /analyze:', response.data.model);
       
       return res.json({ 
         success: true, 
@@ -1710,14 +1738,14 @@ app.post('/analyze', async (req, res) => {
         rag: ragInfo
       });
     } else {
-      console.log('DEBUG SERVER: Invalid response structure from AI model via /analyze:', response.data);
+      logger.info('DEBUG SERVER: Invalid response structure from AI model via /analyze:', response.data);
       return res.status(500).json({ 
         error: 'Invalid response from AI model',
         data: response.data 
       });
     }
   } catch (error) {
-    console.error('Error sending request to AI model via /analyze:', error);
+    logger.error('Error sending request to AI model via /analyze:', error);
     
     // Форматируем ошибку для клиента и логируем детали
     let errorMessage = 'Failed to process request';
@@ -1739,7 +1767,7 @@ app.post('/analyze', async (req, res) => {
         
       errorMessage = `API Error: ${error.response.status} - ${detailedMessage}`;
       errorDetails = error.response.data;
-      console.log('DEBUG SERVER: API error details via /analyze:', {
+      logger.info('DEBUG SERVER: API error details via /analyze:', {
         status: error.response.status,
         data: error.response.data
       });
@@ -1747,11 +1775,11 @@ app.post('/analyze', async (req, res) => {
       // Ошибка сети
       errorMessage = 'Network error. Could not connect to AI service.';
       errorDetails = { request: error.request };
-      console.log('DEBUG SERVER: Network error via /analyze - no response received');
+      logger.info('DEBUG SERVER: Network error via /analyze - no response received');
     } else {
       errorMessage = error.message;
       errorDetails = { stack: error.stack };
-      console.log('DEBUG SERVER: General error via /analyze:', error.message, error.stack);
+      logger.info('DEBUG SERVER: General error via /analyze:', error.message, error.stack);
     }
     
     return res.status(500).json({ 
@@ -1775,7 +1803,7 @@ app.get('/api/all-models', async (req, res) => {
     const models = await loadModels();
     res.json(models.filter(m => m.enabled));
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ error: 'Failed to load models' });
   }
 });
@@ -2084,7 +2112,7 @@ app.post('/api/models/update/:id', async (req, res) => {
         
         if (existingModelIndex !== -1) {
           const oldModel = models[existingModelIndex];
-          console.log(`🔄 user_type "${newUserType}" переназначен: ${oldModel.name} → ${models[modelIndex].name}`);
+          logger.info(`🔄 user_type "${newUserType}" переназначен: ${oldModel.name} → ${models[modelIndex].name}`);
           models[existingModelIndex].user_type = null;
         }
         
@@ -2101,11 +2129,11 @@ app.post('/api/models/update/:id', async (req, res) => {
 
     await saveModels(models);
     
-    console.log(`✅ Модель ${id} обновлена:`, updates);
+    logger.info(`✅ Модель ${id} обновлена:`, updates);
 
     res.json({ success: true, model: models[modelIndex] });
   } catch (error) {
-    console.error('Ошибка при обновлении модели:', error);
+    logger.error('Ошибка при обновлении модели:', error);
     res.status(500).json({ error: 'Не удалось обновить модель' });
   }
 });
@@ -2139,7 +2167,7 @@ app.post('/api/models/add', async (req, res) => {
 
     res.status(201).json({ success: true, model: modelToAdd });
   } catch (error) {
-    console.error('Ошибка при добавлении модели:', error);
+    logger.error('Ошибка при добавлении модели:', error);
     res.status(500).json({ error: 'Не удалось добавить модель' });
   }
 });
@@ -2173,18 +2201,18 @@ app.get('/api/user-types', async (req, res) => {
       details: typesWithModels
     });
   } catch (err) {
-    console.error('Ошибка получения user_types:', err);
+    logger.error('Ошибка получения user_types:', err);
     res.status(500).json({ error: 'Failed to load user types' });
   }
 });
 
 async function refreshGroqModels() {
   if (!groqService) {
-    console.warn('⚠️ GROQ сервис не настроен, обновление моделей пропущено.');
+    logger.warn('⚠️ GROQ сервис не настроен, обновление моделей пропущено.');
     return;
   }
   try {
-    console.log('Обновляем список GROQ моделей...');
+    logger.info('Обновляем список GROQ моделей...');
     const { data } = await axios.get('https://api.groq.com/openai/v1/models', {
       headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}` }
     });
@@ -2237,15 +2265,15 @@ async function refreshGroqModels() {
     }
 
     await saveModels(localModels);
-    console.log(`GROQ синхронизирован: ${addedCount} новых добавлено, ${disabledCount} устаревших отключено.`);
+    logger.info(`GROQ синхронизирован: ${addedCount} новых добавлено, ${disabledCount} устаревших отключено.`);
   } catch (err) {
-    console.error('Ошибка автообновления GROQ:', err.message);
+    logger.error('Ошибка автообновления GROQ:', err.message);
   }
 }
 
 async function refreshOpenRouterModels() {
   try {
-    console.log('Обновляем список OpenRouter...');
+    logger.info('Обновляем список OpenRouter...');
     const { data } = await axios.get('https://openrouter.ai/api/v1/models');
 
     let localModels = await loadModels();
@@ -2307,15 +2335,15 @@ async function refreshOpenRouterModels() {
     }
 
     await saveModels(localModels);
-    console.log(`OpenRouter синхронизирован: ${addedCount} новых добавлено, ${disabledCount} устаревших отключено.`);
+    logger.info(`OpenRouter синхронизирован: ${addedCount} новых добавлено, ${disabledCount} устаревших отключено.`);
   } catch (err) {
-    console.error('Ошибка автообновления OpenRouter:', err.message);
+    logger.error('Ошибка автообновления OpenRouter:', err.message);
   }
 }
 
 async function refreshDirectModels() {
   try {
-    console.log('Обновляем список Direct моделей...');
+    logger.info('Обновляем список Direct моделей...');
     
     let localModels = await loadModels();
     
@@ -2323,7 +2351,7 @@ async function refreshDirectModels() {
     const directModels = localModels.filter(m => m.provider === 'direct' && m.base_url);
     
     if (directModels.length === 0) {
-      console.log('Direct модели не найдены, пропускаем синхронизацию.');
+      logger.info('Direct модели не найдены, пропускаем синхронизацию.');
       return;
     }
     
@@ -2352,7 +2380,7 @@ async function refreshDirectModels() {
           const envVar = apiKey.slice(4);
           apiKey = process.env[envVar];
           if (!apiKey) {
-            console.log(`  ⚠️ Пропускаем ${baseUrl}: переменная окружения ${envVar} не найдена`);
+            logger.info(`  ⚠️ Пропускаем ${baseUrl}: переменная окружения ${envVar} не найдена`);
             skippedUrls++;
             continue;
           }
@@ -2363,7 +2391,7 @@ async function refreshDirectModels() {
             apiKey = process.env[`${urlHost}_API_KEY`] || process.env['DIRECT_API_KEY'];
           } catch (urlErr) {
             // Если не удалось распарсить URL, пропускаем
-            console.log(`  ⚠️ Пропускаем ${baseUrl}: некорректный URL`);
+            logger.info(`  ⚠️ Пропускаем ${baseUrl}: некорректный URL`);
             skippedUrls++;
             continue;
           }
@@ -2374,7 +2402,7 @@ async function refreshDirectModels() {
           ? `${baseUrl}/models`
           : `${baseUrl}/v1/models`;
         
-        console.log(`  Проверяем ${baseUrl}...`);
+        logger.info(`  Проверяем ${baseUrl}...`);
         
         // Запрашиваем список моделей
         const headers = {};
@@ -2400,14 +2428,14 @@ async function refreshDirectModels() {
         } else if (data && data.models && Array.isArray(data.models)) {
           remoteModels = data.models;
         } else {
-          console.log(`  ⚠️ ${baseUrl}: неподдерживаемый формат /v1/models`);
-          console.log(`  📋 Ответ от API:`, JSON.stringify(data, null, 2).slice(0, 500) + (JSON.stringify(data).length > 500 ? '...' : ''));
+          logger.info(`  ⚠️ ${baseUrl}: неподдерживаемый формат /v1/models`);
+          logger.info(`  📋 Ответ от API:`, JSON.stringify(data, null, 2).slice(0, 500) + (JSON.stringify(data).length > 500 ? '...' : ''));
           skippedUrls++;
           continue;
         }
         
         if (remoteModels.length === 0) {
-          console.log(`  ⚠️ ${baseUrl}: пустой список моделей`);
+          logger.info(`  ⚠️ ${baseUrl}: пустой список моделей`);
           skippedUrls++;
           continue;
         }
@@ -2498,22 +2526,22 @@ async function refreshDirectModels() {
         totalDisabled += disabledCount;
         
         if (addedCount > 0 || disabledCount > 0) {
-          console.log(`  ✅ ${baseUrl}: ${addedCount} новых, ${disabledCount} отключено`);
+          logger.info(`  ✅ ${baseUrl}: ${addedCount} новых, ${disabledCount} отключено`);
         } else {
-          console.log(`  ✓ ${baseUrl}: актуально`);
+          logger.info(`  ✓ ${baseUrl}: актуально`);
         }
         
       } catch (err) {
         // Тихая обработка ошибок - просто пропускаем этот base_url
         if (err.response && err.response.status === 404) {
-          console.log(`  ⚠️ ${baseUrl}: /v1/models не поддерживается, пропускаем`);
+          logger.info(`  ⚠️ ${baseUrl}: /v1/models не поддерживается, пропускаем`);
         } else if (err.code === 'ECONNABORTED' || err.code === 'ETIMEDOUT') {
-          console.log(`  ⚠️ ${baseUrl}: таймаут при запросе, пропускаем`);
+          logger.info(`  ⚠️ ${baseUrl}: таймаут при запросе, пропускаем`);
         } else if (err.response && (err.response.status === 401 || err.response.status === 403)) {
-          console.log(`  ⚠️ ${baseUrl}: ошибка авторизации, пропускаем`);
+          logger.info(`  ⚠️ ${baseUrl}: ошибка авторизации, пропускаем`);
         } else {
           // Только для неожиданных ошибок выводим сообщение
-          console.log(`  ⚠️ ${baseUrl}: ошибка (${err.message}), пропускаем`);
+          logger.info(`  ⚠️ ${baseUrl}: ошибка (${err.message}), пропускаем`);
         }
         skippedUrls++;
       }
@@ -2523,15 +2551,15 @@ async function refreshDirectModels() {
     await saveModels(localModels);
     
     if (totalAdded > 0 || totalDisabled > 0) {
-      console.log(`Direct синхронизирован: ${totalAdded} новых добавлено, ${totalDisabled} устаревших отключено.`);
+      logger.info(`Direct синхронизирован: ${totalAdded} новых добавлено, ${totalDisabled} устаревших отключено.`);
     } else if (skippedUrls === 0) {
-      console.log(`Direct синхронизирован: все модели актуальны.`);
+      logger.info(`Direct синхронизирован: все модели актуальны.`);
     } else {
-      console.log(`Direct синхронизирован: ${skippedUrls} URL пропущено (не поддерживают /v1/models или ошибки).`);
+      logger.info(`Direct синхронизирован: ${skippedUrls} URL пропущено (не поддерживают /v1/models или ошибки).`);
     }
     
   } catch (err) {
-    console.error('Ошибка автообновления Direct:', err.message);
+    logger.error('Ошибка автообновления Direct:', err.message);
   }
 }
 
@@ -2647,10 +2675,10 @@ function endSSEStream(res) {
 
 // POST /v1/chat/completions - OpenAI-совместимый эндпоинт
 app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
-  console.log('[SERVER] ========================================');
-  console.log('[SERVER] /v1/chat/completions запрос получен');
-  console.log('[SERVER] Timestamp:', new Date().toISOString());
-  console.log('[SERVER] Request headers:', {
+  logger.info('[SERVER] ========================================');
+  logger.info('[SERVER] /v1/chat/completions запрос получен');
+  logger.info('[SERVER] Timestamp:', new Date().toISOString());
+  logger.info('[SERVER] Request headers:', {
     'content-type': req.headers['content-type'],
     'user-agent': req.headers['user-agent']?.substring(0, 50) + '...'
   });
@@ -2658,16 +2686,16 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
   try {
     const { model, messages, temperature, max_tokens, stream } = req.body;
     
-    console.log('[SERVER] Request body получен:');
-    console.log('[SERVER] model:', model);
-    console.log('[SERVER] messages count:', messages?.length || 0);
-    console.log('[SERVER] temperature:', temperature);
-    console.log('[SERVER] max_tokens:', max_tokens);
-    console.log('[SERVER] stream:', stream);
+    logger.info('[SERVER] Request body получен:');
+    logger.info('[SERVER] model:', model);
+    logger.info('[SERVER] messages count:', messages?.length || 0);
+    logger.info('[SERVER] temperature:', temperature);
+    logger.info('[SERVER] max_tokens:', max_tokens);
+    logger.info('[SERVER] stream:', stream);
     
     // Проверка обязательных полей
     if (!model) {
-      console.error('[SERVER] Ошибка: model отсутствует');
+      logger.error('[SERVER] Ошибка: model отсутствует');
       return res.status(400).json({
         error: {
           message: 'Missing required parameter: model',
@@ -2679,7 +2707,7 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
     }
     
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
-      console.error('[SERVER] Ошибка: messages отсутствуют или пусты');
+      logger.error('[SERVER] Ошибка: messages отсутствуют или пусты');
       return res.status(400).json({
         error: {
           message: 'Missing required parameter: messages',
@@ -2705,13 +2733,13 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
       }
     }
     
-    console.log('[SERVER] System prompt length:', systemPrompt?.length || 0, hasExplicitSystemPrompt ? '(explicit)' : '(none)');
-    console.log('[SERVER] Conversation history length:', conversationHistory.length);
+    logger.info('[SERVER] System prompt length:', systemPrompt?.length || 0, hasExplicitSystemPrompt ? '(explicit)' : '(none)');
+    logger.info('[SERVER] Conversation history length:', conversationHistory.length);
     
     // Формируем inputText: склеиваем историю, последний user message - основной вопрос
     let inputText = '';
     if (conversationHistory.length === 0) {
-      console.error('[SERVER] Ошибка: нет user сообщений');
+      logger.error('[SERVER] Ошибка: нет user сообщений');
       return res.status(400).json({
         error: {
           message: 'At least one user message is required',
@@ -2733,16 +2761,16 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
       inputText = conversationHistory[0].content;
     }
     
-    console.log('[SERVER] Input text length:', inputText.length);
-    console.log(`[SERVER] 🔗 OpenAI-compat: Запрос к модели ${model}`);
+    logger.info('[SERVER] Input text length:', inputText.length);
+    logger.info(`[SERVER] 🔗 OpenAI-compat: Запрос к модели ${model}`);
     
     // Разрешаем имя модели через существующую логику
     const resolved = await resolveModelName(model, null);
     const resolvedModel = resolved.model;
     let selectedProvider = resolved.provider;
     
-    console.log('[SERVER] Resolved model:', resolvedModel);
-    console.log('[SERVER] Resolved provider:', selectedProvider);
+    logger.info('[SERVER] Resolved model:', resolvedModel);
+    logger.info('[SERVER] Resolved provider:', selectedProvider);
     
     // Получаем данные модели для определения провайдера
     // Используем modelData из resolveModelName, если он есть (для моделей найденных по user_type)
@@ -2751,11 +2779,11 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
       selectedProvider = modelData?.provider || 'openroute';
     }
     
-    console.log(`[SERVER] 🔗 OpenAI-compat: Провайдер ${selectedProvider}, модель ${resolvedModel}`);
+    logger.info(`[SERVER] 🔗 OpenAI-compat: Провайдер ${selectedProvider}, модель ${resolvedModel}`);
     
     // Проверяем доступность провайдера
     if (selectedProvider === 'groq' && !groqService) {
-      console.error('[SERVER] GROQ сервис не настроен');
+      logger.error('[SERVER] GROQ сервис не настроен');
       return res.status(503).json({
         error: {
           message: 'GROQ service is not configured',
@@ -2766,7 +2794,7 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
     }
     
     if (selectedProvider === 'openroute' && !config.openRouterKey) {
-      console.error('[SERVER] OpenRouter API ключ не настроен');
+      logger.error('[SERVER] OpenRouter API ключ не настроен');
       return res.status(503).json({
         error: {
           message: 'OpenRouter API key is not configured',
@@ -2777,7 +2805,7 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
     }
     
     if (selectedProvider === 'gigachat' && !gigachatService) {
-      console.error('[SERVER] GigaChat сервис не настроен');
+      logger.error('[SERVER] GigaChat сервис не настроен');
       return res.status(503).json({
         error: {
           message: 'GigaChat service is not configured',
@@ -2796,9 +2824,11 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
     providerMessages.push({ role: 'user', content: inputText });
     
     const finalTemperature = temperature !== undefined ? temperature : 0.7;
-    const finalMaxTokens = max_tokens !== undefined ? max_tokens : 32768 ;
+    // Получаем context модели для безопасного ограничения maxTokens
+    const modelContext = modelData?.context || null;
+    const finalMaxTokens = getSafeMaxTokens(max_tokens, modelContext);
     
-    console.log('[SERVER] Final parameters:', {
+    logger.info('[SERVER] Final parameters:', {
       temperature: finalTemperature,
       maxTokens: finalMaxTokens
     });
@@ -2807,7 +2837,7 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
     // STREAMING MODE
     // ═══════════════════════════════════════════════════════════════════
     if (stream === true) {
-      console.log('[SERVER] Режим: STREAMING');
+      logger.info('[SERVER] Режим: STREAMING');
       const streamId = generateChatCompletionId();
       const streamCreated = Math.floor(Date.now() / 1000);
       
@@ -2817,7 +2847,7 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
       res.setHeader('Connection', 'keep-alive');
       res.setHeader('X-Accel-Buffering', 'no'); // Отключаем буферизацию nginx
       
-      console.log(`[SERVER] 🔗 OpenAI-compat STREAM: Начинаем стриминг от ${selectedProvider}`);
+      logger.info(`[SERVER] 🔗 OpenAI-compat STREAM: Начинаем стриминг от ${selectedProvider}`);
       
       // Переменная для накопления контента из стрима
       let streamedContent = '';
@@ -2825,11 +2855,11 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
       
       try {
         // Отправляем первый чанк с ролью
-        console.log('[SERVER] Отправка первого чанка с ролью assistant');
+        logger.info('[SERVER] Отправка первого чанка с ролью assistant');
         sendSSEChunk(res, createStreamChunk(streamId, resolvedModel, { role: 'assistant' }, null));
         
         if (selectedProvider === 'groq') {
-          console.log('[SERVER] Отправка запроса в GROQ (streaming)...');
+          logger.info('[SERVER] Отправка запроса в GROQ (streaming)...');
           // GROQ SDK поддерживает streaming нативно
           let streamResponse;
           try {
@@ -2840,10 +2870,10 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
               maxTokens: finalMaxTokens,
               stream: true
             });
-            console.log('[SERVER] GROQ stream получен, начинаем обработку чанков...');
+            logger.info('[SERVER] GROQ stream получен, начинаем обработку чанков...');
           } catch (groqInitError) {
             // Ошибка при создании стрима (например, 403)
-            console.error('[SERVER] ❌ Ошибка при создании GROQ stream:', groqInitError);
+            logger.error('[SERVER] ❌ Ошибка при создании GROQ stream:', groqInitError);
             
             let errorMessage = 'GROQ API Error: ' + (groqInitError.message || groqInitError.toString());
             let errorDetails = null;
@@ -2858,7 +2888,7 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
             
             // Сохраняем ошибку в историю
             try {
-              console.log('[SERVER] Попытка сохранить ошибку GROQ (при создании стрима) в историю...');
+              logger.info('[SERVER] Попытка сохранить ошибку GROQ (при создании стрима) в историю...');
               const responseData = await readResponses();
               const newResponse = {
                 id: Date.now().toString(),
@@ -2879,9 +2909,9 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
               };
               responseData.responses.push(newResponse);
               await writeResponses(responseData);
-              console.log(`[SERVER] 💾 Ошибка GROQ (при создании стрима) сохранена в историю: ${newResponse.id}`);
+              logger.info(`[SERVER] 💾 Ошибка GROQ (при создании стрима) сохранена в историю: ${newResponse.id}`);
             } catch (saveError) {
-              console.error('[SERVER] ❌ Ошибка сохранения ошибки GROQ (при создании стрима) в историю:', saveError);
+              logger.error('[SERVER] ❌ Ошибка сохранения ошибки GROQ (при создании стрима) в историю:', saveError);
             }
             
             // Отправляем ошибку клиенту
@@ -2899,7 +2929,7 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
               
               // Проверяем наличие ошибки в чанке
               if (chunk.error) {
-                console.error('[SERVER] ❌ Ошибка в GROQ chunk:', chunk.error);
+                logger.error('[SERVER] ❌ Ошибка в GROQ chunk:', chunk.error);
                 const errorMessage = typeof chunk.error === 'string' ? chunk.error : 
                                     (chunk.error.message || JSON.stringify(chunk.error));
                 
@@ -2925,9 +2955,9 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
                   };
                   responseData.responses.push(newResponse);
                   await writeResponses(responseData);
-                  console.log(`[SERVER] 💾 Ошибка GROQ сохранена в историю: ${newResponse.id}`);
+                  logger.info(`[SERVER] 💾 Ошибка GROQ сохранена в историю: ${newResponse.id}`);
                 } catch (saveError) {
-                  console.error('[SERVER] ❌ Ошибка сохранения ошибки GROQ в историю:', saveError);
+                  logger.error('[SERVER] ❌ Ошибка сохранения ошибки GROQ в историю:', saveError);
                 }
                 
                 // Отправляем ошибку клиенту
@@ -2944,7 +2974,7 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
                 sendSSEChunk(res, createStreamChunk(streamId, resolvedModel, { content }, null));
                 
                 if (chunkIndex <= 3 || chunkIndex % 20 === 0) {
-                  console.log(`[SERVER] GROQ chunk #${chunkIndex}, content length: ${content.length}, total: ${streamedContent.length}`);
+                  logger.info(`[SERVER] GROQ chunk #${chunkIndex}, content length: ${content.length}, total: ${streamedContent.length}`);
                 }
               }
               
@@ -2954,25 +2984,25 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
               }
               
               if (finishReason) {
-                console.log('[SERVER] GROQ finish reason:', finishReason);
+                logger.info('[SERVER] GROQ finish reason:', finishReason);
                 sendSSEChunk(res, createStreamChunk(streamId, resolvedModel, {}, finishReason));
               }
             }
             
-            console.log(`[SERVER] GROQ streaming завершен. Всего чанков: ${chunkIndex}, итоговый контент: ${streamedContent.length} символов`);
+            logger.info(`[SERVER] GROQ streaming завершен. Всего чанков: ${chunkIndex}, итоговый контент: ${streamedContent.length} символов`);
           } catch (groqError) {
             // Обработка ошибки от GROQ (например, 403)
-            console.error('[SERVER] ❌ Ошибка при обработке GROQ stream:', groqError);
-            console.error('[SERVER] GROQ error type:', typeof groqError);
-            console.error('[SERVER] GROQ error message:', groqError.message);
-            console.error('[SERVER] GROQ error response:', groqError.response);
+            logger.error('[SERVER] ❌ Ошибка при обработке GROQ stream:', groqError);
+            logger.error('[SERVER] GROQ error type:', typeof groqError);
+            logger.error('[SERVER] GROQ error message:', groqError.message);
+            logger.error('[SERVER] GROQ error response:', groqError.response);
             
             let errorMessage = 'GROQ API Error: ' + (groqError.message || groqError.toString());
             let errorDetails = null;
             
             if (groqError.response) {
-              console.error('[SERVER] GROQ error response status:', groqError.response.status);
-              console.error('[SERVER] GROQ error response data:', JSON.stringify(groqError.response.data, null, 2));
+              logger.error('[SERVER] GROQ error response status:', groqError.response.status);
+              logger.error('[SERVER] GROQ error response data:', JSON.stringify(groqError.response.data, null, 2));
               errorMessage = `GROQ API Error: ${groqError.response.status} ${JSON.stringify(groqError.response.data)}`;
               errorDetails = groqError.response.data;
             } else {
@@ -2986,11 +3016,11 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
             
             // Сохраняем ошибку в историю
             try {
-              console.log('[SERVER] Попытка сохранить ошибку GROQ (при обработке стрима) в историю...');
-              console.log('[SERVER] resolvedModel:', resolvedModel);
-              console.log('[SERVER] selectedProvider:', selectedProvider);
-              console.log('[SERVER] systemPrompt length:', systemPrompt?.length || 0);
-              console.log('[SERVER] inputText length:', inputText?.length || 0);
+              logger.info('[SERVER] Попытка сохранить ошибку GROQ (при обработке стрима) в историю...');
+              logger.info('[SERVER] resolvedModel:', resolvedModel);
+              logger.info('[SERVER] selectedProvider:', selectedProvider);
+              logger.info('[SERVER] systemPrompt length:', systemPrompt?.length || 0);
+              logger.info('[SERVER] inputText length:', inputText?.length || 0);
               
               const responseData = await readResponses();
               const newResponse = {
@@ -3011,15 +3041,15 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
                 errorDetails: errorDetails
               };
               
-              console.log('[SERVER] Новый response для сохранения:', JSON.stringify(newResponse, null, 2).substring(0, 500));
+              logger.info('[SERVER] Новый response для сохранения:', JSON.stringify(newResponse, null, 2).substring(0, 500));
               
               responseData.responses.push(newResponse);
               await writeResponses(responseData);
-              console.log(`[SERVER] 💾 Ошибка GROQ (при обработке стрима) сохранена в историю: ${newResponse.id}`);
-              console.log('[SERVER] Всего responses в истории:', responseData.responses.length);
+              logger.info(`[SERVER] 💾 Ошибка GROQ (при обработке стрима) сохранена в историю: ${newResponse.id}`);
+              logger.info('[SERVER] Всего responses в истории:', responseData.responses.length);
             } catch (saveError) {
-              console.error('[SERVER] ❌ Ошибка сохранения ошибки GROQ в историю:', saveError);
-              console.error('[SERVER] Save error stack:', saveError.stack);
+              logger.error('[SERVER] ❌ Ошибка сохранения ошибки GROQ в историю:', saveError);
+              logger.error('[SERVER] Save error stack:', saveError.stack);
             }
             
             // Отправляем ошибку клиенту
@@ -3029,7 +3059,7 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
           }
           
         } else if (selectedProvider === 'openroute') {
-          console.log('[SERVER] Отправка запроса в OpenRouter (streaming)...');
+          logger.info('[SERVER] Отправка запроса в OpenRouter (streaming)...');
           // OpenRouter streaming через axios
           const streamResponse = await axios.post('https://openrouter.ai/api/v1/chat/completions', {
             model: resolvedModel,
@@ -3059,7 +3089,7 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
               if (trimmed.startsWith('data: ')) {
                 const data = trimmed.slice(6);
                 if (data === '[DONE]') {
-                  console.log('[SERVER] OpenRouter получил [DONE]');
+                  logger.info('[SERVER] OpenRouter получил [DONE]');
                   continue; // Пропускаем, отправим свой [DONE]
                 }
                 try {
@@ -3067,7 +3097,7 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
                   
                   // Проверяем наличие ошибки в чанке
                   if (parsed.error) {
-                    console.error('[SERVER] ❌ Ошибка в OpenRouter chunk:', parsed.error);
+                    logger.error('[SERVER] ❌ Ошибка в OpenRouter chunk:', parsed.error);
                     const errorMessage = parsed.error.message || JSON.stringify(parsed.error);
                     
                     // Сохраняем ошибку в историю
@@ -3093,9 +3123,9 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
                         };
                         responseData.responses.push(newResponse);
                         await writeResponses(responseData);
-                        console.log(`[SERVER] 💾 Ошибка OpenRouter сохранена в историю: ${newResponse.id}`);
+                        logger.info(`[SERVER] 💾 Ошибка OpenRouter сохранена в историю: ${newResponse.id}`);
                       } catch (saveError) {
-                        console.error('[SERVER] ❌ Ошибка сохранения ошибки OpenRouter в историю:', saveError);
+                        logger.error('[SERVER] ❌ Ошибка сохранения ошибки OpenRouter в историю:', saveError);
                       }
                     })();
                     
@@ -3114,7 +3144,7 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
                     sendSSEChunk(res, createStreamChunk(streamId, resolvedModel, { content }, null));
                     
                     if (chunkIndex <= 3 || chunkIndex % 20 === 0) {
-                      console.log(`[SERVER] OpenRouter chunk #${chunkIndex}, content length: ${content.length}, total: ${streamedContent.length}`);
+                      logger.info(`[SERVER] OpenRouter chunk #${chunkIndex}, content length: ${content.length}, total: ${streamedContent.length}`);
                     }
                   }
                   
@@ -3124,11 +3154,11 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
                   }
                   
                   if (finishReason) {
-                    console.log('[SERVER] OpenRouter finish reason:', finishReason);
+                    logger.info('[SERVER] OpenRouter finish reason:', finishReason);
                     sendSSEChunk(res, createStreamChunk(streamId, resolvedModel, {}, finishReason));
                   }
                 } catch (e) {
-                  console.warn('[SERVER] Ошибка парсинга OpenRouter chunk:', e.message);
+                  logger.warn('[SERVER] Ошибка парсинга OpenRouter chunk:', e.message);
                 }
               }
             }
@@ -3136,11 +3166,11 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
           
           await new Promise((resolve, reject) => {
             streamResponse.data.on('end', () => {
-              console.log(`[SERVER] OpenRouter streaming завершен. Всего чанков: ${chunkIndex}, итоговый контент: ${streamedContent.length} символов`);
+              logger.info(`[SERVER] OpenRouter streaming завершен. Всего чанков: ${chunkIndex}, итоговый контент: ${streamedContent.length} символов`);
               resolve();
             });
             streamResponse.data.on('error', async (error) => {
-              console.error('[SERVER] OpenRouter stream error:', error);
+              logger.error('[SERVER] OpenRouter stream error:', error);
               
               // Сохраняем ошибку в историю
               try {
@@ -3164,9 +3194,9 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
                 };
                 responseData.responses.push(newResponse);
                 await writeResponses(responseData);
-                console.log(`[SERVER] 💾 Ошибка OpenRouter stream сохранена в историю: ${newResponse.id}`);
+                logger.info(`[SERVER] 💾 Ошибка OpenRouter stream сохранена в историю: ${newResponse.id}`);
               } catch (saveError) {
-                console.error('[SERVER] ❌ Ошибка сохранения ошибки OpenRouter stream в историю:', saveError);
+                logger.error('[SERVER] ❌ Ошибка сохранения ошибки OpenRouter stream в историю:', saveError);
               }
               
               // Отправляем ошибку клиенту
@@ -3202,9 +3232,9 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
                 };
                 responseData.responses.push(newResponse);
                 await writeResponses(responseData);
-                console.log(`[SERVER] 💾 Ошибка OpenRouter сохранена в историю: ${newResponse.id}`);
+                logger.info(`[SERVER] 💾 Ошибка OpenRouter сохранена в историю: ${newResponse.id}`);
               } catch (saveError) {
-                console.error('[SERVER] ❌ Ошибка сохранения ошибки OpenRouter в историю:', saveError);
+                logger.error('[SERVER] ❌ Ошибка сохранения ошибки OpenRouter в историю:', saveError);
               }
               
               sendSSEChunk(res, { error: { message: errorMessage } });
@@ -3215,7 +3245,7 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
           
         } else {
           // Для провайдеров без поддержки streaming - эмулируем через обычный запрос
-          console.log(`[SERVER] ⚠️ OpenAI-compat: Провайдер ${selectedProvider} не поддерживает streaming, эмулируем`);
+          logger.info(`[SERVER] ⚠️ OpenAI-compat: Провайдер ${selectedProvider} не поддерживает streaming, эмулируем`);
           
           let fullContent = '';
           let fullUsage = null;
@@ -3276,9 +3306,9 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
         }
         
         // Сохраняем ответ в историю перед завершением стрима
-        console.log('[SERVER] Итоговый streamedContent length:', streamedContent.length);
+        logger.info('[SERVER] Итоговый streamedContent length:', streamedContent.length);
         try {
-          console.log('[SERVER] Попытка сохранить streaming ответ в историю...');
+          logger.info('[SERVER] Попытка сохранить streaming ответ в историю...');
           const responseData = await readResponses();
           const tokens = buildTokensInfo({
             usage: streamUsage,
@@ -3299,36 +3329,36 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
           };
           responseData.responses.push(newResponse);
           await writeResponses(responseData);
-          console.log(`[SERVER] 💾 OpenAI-compat STREAM: Ответ автоматически сохранен в историю: ${newResponse.id}`);
+          logger.info(`[SERVER] 💾 OpenAI-compat STREAM: Ответ автоматически сохранен в историю: ${newResponse.id}`);
         } catch (error) {
-          console.error('[SERVER] ❌ OpenAI-compat STREAM: Ошибка сохранения в историю:', error);
+          logger.error('[SERVER] ❌ OpenAI-compat STREAM: Ошибка сохранения в историю:', error);
         }
         
         // Завершаем стрим
-        console.log('[SERVER] Завершение SSE стрима...');
+        logger.info('[SERVER] Завершение SSE стрима...');
         endSSEStream(res);
-        console.log(`[SERVER] ✅ OpenAI-compat STREAM: Стриминг завершён`);
-        console.log('[SERVER] ========================================');
+        logger.info(`[SERVER] ✅ OpenAI-compat STREAM: Стриминг завершён`);
+        logger.info('[SERVER] ========================================');
         return;
         
       } catch (streamError) {
-        console.error('[SERVER] ========================================');
-        console.error('[SERVER] ❌ ОШИБКА в OpenAI-compat STREAM');
-        console.error('[SERVER] Error name:', streamError.name);
-        console.error('[SERVER] Error message:', streamError.message);
-        console.error('[SERVER] ❌ OpenAI-compat STREAM error:', streamError);
+        logger.error('[SERVER] ========================================');
+        logger.error('[SERVER] ❌ ОШИБКА в OpenAI-compat STREAM');
+        logger.error('[SERVER] Error name:', streamError.name);
+        logger.error('[SERVER] Error message:', streamError.message);
+        logger.error('[SERVER] ❌ OpenAI-compat STREAM error:', streamError);
         
         if (streamError.stack) {
-          console.error('[SERVER] Error stack:', streamError.stack.substring(0, 500));
+          logger.error('[SERVER] Error stack:', streamError.stack.substring(0, 500));
         }
         
         let streamErrorMessage = 'Stream error';
         let streamErrorDetails = null;
         
         if (streamError.response) {
-          console.error('[SERVER] Ошибка API ответа в streaming');
-          console.error('[SERVER] Response status:', streamError.response.status);
-          console.error('[SERVER] Response data:', JSON.stringify(streamError.response.data, null, 2).substring(0, 500));
+          logger.error('[SERVER] Ошибка API ответа в streaming');
+          logger.error('[SERVER] Response status:', streamError.response.status);
+          logger.error('[SERVER] Response data:', JSON.stringify(streamError.response.data, null, 2).substring(0, 500));
           
           const apiError = streamError.response.data?.error;
           if (apiError && typeof apiError === 'object' && apiError.message) {
@@ -3340,23 +3370,23 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
           }
           streamErrorDetails = streamError.response.data;
         } else if (streamError.request) {
-          console.error('[SERVER] Ошибка сети в streaming - запрос не доставлен');
+          logger.error('[SERVER] Ошибка сети в streaming - запрос не доставлен');
           streamErrorMessage = 'Network error - could not connect to AI service';
           streamErrorDetails = { request: streamError.request };
         } else {
-          console.error('[SERVER] Другая ошибка в streaming:', streamError.message);
+          logger.error('[SERVER] Другая ошибка в streaming:', streamError.message);
           streamErrorMessage = streamError.message;
           streamErrorDetails = { stack: streamError.stack };
         }
         
         // Сохраняем ошибку в историю
         try {
-          console.log('[SERVER] Попытка сохранить ошибку (внешний catch) в историю...');
-          console.log('[SERVER] resolvedModel:', typeof resolvedModel !== 'undefined' ? resolvedModel : 'undefined');
-          console.log('[SERVER] selectedProvider:', typeof selectedProvider !== 'undefined' ? selectedProvider : 'undefined');
-          console.log('[SERVER] systemPrompt:', systemPrompt ? systemPrompt.substring(0, 100) : 'null/undefined');
-          console.log('[SERVER] inputText:', typeof inputText !== 'undefined' ? inputText.substring(0, 100) : 'undefined');
-          console.log('[SERVER] streamErrorMessage:', streamErrorMessage);
+          logger.info('[SERVER] Попытка сохранить ошибку (внешний catch) в историю...');
+          logger.info('[SERVER] resolvedModel:', typeof resolvedModel !== 'undefined' ? resolvedModel : 'undefined');
+          logger.info('[SERVER] selectedProvider:', typeof selectedProvider !== 'undefined' ? selectedProvider : 'undefined');
+          logger.info('[SERVER] systemPrompt:', systemPrompt ? systemPrompt.substring(0, 100) : 'null/undefined');
+          logger.info('[SERVER] inputText:', typeof inputText !== 'undefined' ? inputText.substring(0, 100) : 'undefined');
+          logger.info('[SERVER] streamErrorMessage:', streamErrorMessage);
           
           const responseData = await readResponses();
           const newResponse = {
@@ -3377,24 +3407,24 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
             errorDetails: streamErrorDetails
           };
           
-          console.log('[SERVER] Новый response для сохранения (внешний catch):', JSON.stringify(newResponse, null, 2).substring(0, 500));
+          logger.info('[SERVER] Новый response для сохранения (внешний catch):', JSON.stringify(newResponse, null, 2).substring(0, 500));
           
           responseData.responses.push(newResponse);
           await writeResponses(responseData);
-          console.log(`[SERVER] 💾 OpenAI-compat STREAM: Ошибка сохранена в историю: ${newResponse.id}`);
-          console.log('[SERVER] Всего responses в истории (внешний catch):', responseData.responses.length);
+          logger.info(`[SERVER] 💾 OpenAI-compat STREAM: Ошибка сохранена в историю: ${newResponse.id}`);
+          logger.info('[SERVER] Всего responses в истории (внешний catch):', responseData.responses.length);
         } catch (saveError) {
-          console.error('[SERVER] ❌ OpenAI-compat STREAM: Ошибка сохранения ошибки в историю:', saveError);
-          console.error('[SERVER] Save error stack:', saveError.stack);
+          logger.error('[SERVER] ❌ OpenAI-compat STREAM: Ошибка сохранения ошибки в историю:', saveError);
+          logger.error('[SERVER] Save error stack:', saveError.stack);
         }
         
         // Если стрим уже начался, отправляем ошибку в SSE формате
         if (res.headersSent) {
-          console.error('[SERVER] Стрим уже начат, отправляем ошибку в SSE формате');
+          logger.error('[SERVER] Стрим уже начат, отправляем ошибку в SSE формате');
           res.write(`data: ${JSON.stringify({ error: { message: streamErrorMessage } })}\n\n`);
           endSSEStream(res);
         } else {
-          console.error('[SERVER] Стрим не начат, отправляем JSON ошибку');
+          logger.error('[SERVER] Стрим не начат, отправляем JSON ошибку');
           return res.status(500).json({
             error: {
               message: streamErrorMessage,
@@ -3403,7 +3433,7 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
             }
           });
         }
-        console.error('[SERVER] ========================================');
+        logger.error('[SERVER] ========================================');
         return;
       }
     }
@@ -3411,12 +3441,12 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
     // ═══════════════════════════════════════════════════════════════════
     // NON-STREAMING MODE (обычный режим)
     // ═══════════════════════════════════════════════════════════════════
-    console.log('[SERVER] Режим: NON-STREAMING');
+    logger.info('[SERVER] Режим: NON-STREAMING');
     let response;
     
     // Отправляем запрос в зависимости от провайдера
     if (selectedProvider === 'groq') {
-      console.log('[SERVER] Отправка запроса в GROQ (non-streaming)...');
+      logger.info('[SERVER] Отправка запроса в GROQ (non-streaming)...');
       const groqResponse = await groqService.sendRequest({
         model: resolvedModel,
         messages: providerMessages,
@@ -3424,7 +3454,7 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
         maxTokens: finalMaxTokens
       });
       
-      console.log('[SERVER] Ответ от GROQ получен, длина контента:', groqResponse.content?.length || 0);
+      logger.info('[SERVER] Ответ от GROQ получен, длина контента:', groqResponse.content?.length || 0);
       
       response = {
         content: groqResponse.content,
@@ -3433,7 +3463,7 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
       };
       
     } else if (selectedProvider === 'openroute') {
-      console.log('[SERVER] Отправка запроса в OpenRouter (non-streaming)...');
+      logger.info('[SERVER] Отправка запроса в OpenRouter (non-streaming)...');
       const orResponse = await openRouterService.sendRequest({
         model: resolvedModel,
         messages: providerMessages,
@@ -3441,7 +3471,7 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
         maxTokens: finalMaxTokens
       });
       
-      console.log('[SERVER] Ответ от OpenRouter получен, длина контента:', orResponse.data.choices[0].message.content?.length || 0);
+      logger.info('[SERVER] Ответ от OpenRouter получен, длина контента:', orResponse.data.choices[0].message.content?.length || 0);
       
       response = {
         content: orResponse.data.choices[0].message.content,
@@ -3450,7 +3480,7 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
       };
       
     } else if (selectedProvider === 'direct') {
-      console.log('[SERVER] Отправка запроса через Direct провайдер (non-streaming)...');
+      logger.info('[SERVER] Отправка запроса через Direct провайдер (non-streaming)...');
       if (!modelData) {
         return res.status(404).json({
           error: {
@@ -3495,7 +3525,7 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
         maxTokens: finalMaxTokens
       });
       
-      console.log('[SERVER] Ответ от Direct провайдера получен, длина контента:', directResponse.content?.length || 0);
+      logger.info('[SERVER] Ответ от Direct провайдера получен, длина контента:', directResponse.content?.length || 0);
       
       response = {
         content: directResponse.content,
@@ -3504,7 +3534,7 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
       };
       
     } else if (selectedProvider === 'gigachat') {
-      console.log('[SERVER] Отправка запроса в GigaChat (non-streaming)...');
+      logger.info('[SERVER] Отправка запроса в GigaChat (non-streaming)...');
       const gcResponse = await gigachatService.sendRequest({
         model: resolvedModel,
         messages: providerMessages,
@@ -3512,7 +3542,7 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
         maxTokens: finalMaxTokens
       });
       
-      console.log('[SERVER] Ответ от GigaChat получен, длина контента:', gcResponse.content?.length || 0);
+      logger.info('[SERVER] Ответ от GigaChat получен, длина контента:', gcResponse.content?.length || 0);
       
       response = {
         content: gcResponse.content,
@@ -3521,7 +3551,7 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
       };
       
     } else {
-      console.error('[SERVER] Неизвестный провайдер:', selectedProvider);
+      logger.error('[SERVER] Неизвестный провайдер:', selectedProvider);
       return res.status(400).json({
         error: {
           message: `Unknown provider: ${selectedProvider}`,
@@ -3531,8 +3561,8 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
       });
     }
     
-    console.log('[SERVER] Формируем OpenAI-совместимый ответ...');
-    console.log('[SERVER] Response content length:', response.content?.length || 0);
+    logger.info('[SERVER] Формируем OpenAI-совместимый ответ...');
+    logger.info('[SERVER] Response content length:', response.content?.length || 0);
     
     // Формируем OpenAI-совместимый ответ
     const openaiResponse = {
@@ -3557,11 +3587,11 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
       }
     };
     
-      console.log(`[SERVER] ✅ OpenAI-compat: Ответ сформирован, ${openaiResponse.usage.total_tokens} токенов`);
+      logger.info(`[SERVER] ✅ OpenAI-compat: Ответ сформирован, ${openaiResponse.usage.total_tokens} токенов`);
       
       // Всегда сохраняем ответ в историю
       try {
-        console.log('[SERVER] Попытка сохранить non-streaming ответ в историю...');
+        logger.info('[SERVER] Попытка сохранить non-streaming ответ в историю...');
         const responseData = await readResponses();
         const tokens = buildTokensInfo({
           usage: response.usage,
@@ -3582,23 +3612,23 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
         };
         responseData.responses.push(newResponse);
         await writeResponses(responseData);
-        console.log(`[SERVER] 💾 OpenAI-compat: Ответ автоматически сохранен в историю: ${newResponse.id}`);
+        logger.info(`[SERVER] 💾 OpenAI-compat: Ответ автоматически сохранен в историю: ${newResponse.id}`);
       } catch (error) {
-        console.error('[SERVER] ❌ OpenAI-compat: Ошибка сохранения в историю:', error);
+        logger.error('[SERVER] ❌ OpenAI-compat: Ошибка сохранения в историю:', error);
       }
       
-      console.log('[SERVER] Отправка non-streaming ответа клиенту...');
-      console.log('[SERVER] Response keys:', Object.keys(openaiResponse));
-      console.log('[SERVER] ========================================');
+      logger.info('[SERVER] Отправка non-streaming ответа клиенту...');
+      logger.info('[SERVER] Response keys:', Object.keys(openaiResponse));
+      logger.info('[SERVER] ========================================');
       
       return res.json(openaiResponse);
       
     } catch (error) {
-      console.error('[SERVER] ========================================');
-      console.error('[SERVER] ❌ ОШИБКА в /v1/chat/completions (общий catch)');
-      console.error('[SERVER] Error name:', error.name);
-      console.error('[SERVER] Error message:', error.message);
-      console.error('[SERVER] ❌ OpenAI-compat error:', error);
+      logger.error('[SERVER] ========================================');
+      logger.error('[SERVER] ❌ ОШИБКА в /v1/chat/completions (общий catch)');
+      logger.error('[SERVER] Error name:', error.name);
+      logger.error('[SERVER] Error message:', error.message);
+      logger.error('[SERVER] ❌ OpenAI-compat error:', error);
     
     let statusCode = 500;
     let errorMessage = 'Internal server error';
@@ -3606,9 +3636,9 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
     let errorDetails = null;
     
     if (error.response) {
-      console.error('[SERVER] Ошибка API ответа');
-      console.error('[SERVER] Response status:', error.response.status);
-      console.error('[SERVER] Response data:', JSON.stringify(error.response.data, null, 2).substring(0, 500));
+      logger.error('[SERVER] Ошибка API ответа');
+      logger.error('[SERVER] Response status:', error.response.status);
+      logger.error('[SERVER] Response data:', JSON.stringify(error.response.data, null, 2).substring(0, 500));
       
       statusCode = error.response.status || 500;
       const apiError = error.response.data?.error;
@@ -3621,14 +3651,14 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
       }
       errorDetails = error.response.data;
     } else if (error.request) {
-      console.error('[SERVER] Ошибка сети - запрос не доставлен');
+      logger.error('[SERVER] Ошибка сети - запрос не доставлен');
       errorMessage = 'Network error - could not connect to AI service';
       errorType = 'network_error';
       errorDetails = { request: error.request };
     } else {
-      console.error('[SERVER] Другая ошибка:', error.message);
+      logger.error('[SERVER] Другая ошибка:', error.message);
       if (error.stack) {
-        console.error('[SERVER] Error stack:', error.stack.substring(0, 500));
+        logger.error('[SERVER] Error stack:', error.stack.substring(0, 500));
       }
       errorMessage = error.message;
       errorDetails = { stack: error.stack };
@@ -3636,7 +3666,7 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
     
     // Сохраняем ошибку в историю
     try {
-      console.log('[SERVER] Попытка сохранить ошибку в историю...');
+      logger.info('[SERVER] Попытка сохранить ошибку в историю...');
       const responseData = await readResponses();
       // Пытаемся получить model и provider из контекста, если они были определены
       let errorModel = 'unknown';
@@ -3678,14 +3708,14 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
       
       responseData.responses.push(newResponse);
       await writeResponses(responseData);
-      console.log(`[SERVER] 💾 OpenAI-compat: Ошибка сохранена в историю: ${newResponse.id}`);
+      logger.info(`[SERVER] 💾 OpenAI-compat: Ошибка сохранена в историю: ${newResponse.id}`);
     } catch (saveError) {
-      console.error('[SERVER] ❌ OpenAI-compat: Ошибка сохранения ошибки в историю:', saveError);
+      logger.error('[SERVER] ❌ OpenAI-compat: Ошибка сохранения ошибки в историю:', saveError);
     }
     
-    console.error('[SERVER] Отправка ответа с ошибкой клиенту');
-    console.error('[SERVER] Status code:', statusCode);
-    console.error('[SERVER] ========================================');
+    logger.error('[SERVER] Отправка ответа с ошибкой клиенту');
+    logger.error('[SERVER] Status code:', statusCode);
+    logger.error('[SERVER] ========================================');
     
     return res.status(statusCode).json({
       error: {
@@ -3716,7 +3746,7 @@ app.get('/v1/models', openaiAuthMiddleware, async (req, res) => {
     });
     
   } catch (error) {
-    console.error('❌ OpenAI-compat /v1/models error:', error);
+    logger.error('❌ OpenAI-compat /v1/models error:', error);
     return res.status(500).json({
       error: {
         message: 'Failed to load models',
@@ -3729,17 +3759,17 @@ app.get('/v1/models', openaiAuthMiddleware, async (req, res) => {
 
 // Логируем статус OpenAI-совместимого API
 if (process.env.OPENAI_COMPAT_API_KEY) {
-  console.log('🔐 OpenAI-совместимый API: аутентификация ВКЛЮЧЕНА');
+  logger.info('🔐 OpenAI-совместимый API: аутентификация ВКЛЮЧЕНА');
 } else {
-  console.log('🔓 OpenAI-совместимый API: аутентификация ОТКЛЮЧЕНА (OPENAI_COMPAT_API_KEY не задан)');
+  logger.info('🔓 OpenAI-совместимый API: аутентификация ОТКЛЮЧЕНА (OPENAI_COMPAT_API_KEY не задан)');
 }
-console.log('📡 OpenAI-совместимые эндпоинты: /v1/chat/completions, /v1/models');
+logger.info('📡 OpenAI-совместимые эндпоинты: /v1/chat/completions, /v1/models');
 
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const PORT = process.env.PORT || config.port;
 
 app.listen(PORT, () => {
-  console.log(`Сервер запущен на порту ${PORT}`);
-  console.log(`Откройте http://localhost:${PORT} в вашем браузере`);
+  logger.info(`Сервер запущен на порту ${PORT}`);
+  logger.info(`Откройте http://localhost:${PORT} в вашем браузере`);
 });

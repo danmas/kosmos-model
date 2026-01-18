@@ -3,6 +3,7 @@
 // Документация: https://developers.sber.ru/portal/products/gigachat-api
 
 const crypto = require('crypto');
+const logger = require('./logger');
 
 // Отключаем проверку самоподписанного сертификата Сбера
 // Native fetch в Node.js не поддерживает опцию agent, поэтому используем глобальную настройку
@@ -18,7 +19,7 @@ class GigaChatService {
         this.token = null;
         this.tokenExpiresAt = 0;
         
-        console.log('🟢 GigaChatService инициализирован');
+        logger.info('🟢 GigaChatService инициализирован');
     }
 
     /**
@@ -33,7 +34,7 @@ class GigaChatService {
             return this.token;
         }
 
-        console.log('🔑 GigaChat: запрос нового токена...');
+        logger.info('🔑 GigaChat: запрос нового токена...');
         
         const response = await fetch('https://ngw.devices.sberbank.ru:9443/api/v2/oauth', {
             method: 'POST',
@@ -59,7 +60,7 @@ class GigaChatService {
             ? data.expires_at * 1000 
             : now + 29 * 60 * 1000;
             
-        console.log('🔑 GigaChat: токен получен, истекает через', 
+        logger.info('🔑 GigaChat: токен получен, истекает через', 
             Math.round((this.tokenExpiresAt - now) / 60000), 'мин');
         
         return this.token;
@@ -80,7 +81,7 @@ class GigaChatService {
             const token = await this.getAccessToken();
             const startTime = Date.now();
 
-            console.log(`📤 GigaChat: отправляем запрос к модели ${model}`);
+            logger.info(`📤 GigaChat: отправляем запрос к модели ${model}`);
 
             const payload = {
                 model,
@@ -118,13 +119,13 @@ class GigaChatService {
                 responseTime
             };
 
-            console.log(`✅ GigaChat: ответ за ${responseTime}ms`);
-            console.log(`📊 GigaChat: токены:`, data.usage);
+            logger.info(`✅ GigaChat: ответ за ${responseTime}ms`);
+            logger.info(`📊 GigaChat: токены:`, data.usage);
 
             return result;
 
         } catch (error) {
-            console.error('❌ GigaChat API Error:', error.message);
+            logger.error('❌ GigaChat API Error:', error.message);
             throw new Error(`GigaChat API Error: ${error.message}`);
         }
     }
@@ -148,7 +149,7 @@ class GigaChatService {
             await this.quickChat("Привет", "GigaChat");
             return { available: true, provider: 'gigachat' };
         } catch (error) {
-            console.error('🔴 GigaChat недоступен:', error.message);
+            logger.error('🔴 GigaChat недоступен:', error.message);
             return { available: false, error: error.message };
         }
     }

@@ -1,4 +1,5 @@
 const axios = require('axios');
+const logger = require('./logger');
 
 class DirectService {
     constructor(apiKey, baseUrl) {
@@ -7,12 +8,12 @@ class DirectService {
         }
         this.apiKey = apiKey;
         this.baseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
-        console.log(`🚀 DirectService инициализирован для ${baseUrl}`);
+        logger.info(`🚀 DirectService инициализирован для ${baseUrl}`);
     }
 
     async sendRequest({ model, messages, temperature = 0.7, maxTokens = 1024, stream = false }) {
         try {
-            console.log(`📤 Direct: Отправляем запрос к модели ${model} на ${this.baseUrl}`);
+            logger.info(`📤 Direct: Отправляем запрос к модели ${model} на ${this.baseUrl}`);
 
             const startTime = Date.now();
 
@@ -41,11 +42,11 @@ class DirectService {
                 'Authorization': `Bearer ${this.apiKey.substring(0, 10)}...`
             };
             
-            console.log('🔍 DEBUG DIRECT: Полный запрос к API:');
-            console.log('  URL:', requestUrl);
-            console.log('  Headers:', JSON.stringify(requestHeaders, null, 2));
-            console.log('  Payload:', JSON.stringify(payload, null, 2));
-            console.log('  Полный payload (для копирования):', JSON.stringify(payload));
+            logger.info('🔍 DEBUG DIRECT: Полный запрос к API:');
+            logger.info('  URL:', requestUrl);
+            logger.info('  Headers:', JSON.stringify(requestHeaders, null, 2));
+            logger.info('  Payload:', JSON.stringify(payload, null, 2));
+            logger.info('  Полный payload (для копирования):', JSON.stringify(payload));
 
             const response = await axios.post(
                 requestUrl,
@@ -70,10 +71,10 @@ class DirectService {
             const content = completion.choices?.[0]?.message?.content || '';
 
             // Детальное логирование ответа
-            console.log('🔍 DEBUG DIRECT: Ответ от API:');
-            console.log('  Status:', response.status);
-            console.log('  Полный ответ:', JSON.stringify(completion, null, 2));
-            console.log('  Извлеченный content:', content.substring(0, 200) + (content.length > 200 ? '...' : ''));
+            logger.info('🔍 DEBUG DIRECT: Ответ от API:');
+            logger.info('  Status:', response.status);
+            logger.info('  Полный ответ:', JSON.stringify(completion, null, 2));
+            logger.info('  Извлеченный content:', content.substring(0, 200) + (content.length > 200 ? '...' : ''));
 
             const result = {
                 content,
@@ -83,20 +84,20 @@ class DirectService {
                 responseTime
             };
 
-            console.log(`✅ Direct: Ответ за ${responseTime}ms`);
-            console.log(`📊 Direct: Токены:`, completion.usage);
+            logger.info(`✅ Direct: Ответ за ${responseTime}ms`);
+            logger.info(`📊 Direct: Токены:`, completion.usage);
 
             return result;
 
         } catch (error) {
-            console.error('❌ Direct API Error:');
-            console.error('  Message:', error.message);
-            console.error('  Status:', error.response?.status);
-            console.error('  Status Text:', error.response?.statusText);
-            console.error('  Response Data:', JSON.stringify(error.response?.data, null, 2));
-            console.error('  Request URL:', error.config?.url);
-            console.error('  Request Method:', error.config?.method);
-            console.error('  Request Payload:', JSON.stringify(error.config?.data, null, 2));
+            logger.error('❌ Direct API Error:');
+            logger.error('  Message:', error.message);
+            logger.error('  Status:', error.response?.status);
+            logger.error('  Status Text:', error.response?.statusText);
+            logger.error('  Response Data:', JSON.stringify(error.response?.data, null, 2));
+            logger.error('  Request URL:', error.config?.url);
+            logger.error('  Request Method:', error.config?.method);
+            logger.error('  Request Payload:', JSON.stringify(error.config?.data, null, 2));
             throw new Error(`Direct API Error: ${error.response?.data?.error?.message || error.message}`);
         }
     }

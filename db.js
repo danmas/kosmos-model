@@ -4,6 +4,7 @@
 const OpenAI = require("openai");
 const { createClient } = require("@supabase/supabase-js");
 const { Client } = require("pg");
+const logger = require('./logger');
 
 
 // Конфигурация Supabase
@@ -13,8 +14,8 @@ const SUPABASE_URL = process.env.SUPABASE_URL || 'https://gdtgqhnrjdfsixfwzusr.s
 const SUPABASE_KEY = process.env.SUPABASE_KEY; // || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkdGdxaG5yamRmc2l4Znd6dXNyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDAwNjkxODcsImV4cCI6MjA1NTY0NTE4N30.wiBhq_qUSYeKPPfbQy7oLQviA53gQyE_mQxxejCFzYY';
 
 // Логирование без раскрытия полного ключа
-console.log('Supabase URL:', SUPABASE_URL);
-console.log('Supabase Key:', SUPABASE_KEY ? '***' + SUPABASE_KEY.slice(-6) : null); // Показываем только последние 6 символов
+logger.info('Supabase URL:', SUPABASE_URL);
+logger.info('Supabase Key:', SUPABASE_KEY ? '***' + SUPABASE_KEY.slice(-6) : null); // Показываем только последние 6 символов
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -49,9 +50,9 @@ const pgClient = new Client({
 async function main() {
   try {
     await pgClient.connect();
-    console.log("✅ Подключение к базе данных установлено.");
+    logger.info("✅ Подключение к базе данных установлено.");
   } catch (error) {
-    console.error("❌ Ошибка подключения:", error);
+    logger.error("❌ Ошибка подключения:", error);
   }
 }
 
@@ -92,19 +93,19 @@ async function saveEmbedding(fileUrl, embedding) {
 // 📌 4️⃣ Запуск процесса
 async function processFile(filePath, fileName, textContent) {
   try {
-    console.log("📤 Загружаем файл...");
+    logger.info("📤 Загружаем файл...");
     const fileUrl = await uploadFile(filePath, fileName);
-    console.log("✅ Файл загружен:", fileUrl);
+    logger.info("✅ Файл загружен:", fileUrl);
 
-    console.log("🧠 Генерируем эмбеддинг...");
+    logger.info("🧠 Генерируем эмбеддинг...");
     const embedding = await generateEmbedding(textContent);
-    console.log("✅ Эмбеддинг создан");
+    logger.info("✅ Эмбеддинг создан");
 
-    console.log("💾 Сохраняем эмбеддинг в базе...");
+    logger.info("💾 Сохраняем эмбеддинг в базе...");
     await saveEmbedding(fileUrl, embedding);
-    console.log("✅ Данные сохранены!");
+    logger.info("✅ Данные сохранены!");
   } catch (error) {
-    console.error("❌ Ошибка:", error);
+    logger.error("❌ Ошибка:", error);
   } finally {
     pgClient.end();
   }
