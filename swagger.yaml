@@ -64,7 +64,7 @@ paths:
         - **Direct/GigaChat** — эмуляция (ответ разбивается на чанки)
         
         **Аутентификация:**
-        - Если `OPENAI_COMPAT_API_KEY` задан в .env — требуется Bearer Token
+        - Если `KOSMOS_API_KEY` задан в .env — требуется Bearer Token
         - Если не задан — доступ без аутентификации
         
         **Пример использования с OpenAI Python SDK:**
@@ -1854,8 +1854,8 @@ components:
       scheme: bearer
       description: |
         Bearer Token аутентификация для OpenAI-совместимого API.
-        Токен должен совпадать со значением OPENAI_COMPAT_API_KEY в .env.
-        Если OPENAI_COMPAT_API_KEY не задан — аутентификация не требуется.
+        Токен должен совпадать со значением KOSMOS_API_KEY в .env.
+        Если KOSMOS_API_KEY не задан — аутентификация не требуется.
 
   parameters:
     PromptName:

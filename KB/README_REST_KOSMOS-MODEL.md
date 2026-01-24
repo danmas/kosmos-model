@@ -114,7 +114,7 @@ for chunk in stream:
 
 ### Аутентификация
 
-- Если `OPENAI_COMPAT_API_KEY` задан в `.env` — требуется заголовок `Authorization: Bearer <token>`
+- Если `KOSMOS_API_KEY` задан в `.env` — требуется заголовок `Authorization: Bearer <token>`
 - Если не задан — доступ без аутентификации
 
 ### Пример с OpenAI Python SDK
@@ -364,7 +364,7 @@ GIGACHAT_AUTH_DATA=base64_строка
 # OpenAI-совместимый API (опционально)
 # Если задан — требуется Bearer Token аутентификация
 # Если пустой — доступ без аутентификации
-OPENAI_COMPAT_API_KEY=your-secret-key
+KOSMOS_API_KEY=your-secret-key
 ```
 
 ---

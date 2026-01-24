@@ -2605,7 +2605,7 @@ setInterval(refreshDirectModels, 8 * 60 * 60 * 1000);
 
 // Middleware для Bearer Token аутентификации (только для /v1/* путей)
 function openaiAuthMiddleware(req, res, next) {
-  const apiKey = process.env.OPENAI_COMPAT_API_KEY;
+  const apiKey = process.env.KOSMOS_API_KEY;
   
   // Если ключ не задан — пропускаем без проверки (обратная совместимость)
   if (!apiKey) {
@@ -3758,10 +3758,10 @@ app.get('/v1/models', openaiAuthMiddleware, async (req, res) => {
 });
 
 // Логируем статус OpenAI-совместимого API
-if (process.env.OPENAI_COMPAT_API_KEY) {
+if (process.env.KOSMOS_API_KEY) {
   logger.info('🔐 OpenAI-совместимый API: аутентификация ВКЛЮЧЕНА');
 } else {
-  logger.info('🔓 OpenAI-совместимый API: аутентификация ОТКЛЮЧЕНА (OPENAI_COMPAT_API_KEY не задан)');
+  logger.info('🔓 OpenAI-совместимый API: аутентификация ОТКЛЮЧЕНА (KOSMOS_API_KEY не задан)');
 }
 logger.info('📡 OpenAI-совместимые эндпоинты: /v1/chat/completions, /v1/models');
 

@@ -365,7 +365,7 @@ class ModelsPage {
             const baseUrl = window.location.origin;
             
             // Выполняем тест через OpenAI-совместимый эндпоинт
-            // Без Authorization хедера - если OPENAI_COMPAT_API_KEY не задан, он не нужен
+            // Без Authorization хедера - если KOSMOS_API_KEY не задан, он не нужен
             const startTime = Date.now();
             const res = await fetch(`${baseUrl}/v1/chat/completions`, {
                 method: 'POST',
@@ -406,7 +406,7 @@ class ModelsPage {
     "stream": false
   }'
 
-# Если включена авторизация (OPENAI_COMPAT_API_KEY), добавьте:
+# Если включена авторизация (KOSMOS_API_KEY), добавьте:
 # -H "Authorization: Bearer YOUR_API_KEY"`;
             
             // Показываем результат в модалке

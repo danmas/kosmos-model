@@ -315,7 +315,7 @@ data: [DONE]
 
 ### Аутентификация
 
-- Если `OPENAI_COMPAT_API_KEY` задан в `.env` — требуется Bearer Token
+- Если `KOSMOS_API_KEY` задан в `.env` — требуется Bearer Token
 - Если не задан — доступ без аутентификации (обратная совместимость)
 
 ### Пример использования с OpenAI SDK
@@ -347,7 +347,7 @@ print(response.choices[0].message.content)
 - Функция `generateChatCompletionId()` для генерации ID в стиле OpenAI
 
 **2. `.env.example`**
-- Добавлена переменная `OPENAI_COMPAT_API_KEY`
+- Добавлена переменная `KOSMOS_API_KEY`
 
 **3. `swagger.yaml`**
 - Новый тег `OpenAI Compatible`
