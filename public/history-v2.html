@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>История запросов AI - V2</title>
+    <!-- Marked.js для Markdown -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Highlight.js для подсветки кода -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.7.0/styles/github-dark.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.7.0/highlight.min.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* Reset and base */
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #0f172a; /* bg-slate-900 */
+            color: #e2e8f0; /* text-slate-200 */
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Tailwind-like utilities */
+        .font-mono { font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Monaco, Consolas, monospace; }
+        .font-bold { font-weight: 700; }
+        .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .cursor-pointer { cursor: pointer; }
+        .cursor-move { cursor: move; }
+        .select-none { user-select: none; }
+        .transition-colors { transition: background-color 0.15s, color 0.15s, border-color 0.15s; }
+        .transition-transform { transition: transform 0.15s; }
+
+        /* Color palette */
+        .bg-slate-900 { background-color: #0f172a; }
+        .bg-slate-800 { background-color: #1e293b; }
+        .bg-slate-800\/50 { background-color: rgba(30, 41, 59, 0.5); }
+        .bg-slate-700 { background-color: #334155; }
+        .bg-blue-900\/20 { background-color: rgba(30, 58, 138, 0.2); }
+        .bg-blue-600 { background-color: #2563eb; }
+        .bg-blue-500 { background-color: #3b82f6; }
+        .bg-green-500\/20 { background-color: rgba(34, 197, 94, 0.2); }
+        .bg-red-500\/20 { background-color: rgba(239, 68, 68, 0.2); }
+        .bg-amber-500\/20 { background-color: rgba(245, 158, 11, 0.2); }
+        .bg-purple-500\/20 { background-color: rgba(168, 85, 247, 0.2); }
+        .bg-cyan-500\/20 { background-color: rgba(6, 182, 212, 0.2); }
+        .bg-code { background-color: #0d1117; }
+
+        .text-white { color: #ffffff; }
+        .text-slate-200 { color: #e2e8f0; }
+        .text-slate-300 { color: #cbd5e1; }
+        .text-slate-400 { color: #94a3b8; }
+        .text-slate-500 { color: #64748b; }
+        .text-blue-400 { color: #60a5fa; }
+        .text-green-400 { color: #4ade80; }
+        .text-red-400 { color: #f87171; }
+        .text-amber-400 { color: #fbbf24; }
+        .text-purple-400 { color: #c084fc; }
+        .text-cyan-400 { color: #22d3ee; }
+
+        .border-slate-700 { border-color: #334155; }
+        .border-slate-600 { border-color: #475569; }
+        .border-blue-500 { border-color: #3b82f6; }
+        .border-green-500\/50 { border-color: rgba(34, 197, 94, 0.5); }
+        .border-red-500\/50 { border-color: rgba(239, 68, 68, 0.5); }
+
+        /* Main layout */
+        .app-container {
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Left Panel */
+        .left-panel {
+            width: 320px;
+            min-width: 280px;
+            max-width: 480px;
+            border-right: 1px solid #334155;
+            display: flex;
+            flex-direction: column;
+            background-color: rgba(30, 41, 59, 0.5);
+        }
+
+        .left-header {
+            padding: 12px;
+            border-bottom: 1px solid #334155;
+            background-color: #1e293b;
+        }
+
+        .left-header-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .left-header-title h2 {
+            color: #fff;
+            font-weight: 700;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .back-link {
+            color: #94a3b8;
+            text-decoration: none;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: background-color 0.15s, color 0.15s;
+        }
+
+        .back-link:hover {
+            background-color: #334155;
+            color: #fff;
+        }
+
+        .search-row {
+            display: flex;
+            gap: 6px;
+        }
+
+        .search-input {
+            flex: 1;
+            background-color: #0f172a;
+            border: 1px solid #475569;
+            border-radius: 4px;
+            padding: 6px 10px;
+            font-size: 12px;
+            color: #fff;
+            outline: none;
+            transition: border-color 0.15s;
+        }
+
+        .search-input:focus {
+            border-color: #3b82f6;
+        }
+
+        .search-input::placeholder {
+            color: #64748b;
+        }
+
+        .filter-btn {
+            background-color: #334155;
+            border: 1px solid #475569;
+            border-radius: 4px;
+            padding: 6px 10px;
+            color: #94a3b8;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background-color 0.15s, color 0.15s;
+        }
+
+        .filter-btn:hover {
+            background-color: #475569;
+            color: #fff;
+        }
+
+        .filter-btn.active {
+            background-color: #2563eb;
+            border-color: #3b82f6;
+            color: #fff;
+        }
+
+        /* List */
+        .list-container {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .list-item {
+            padding: 10px 12px;
+            border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+            cursor: pointer;
+            transition: background-color 0.15s;
+            border-left: 4px solid transparent;
+        }
+
+        .list-item:hover {
+            background-color: #1e293b;
+        }
+
+        .list-item.selected {
+            background-color: rgba(30, 58, 138, 0.2);
+            border-left-color: #3b82f6;
+        }
+
+        .list-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+
+        .list-item-date {
+            font-size: 11px;
+            color: #e2e8f0;
+            font-family: ui-monospace, monospace;
+        }
+
+        .list-item-badge {
+            font-size: 9px;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-groq {
+            background-color: rgba(34, 197, 94, 0.2);
+            color: #4ade80;
+            border: 1px solid rgba(34, 197, 94, 0.5);
+        }
+
+        .badge-openrouter {
+            background-color: rgba(6, 182, 212, 0.2);
+            color: #22d3ee;
+            border: 1px solid rgba(6, 182, 212, 0.5);
+        }
+
+        .badge-gigachat {
+            background-color: rgba(168, 85, 247, 0.2);
+            color: #c084fc;
+            border: 1px solid rgba(168, 85, 247, 0.5);
+        }
+
+        .badge-default {
+            background-color: rgba(100, 116, 139, 0.2);
+            color: #94a3b8;
+            border: 1px solid rgba(100, 116, 139, 0.5);
+        }
+
+        .list-item-prompt {
+            font-size: 10px;
+            color: #94a3b8;
+            margin-bottom: 3px;
+        }
+
+        .list-item-preview {
+            font-size: 10px;
+            color: #64748b;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 100%;
+        }
+
+        /* Pagination Footer */
+        .pagination-footer {
+            padding: 8px 12px;
+            border-top: 1px solid #334155;
+            background-color: #1e293b;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .pagination-info {
+            font-size: 10px;
+            color: #94a3b8;
+        }
+
+        .pagination-buttons {
+            display: flex;
+            gap: 4px;
+        }
+
+        .pagination-btn {
+            background-color: #334155;
+            border: 1px solid #475569;
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 10px;
+            color: #e2e8f0;
+            cursor: pointer;
+            transition: background-color 0.15s;
+        }
+
+        .pagination-btn:hover:not(:disabled) {
+            background-color: #475569;
+        }
+
+        .pagination-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Right Panel */
+        .right-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background-color: #0f172a;
+        }
+
+        .right-panel-empty {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #64748b;
+            font-size: 14px;
+        }
+
+        /* Meta Header */
+        .meta-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid #334155;
+            background-color: #1e293b;
+        }
+
+        .meta-header-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+
+        .meta-header-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .meta-id {
+            font-size: 14px;
+            font-weight: 700;
+            color: #fff;
+            font-family: ui-monospace, monospace;
+        }
+
+        .meta-badge {
+            font-size: 10px;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            border: 1px solid;
+        }
+
+        .badge-success {
+            background-color: rgba(34, 197, 94, 0.2);
+            color: #4ade80;
+            border-color: rgba(34, 197, 94, 0.5);
+        }
+
+        .badge-error {
+            background-color: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+            border-color: rgba(239, 68, 68, 0.5);
+        }
+
+        .meta-info {
+            font-size: 11px;
+            color: #94a3b8;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .meta-info i {
+            font-size: 10px;
+        }
+
+        /* Tabs */
+        .tabs-container {
+            display: flex;
+            border-bottom: 1px solid #334155;
+            background-color: rgba(30, 41, 59, 0.5);
+        }
+
+        .tab-btn {
+            padding: 10px 16px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #94a3b8;
+            background: none;
+            border: none;
+            cursor: pointer;
+            transition: color 0.15s, background-color 0.15s;
+            border-bottom: 2px solid transparent;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .tab-btn:hover {
+            color: #e2e8f0;
+            background-color: #1e293b;
+        }
+
+        .tab-btn.active {
+            color: #60a5fa;
+            border-bottom-color: #60a5fa;
+            background-color: rgba(30, 58, 138, 0.1);
+        }
+
+        .tab-btn-expand {
+            margin-left: auto;
+            padding: 8px 12px;
+            font-size: 11px;
+            color: #94a3b8;
+            background: none;
+            border: none;
+            cursor: pointer;
+            transition: color 0.15s;
+        }
+
+        .tab-btn-expand:hover {
+            color: #fff;
+        }
+
+        /* Tab Content */
+        .tab-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .content-section {
+            margin-bottom: 16px;
+        }
+
+        .content-section-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: #94a3b8;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .content-block {
+            background-color: #0d1117;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            padding: 12px;
+            font-family: ui-monospace, monospace;
+            font-size: 12px;
+            color: #e2e8f0;
+            white-space: pre-wrap;
+            word-break: break-word;
+            line-height: 1.5;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        /* Collapsible Raw JSON */
+        .raw-json-toggle {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            color: #64748b;
+            cursor: pointer;
+            padding: 8px 0;
+            transition: color 0.15s;
+        }
+
+        .raw-json-toggle:hover {
+            color: #94a3b8;
+        }
+
+        .raw-json-toggle i {
+            transition: transform 0.15s;
+        }
+
+        .raw-json-toggle.expanded i {
+            transform: rotate(90deg);
+        }
+
+        .raw-json-content {
+            display: none;
+            margin-top: 8px;
+        }
+
+        .raw-json-content.visible {
+            display: block;
+        }
+
+        /* Filter Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none;
+            z-index: 1000;
+        }
+
+        .modal-overlay.visible {
+            display: block;
+        }
+
+        .modal-container {
+            position: fixed;
+            z-index: 1001;
+            background-color: rgba(15, 23, 42, 0.95);
+            border: 1px solid #334155;
+            border-radius: 8px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-width: 360px;
+            min-height: 300px;
+        }
+
+        .modal-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid #334155;
+            background-color: rgba(30, 41, 59, 0.8);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: move;
+        }
+
+        .modal-header h3 {
+            font-size: 13px;
+            font-weight: 600;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .modal-header-buttons {
+            display: flex;
+            gap: 4px;
+        }
+
+        .modal-btn-icon {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            transition: background-color 0.15s, color 0.15s;
+        }
+
+        .modal-btn-icon:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        .modal-body {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+        }
+
+        .modal-footer {
+            padding: 12px 16px;
+            border-top: 1px solid #334155;
+            background-color: rgba(30, 41, 59, 0.5);
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        .modal-resize-handle {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 16px;
+            height: 16px;
+            cursor: nwse-resize;
+        }
+
+        .modal-resize-handle::after {
+            content: '';
+            position: absolute;
+            bottom: 4px;
+            right: 4px;
+            width: 8px;
+            height: 8px;
+            border-right: 2px solid #475569;
+            border-bottom: 2px solid #475569;
+        }
+
+        /* Form elements */
+        .form-group {
+            margin-bottom: 12px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            color: #94a3b8;
+            margin-bottom: 4px;
+        }
+
+        .form-input, .form-select {
+            width: 100%;
+            background-color: #0f172a;
+            border: 1px solid #475569;
+            border-radius: 4px;
+            padding: 8px 10px;
+            font-size: 12px;
+            color: #fff;
+            outline: none;
+            transition: border-color 0.15s;
+        }
+
+        .form-input:focus, .form-select:focus {
+            border-color: #3b82f6;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 8px 14px;
+            font-size: 11px;
+            font-weight: 600;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.15s;
+            border: none;
+        }
+
+        .btn-primary {
+            background-color: #2563eb;
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background-color: #3b82f6;
+        }
+
+        .btn-secondary {
+            background-color: #334155;
+            color: #e2e8f0;
+        }
+
+        .btn-secondary:hover {
+            background-color: #475569;
+        }
+
+        .btn-danger {
+            background-color: #991b1b;
+            color: #fff;
+        }
+
+        .btn-danger:hover {
+            background-color: #b91c1c;
+        }
+
+        /* Text View Modal specific */
+        .text-modal-tabs {
+            display: flex;
+            gap: 4px;
+            margin-left: 16px;
+        }
+
+        .text-modal-tab {
+            padding: 4px 10px;
+            font-size: 10px;
+            font-weight: 600;
+            color: #94a3b8;
+            background-color: #334155;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.15s, color 0.15s;
+        }
+
+        .text-modal-tab.active {
+            background-color: #2563eb;
+            color: #fff;
+        }
+
+        .text-modal-tab:hover:not(.active) {
+            background-color: #475569;
+        }
+
+        .text-modal-content {
+            flex: 1;
+            display: none;
+            overflow: hidden;
+        }
+
+        .text-modal-content.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .text-modal-textarea {
+            flex: 1;
+            background-color: #0d1117;
+            border: none;
+            padding: 16px;
+            font-family: ui-monospace, monospace;
+            font-size: 12px;
+            color: #e2e8f0;
+            resize: none;
+            outline: none;
+            line-height: 1.5;
+        }
+
+        .text-modal-markdown {
+            flex: 1;
+            background-color: #0d1117;
+            padding: 16px;
+            overflow-y: auto;
+            color: #e2e8f0;
+            line-height: 1.6;
+        }
+
+        .text-modal-markdown h1, .text-modal-markdown h2, .text-modal-markdown h3 {
+            color: #fff;
+            margin-top: 1em;
+            margin-bottom: 0.5em;
+        }
+
+        .text-modal-markdown code {
+            background-color: #1e293b;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+
+        .text-modal-markdown pre {
+            background-color: #1e293b;
+            padding: 12px;
+            border-radius: 6px;
+            overflow-x: auto;
+        }
+
+        .text-modal-markdown pre code {
+            background: none;
+            padding: 0;
+        }
+
+        /* Loading & Empty states */
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #334155;
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .stats-card {
+            background-color: rgba(30, 41, 59, 0.5);
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .stats-card-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #334155;
+        }
+
+        .stats-card-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .stats-card-icon.blue { background-color: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+        .stats-card-icon.green { background-color: rgba(34, 197, 94, 0.2); color: #4ade80; }
+        .stats-card-icon.purple { background-color: rgba(168, 85, 247, 0.2); color: #c084fc; }
+        .stats-card-icon.amber { background-color: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+        .stats-card-icon.cyan { background-color: rgba(6, 182, 212, 0.2); color: #22d3ee; }
+        .stats-card-icon.red { background-color: rgba(239, 68, 68, 0.2); color: #f87171; }
+
+        .stats-card-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #e2e8f0;
+        }
+
+        .stats-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+        }
+
+        .stats-row:last-child {
+            border-bottom: none;
+        }
+
+        .stats-label {
+            font-size: 11px;
+            color: #94a3b8;
+        }
+
+        .stats-value {
+            font-size: 12px;
+            font-weight: 600;
+            color: #fff;
+            font-family: ui-monospace, monospace;
+        }
+
+        .stats-value.highlight {
+            color: #60a5fa;
+        }
+
+        .stats-value.success {
+            color: #4ade80;
+        }
+
+        .stats-value.warning {
+            color: #fbbf24;
+        }
+
+        .stats-value.error {
+            color: #f87171;
+        }
+
+        .stats-big-number {
+            font-size: 24px;
+            font-weight: 700;
+            color: #fff;
+            font-family: ui-monospace, monospace;
+            margin-bottom: 4px;
+        }
+
+        .stats-big-label {
+            font-size: 10px;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stats-inline {
+            display: flex;
+            gap: 24px;
+            flex-wrap: wrap;
+        }
+
+        .stats-inline-item {
+            text-align: center;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #64748b;
+        }
+
+        .empty-state i {
+            font-size: 32px;
+            margin-bottom: 12px;
+            opacity: 0.5;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .app-container {
+                flex-direction: column;
+            }
+
+            .left-panel {
+                width: 100%;
+                max-width: none;
+                height: 40vh;
+                border-right: none;
+                border-bottom: 1px solid #334155;
+            }
+
+            .right-panel {
+                height: 60vh;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Left Panel -->
+        <div class="left-panel">
+            <div class="left-header">
+                <div class="left-header-title">
+                    <h2><i class="fas fa-history"></i> История запросов</h2>
+                    <a href="/" class="back-link">
+                        <i class="fas fa-arrow-left"></i> Назад
+                    </a>
+                </div>
+                <div class="search-row">
+                    <input type="text" id="searchInput" class="search-input" placeholder="Поиск по тексту...">
+                    <button id="filterBtn" class="filter-btn" title="Расширенные фильтры">
+                        <i class="fas fa-sliders-h"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="list-container" id="listContainer">
+                <div class="empty-state">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <div>Загрузка...</div>
+                </div>
+            </div>
+
+            <div class="pagination-footer">
+                <div class="pagination-info" id="paginationInfo">—</div>
+                <div class="pagination-buttons">
+                    <button id="prevBtn" class="pagination-btn" disabled>
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <button id="nextBtn" class="pagination-btn" disabled>
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel -->
+        <div class="right-panel">
+            <div class="right-panel-empty" id="emptyState">
+                <div class="empty-state">
+                    <i class="fas fa-hand-pointer"></i>
+                    <div>Выберите запрос для просмотра деталей</div>
+                </div>
+            </div>
+
+            <div id="detailsPanel" style="display: none; flex-direction: column; flex: 1; overflow: hidden;">
+                <!-- Meta Header -->
+                <div class="meta-header" id="metaHeader">
+                    <!-- Filled by JS -->
+                </div>
+
+                <!-- Tabs -->
+                <div class="tabs-container">
+                    <button class="tab-btn active" data-tab="request">
+                        <i class="fas fa-paper-plane"></i> Запрос
+                    </button>
+                    <button class="tab-btn" data-tab="response">
+                        <i class="fas fa-reply"></i> Ответ
+                    </button>
+                    <button class="tab-btn" data-tab="stats">
+                        <i class="fas fa-chart-bar"></i> Статистика
+                    </button>
+                    <button class="tab-btn-expand" id="expandBtn" title="Открыть в окне">
+                        <i class="fas fa-expand-alt"></i> Открыть в окне
+                    </button>
+                </div>
+
+                <!-- Tab Contents -->
+                <div class="tab-content active" id="requestTab">
+                    <!-- Filled by JS -->
+                </div>
+
+                <div class="tab-content" id="responseTab">
+                    <!-- Filled by JS -->
+                </div>
+
+                <div class="tab-content" id="statsTab">
+                    <!-- Filled by JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Modal -->
+    <div class="modal-overlay" id="filterModalOverlay"></div>
+    <div class="modal-container" id="filterModal" style="display: none; top: 100px; left: calc(50% - 200px); width: 400px; height: auto;">
+        <div class="modal-header" id="filterModalHeader">
+            <h3><i class="fas fa-filter"></i> Расширенные фильтры</h3>
+            <div class="modal-header-buttons">
+                <button class="modal-btn-icon" id="filterModalClose">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label class="form-label">Модель</label>
+                <input type="text" id="filterModel" class="form-input" placeholder="Фильтр по модели...">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Промпт</label>
+                <input type="text" id="filterPrompt" class="form-input" placeholder="Фильтр по промпту...">
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Дата от</label>
+                    <input type="date" id="filterDateFrom" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Дата до</label>
+                    <input type="date" id="filterDateTo" class="form-input">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Сортировка</label>
+                    <select id="filterSortBy" class="form-select">
+                        <option value="date">По дате</option>
+                        <option value="model">По модели</option>
+                        <option value="promptName">По промпту</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Порядок</label>
+                    <select id="filterSortOrder" class="form-select">
+                        <option value="desc">По убыванию</option>
+                        <option value="asc">По возрастанию</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" id="filterReset">Сбросить</button>
+            <button class="btn btn-primary" id="filterApply">Применить</button>
+        </div>
+        <div class="modal-resize-handle" id="filterModalResize"></div>
+    </div>
+
+    <!-- Text View Modal -->
+    <div class="modal-overlay" id="textModalOverlay"></div>
+    <div class="modal-container" id="textModal" style="display: none; top: 50px; left: 100px; width: 700px; height: 500px;">
+        <div class="modal-header" id="textModalHeader">
+            <h3 id="textModalTitle"><i class="fas fa-file-alt"></i> Просмотр</h3>
+            <div class="text-modal-tabs">
+                <button class="text-modal-tab active" data-tab="text">Plain Text</button>
+                <button class="text-modal-tab" data-tab="markdown">Markdown</button>
+            </div>
+            <div class="modal-header-buttons">
+                <button class="modal-btn-icon" id="textModalCopy" title="Копировать">
+                    <i class="fas fa-copy"></i>
+                </button>
+                <button class="modal-btn-icon" id="textModalMaximize" title="Развернуть">
+                    <i class="fas fa-expand"></i>
+                </button>
+                <button class="modal-btn-icon" id="textModalClose">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+        <div class="modal-body" style="padding: 0; display: flex; flex-direction: column;">
+            <div class="text-modal-content active" id="textTabPlain">
+                <textarea class="text-modal-textarea" id="textModalTextarea" readonly></textarea>
+            </div>
+            <div class="text-modal-content" id="textTabMarkdown">
+                <div class="text-modal-markdown" id="textModalMarkdown"></div>
+            </div>
+        </div>
+        <div class="modal-resize-handle" id="textModalResize"></div>
+    </div>
+
+    <script src="history-v2.js"></script>
+</body>
+</html>

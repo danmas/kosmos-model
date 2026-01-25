@@ -25,6 +25,7 @@ pids
 .env.production.local
 props.env
 props.env.bak
+t.t
 
 # Output directories
 output_docs/
