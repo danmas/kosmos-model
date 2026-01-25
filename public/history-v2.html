@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>История запросов AI - V2</title>
-    <!-- Marked.js для Markdown -->
+    <title>Request History - V2</title>
+    <!-- Marked.js for Markdown -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <!-- Highlight.js для подсветки кода -->
+    <!-- Highlight.js for code highlighting -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.7.0/styles/github-dark.min.css">
     <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.7.0/highlight.min.js"></script>
     <!-- Font Awesome -->
@@ -926,14 +926,14 @@
         <div class="left-panel">
             <div class="left-header">
                 <div class="left-header-title">
-                    <h2><i class="fas fa-history"></i> История запросов</h2>
+                    <h2><i class="fas fa-history"></i> Request History</h2>
                     <a href="/" class="back-link">
-                        <i class="fas fa-arrow-left"></i> Назад
+                        <i class="fas fa-arrow-left"></i> Back
                     </a>
                 </div>
                 <div class="search-row">
-                    <input type="text" id="searchInput" class="search-input" placeholder="Поиск по тексту...">
-                    <button id="filterBtn" class="filter-btn" title="Расширенные фильтры">
+                    <input type="text" id="searchInput" class="search-input" placeholder="Search text...">
+                    <button id="filterBtn" class="filter-btn" title="Advanced filters">
                         <i class="fas fa-sliders-h"></i>
                     </button>
                 </div>
@@ -942,7 +942,7 @@
             <div class="list-container" id="listContainer">
                 <div class="empty-state">
                     <i class="fas fa-spinner fa-spin"></i>
-                    <div>Загрузка...</div>
+                    <div>Loading...</div>
                 </div>
             </div>
 
@@ -964,7 +964,7 @@
             <div class="right-panel-empty" id="emptyState">
                 <div class="empty-state">
                     <i class="fas fa-hand-pointer"></i>
-                    <div>Выберите запрос для просмотра деталей</div>
+                    <div>Select a request to view details</div>
                 </div>
             </div>
 
@@ -977,16 +977,16 @@
                 <!-- Tabs -->
                 <div class="tabs-container">
                     <button class="tab-btn active" data-tab="request">
-                        <i class="fas fa-paper-plane"></i> Запрос
+                        <i class="fas fa-paper-plane"></i> Request
                     </button>
                     <button class="tab-btn" data-tab="response">
-                        <i class="fas fa-reply"></i> Ответ
+                        <i class="fas fa-reply"></i> Response
                     </button>
                     <button class="tab-btn" data-tab="stats">
-                        <i class="fas fa-chart-bar"></i> Статистика
+                        <i class="fas fa-chart-bar"></i> Statistics
                     </button>
-                    <button class="tab-btn-expand" id="expandBtn" title="Открыть в окне">
-                        <i class="fas fa-expand-alt"></i> Открыть в окне
+                    <button class="tab-btn-expand" id="expandBtn" title="Open in window">
+                        <i class="fas fa-expand-alt"></i> Expand
                     </button>
                 </div>
 
@@ -1010,7 +1010,7 @@
     <div class="modal-overlay" id="filterModalOverlay"></div>
     <div class="modal-container" id="filterModal" style="display: none; top: 100px; left: calc(50% - 200px); width: 400px; height: auto;">
         <div class="modal-header" id="filterModalHeader">
-            <h3><i class="fas fa-filter"></i> Расширенные фильтры</h3>
+            <h3><i class="fas fa-filter"></i> Advanced Filters</h3>
             <div class="modal-header-buttons">
                 <button class="modal-btn-icon" id="filterModalClose">
                     <i class="fas fa-times"></i>
@@ -1019,44 +1019,44 @@
         </div>
         <div class="modal-body">
             <div class="form-group">
-                <label class="form-label">Модель</label>
-                <input type="text" id="filterModel" class="form-input" placeholder="Фильтр по модели...">
+                <label class="form-label">Model</label>
+                <input type="text" id="filterModel" class="form-input" placeholder="Filter by model...">
             </div>
             <div class="form-group">
-                <label class="form-label">Промпт</label>
-                <input type="text" id="filterPrompt" class="form-input" placeholder="Фильтр по промпту...">
+                <label class="form-label">Prompt</label>
+                <input type="text" id="filterPrompt" class="form-input" placeholder="Filter by prompt...">
             </div>
             <div class="form-row">
                 <div class="form-group">
-                    <label class="form-label">Дата от</label>
+                    <label class="form-label">Date From</label>
                     <input type="date" id="filterDateFrom" class="form-input">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Дата до</label>
+                    <label class="form-label">Date To</label>
                     <input type="date" id="filterDateTo" class="form-input">
                 </div>
             </div>
             <div class="form-row">
                 <div class="form-group">
-                    <label class="form-label">Сортировка</label>
+                    <label class="form-label">Sort By</label>
                     <select id="filterSortBy" class="form-select">
-                        <option value="date">По дате</option>
-                        <option value="model">По модели</option>
-                        <option value="promptName">По промпту</option>
+                        <option value="date">By Date</option>
+                        <option value="model">By Model</option>
+                        <option value="promptName">By Prompt</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Порядок</label>
+                    <label class="form-label">Order</label>
                     <select id="filterSortOrder" class="form-select">
-                        <option value="desc">По убыванию</option>
-                        <option value="asc">По возрастанию</option>
+                        <option value="desc">Descending</option>
+                        <option value="asc">Ascending</option>
                     </select>
                 </div>
             </div>
         </div>
         <div class="modal-footer">
-            <button class="btn btn-secondary" id="filterReset">Сбросить</button>
-            <button class="btn btn-primary" id="filterApply">Применить</button>
+            <button class="btn btn-secondary" id="filterReset">Reset</button>
+            <button class="btn btn-primary" id="filterApply">Apply</button>
         </div>
         <div class="modal-resize-handle" id="filterModalResize"></div>
     </div>
@@ -1065,16 +1065,16 @@
     <div class="modal-overlay" id="textModalOverlay"></div>
     <div class="modal-container" id="textModal" style="display: none; top: 50px; left: 100px; width: 700px; height: 500px;">
         <div class="modal-header" id="textModalHeader">
-            <h3 id="textModalTitle"><i class="fas fa-file-alt"></i> Просмотр</h3>
+            <h3 id="textModalTitle"><i class="fas fa-file-alt"></i> View</h3>
             <div class="text-modal-tabs">
                 <button class="text-modal-tab active" data-tab="text">Plain Text</button>
                 <button class="text-modal-tab" data-tab="markdown">Markdown</button>
             </div>
             <div class="modal-header-buttons">
-                <button class="modal-btn-icon" id="textModalCopy" title="Копировать">
+                <button class="modal-btn-icon" id="textModalCopy" title="Copy">
                     <i class="fas fa-copy"></i>
                 </button>
-                <button class="modal-btn-icon" id="textModalMaximize" title="Развернуть">
+                <button class="modal-btn-icon" id="textModalMaximize" title="Maximize">
                     <i class="fas fa-expand"></i>
                 </button>
                 <button class="modal-btn-icon" id="textModalClose">

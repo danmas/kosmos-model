@@ -97,7 +97,7 @@ class HistoryViewerV2 {
             url.searchParams.append('offset', (this.currentPage - 1) * this.itemsPerPage);
 
             const response = await fetch(url);
-            if (!response.ok) throw new Error('Ошибка загрузки');
+            if (!response.ok) throw new Error('Load error');
 
             const data = await response.json();
             
@@ -112,8 +112,8 @@ class HistoryViewerV2 {
             this.filterAndRenderList();
             this.updatePagination();
         } catch (error) {
-            console.error('Ошибка загрузки:', error);
-            this.showListError('Ошибка загрузки данных');
+            console.error('Load error:', error);
+            this.showListError('Failed to load data');
         }
     }
 
@@ -140,7 +140,7 @@ class HistoryViewerV2 {
             container.innerHTML = `
                 <div class="empty-state">
                     <i class="fas fa-inbox"></i>
-                    <div>Нет записей</div>
+                    <div>No records</div>
                 </div>
             `;
             return;
@@ -148,9 +148,9 @@ class HistoryViewerV2 {
 
         container.innerHTML = items.map(item => {
             const date = new Date(item.timestamp);
-            const formattedDate = `${date.toLocaleDateString('ru-RU')} ${date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
+            const formattedDate = `${date.toLocaleDateString('en-US')} ${date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
             const providerInfo = this.getProviderInfo(item.model, item.provider);
-            const promptName = item.promptName || 'Пользовательский промпт';
+            const promptName = item.promptName || 'Custom prompt';
             const inputPreview = (item.inputText || '').substring(0, 80);
             const isSelected = item.id === this.selectedItemId;
 
@@ -225,11 +225,11 @@ class HistoryViewerV2 {
 
     renderMetaHeader(item) {
         const date = new Date(item.timestamp);
-        const formattedDate = `${date.toLocaleDateString('ru-RU')} ${date.toLocaleTimeString('ru-RU')}`;
+        const formattedDate = `${date.toLocaleDateString('en-US')} ${date.toLocaleTimeString('en-US')}`;
         const providerInfo = this.getProviderInfo(item.model, item.provider);
         const hasError = item.response && item.response.includes('ERROR:');
         const statusClass = hasError ? 'badge-error' : 'badge-success';
-        const statusText = hasError ? 'Ошибка' : 'Успешно';
+        const statusText = hasError ? 'Error' : 'Success';
         const statusIcon = hasError ? 'times-circle' : 'check-circle';
 
         let tokensHtml = '';
@@ -278,7 +278,7 @@ class HistoryViewerV2 {
     }
 
     renderRequestTab(item) {
-        const promptName = item.promptName || 'Пользовательский промпт';
+        const promptName = item.promptName || 'Custom prompt';
         
         const rawJson = JSON.stringify({
             model: item.model,
@@ -292,7 +292,7 @@ class HistoryViewerV2 {
         document.getElementById('requestTab').innerHTML = `
             <div class="content-section">
                 <div class="content-section-title">
-                    <i class="fas fa-tag"></i> Промпт: ${this.escapeHtml(promptName)}
+                    <i class="fas fa-tag"></i> Prompt: ${this.escapeHtml(promptName)}
                 </div>
             </div>
 
@@ -301,13 +301,13 @@ class HistoryViewerV2 {
                     <i class="fas fa-chevron-right"></i> <i class="fas fa-code"></i> System Prompt
                 </div>
                 <div class="raw-json-content">
-                    <div class="content-block">${this.escapeHtml(item.prompt || 'Нет данных')}</div>
+                    <div class="content-block">${this.escapeHtml(item.prompt || 'No data')}</div>
                 </div>
             </div>
 
             <div class="content-section">
                 <div class="content-section-title"><i class="fas fa-keyboard"></i> Input Text</div>
-                <div class="content-block">${this.escapeHtml(item.inputText || 'Нет данных')}</div>
+                <div class="content-block">${this.escapeHtml(item.inputText || 'No data')}</div>
             </div>
 
             <div class="content-section">
@@ -337,13 +337,13 @@ class HistoryViewerV2 {
         document.getElementById('responseTab').innerHTML = `
             <div class="content-section">
                 <div class="content-section-title">
-                    <i class="fas fa-info-circle"></i> Размер ответа: ${responseLength} символов
+                    <i class="fas fa-info-circle"></i> Response size: ${responseLength} chars
                 </div>
             </div>
 
             <div class="content-section">
                 <div class="content-section-title"><i class="fas fa-comment-dots"></i> Content</div>
-                <div class="content-block" style="max-height: 400px;">${this.escapeHtml(item.response || 'Нет данных')}</div>
+                <div class="content-block" style="max-height: 400px;">${this.escapeHtml(item.response || 'No data')}</div>
             </div>
 
             <div class="content-section">
@@ -393,17 +393,17 @@ class HistoryViewerV2 {
 
         // Time info
         const timestamp = new Date(item.timestamp);
-        const dateStr = timestamp.toLocaleDateString('ru-RU', { 
+        const dateStr = timestamp.toLocaleDateString('en-US', { 
             weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
         });
-        const timeStr = timestamp.toLocaleTimeString('ru-RU', { 
+        const timeStr = timestamp.toLocaleTimeString('en-US', { 
             hour: '2-digit', minute: '2-digit', second: '2-digit' 
         });
 
         // Status
         const hasError = responseText.includes('ERROR:');
         const statusClass = hasError ? 'error' : 'success';
-        const statusText = hasError ? 'Ошибка' : 'Успешно';
+        const statusText = hasError ? 'Error' : 'Success';
 
         // Provider info
         const providerInfo = this.getProviderInfo(item.model, item.provider);
@@ -414,32 +414,32 @@ class HistoryViewerV2 {
                 <div class="stats-card">
                     <div class="stats-card-header">
                         <div class="stats-card-icon blue"><i class="fas fa-coins"></i></div>
-                        <span class="stats-card-title">Токены</span>
+                        <span class="stats-card-title">Tokens</span>
                     </div>
                     <div class="stats-inline" style="margin-bottom: 12px;">
                         <div class="stats-inline-item">
                             <div class="stats-big-number">${this.formatNumber(totalTokens)}</div>
-                            <div class="stats-big-label">Всего</div>
+                            <div class="stats-big-label">Total</div>
                         </div>
                         <div class="stats-inline-item">
                             <div class="stats-big-number" style="color: #4ade80;">${this.formatNumber(inputTokens)}</div>
-                            <div class="stats-big-label">Вход</div>
+                            <div class="stats-big-label">Input</div>
                         </div>
                         <div class="stats-inline-item">
                             <div class="stats-big-number" style="color: #60a5fa;">${this.formatNumber(outputTokens)}</div>
-                            <div class="stats-big-label">Выход</div>
+                            <div class="stats-big-label">Output</div>
                         </div>
                     </div>
                     <div class="stats-row">
-                        <span class="stats-label">Источник данных</span>
+                        <span class="stats-label">Data Source</span>
                         <span class="stats-value">${this.escapeHtml(tokenSource)}</span>
                     </div>
                     <div class="stats-row">
-                        <span class="stats-label">Символов на токен</span>
+                        <span class="stats-label">Chars per Token</span>
                         <span class="stats-value">${charsPerToken}</span>
                     </div>
                     <div class="stats-row">
-                        <span class="stats-label">Слов на токен</span>
+                        <span class="stats-label">Words per Token</span>
                         <span class="stats-value">${wordsPerToken}</span>
                     </div>
                 </div>
@@ -448,34 +448,34 @@ class HistoryViewerV2 {
                 <div class="stats-card">
                     <div class="stats-card-header">
                         <div class="stats-card-icon green"><i class="fas fa-paper-plane"></i></div>
-                        <span class="stats-card-title">Запрос (Prompt + Input)</span>
+                        <span class="stats-card-title">Request (Prompt + Input)</span>
                     </div>
                     <div class="stats-row">
-                        <span class="stats-label">Символов (prompt)</span>
+                        <span class="stats-label">Chars (prompt)</span>
                         <span class="stats-value">${this.formatNumber(promptChars)}</span>
                     </div>
                     <div class="stats-row">
-                        <span class="stats-label">Символов (input)</span>
+                        <span class="stats-label">Chars (input)</span>
                         <span class="stats-value">${this.formatNumber(inputChars)}</span>
                     </div>
                     <div class="stats-row">
-                        <span class="stats-label">Символов (всего)</span>
+                        <span class="stats-label">Chars (total)</span>
                         <span class="stats-value highlight">${this.formatNumber(promptChars + inputChars)}</span>
                     </div>
                     <div class="stats-row">
-                        <span class="stats-label">Слов (prompt)</span>
+                        <span class="stats-label">Words (prompt)</span>
                         <span class="stats-value">${this.formatNumber(promptWords)}</span>
                     </div>
                     <div class="stats-row">
-                        <span class="stats-label">Слов (input)</span>
+                        <span class="stats-label">Words (input)</span>
                         <span class="stats-value">${this.formatNumber(inputWords)}</span>
                     </div>
                     <div class="stats-row">
-                        <span class="stats-label">Строк (prompt)</span>
+                        <span class="stats-label">Lines (prompt)</span>
                         <span class="stats-value">${promptLines}</span>
                     </div>
                     <div class="stats-row">
-                        <span class="stats-label">Строк (input)</span>
+                        <span class="stats-label">Lines (input)</span>
                         <span class="stats-value">${inputLines}</span>
                     </div>
                 </div>
@@ -484,26 +484,26 @@ class HistoryViewerV2 {
                 <div class="stats-card">
                     <div class="stats-card-header">
                         <div class="stats-card-icon purple"><i class="fas fa-reply"></i></div>
-                        <span class="stats-card-title">Ответ</span>
+                        <span class="stats-card-title">Response</span>
                     </div>
                     <div class="stats-row">
-                        <span class="stats-label">Символов</span>
+                        <span class="stats-label">Characters</span>
                         <span class="stats-value highlight">${this.formatNumber(responseChars)}</span>
                     </div>
                     <div class="stats-row">
-                        <span class="stats-label">Слов</span>
+                        <span class="stats-label">Words</span>
                         <span class="stats-value">${this.formatNumber(responseWords)}</span>
                     </div>
                     <div class="stats-row">
-                        <span class="stats-label">Строк</span>
+                        <span class="stats-label">Lines</span>
                         <span class="stats-value">${responseLines}</span>
                     </div>
                     <div class="stats-row">
-                        <span class="stats-label">Коэф. расширения</span>
+                        <span class="stats-label">Expansion Ratio</span>
                         <span class="stats-value">${compressionRatio}x</span>
                     </div>
                     <div class="stats-row">
-                        <span class="stats-label">Статус</span>
+                        <span class="stats-label">Status</span>
                         <span class="stats-value ${statusClass}">${statusText}</span>
                     </div>
                 </div>
@@ -512,22 +512,22 @@ class HistoryViewerV2 {
                 <div class="stats-card">
                     <div class="stats-card-header">
                         <div class="stats-card-icon cyan"><i class="fas fa-robot"></i></div>
-                        <span class="stats-card-title">Модель и провайдер</span>
+                        <span class="stats-card-title">Model & Provider</span>
                     </div>
                     <div class="stats-row">
-                        <span class="stats-label">Модель</span>
+                        <span class="stats-label">Model</span>
                         <span class="stats-value" style="font-size: 10px; word-break: break-all;">${this.escapeHtml(item.model || 'N/A')}</span>
                     </div>
                     <div class="stats-row">
-                        <span class="stats-label">Провайдер</span>
+                        <span class="stats-label">Provider</span>
                         <span class="stats-value">${providerInfo.label}</span>
                     </div>
                     <div class="stats-row">
-                        <span class="stats-label">Имя промпта</span>
+                        <span class="stats-label">Prompt Name</span>
                         <span class="stats-value">${this.escapeHtml(item.promptName || 'Custom')}</span>
                     </div>
                     <div class="stats-row">
-                        <span class="stats-label">ID записи</span>
+                        <span class="stats-label">Record ID</span>
                         <span class="stats-value" style="font-size: 10px;">${item.id}</span>
                     </div>
                 </div>
@@ -536,14 +536,14 @@ class HistoryViewerV2 {
                 <div class="stats-card">
                     <div class="stats-card-header">
                         <div class="stats-card-icon amber"><i class="fas fa-clock"></i></div>
-                        <span class="stats-card-title">Время</span>
+                        <span class="stats-card-title">Time</span>
                     </div>
                     <div class="stats-row">
-                        <span class="stats-label">Дата</span>
+                        <span class="stats-label">Date</span>
                         <span class="stats-value" style="font-size: 10px;">${dateStr}</span>
                     </div>
                     <div class="stats-row">
-                        <span class="stats-label">Время</span>
+                        <span class="stats-label">Time</span>
                         <span class="stats-value">${timeStr}</span>
                     </div>
                     <div class="stats-row">
@@ -560,27 +560,27 @@ class HistoryViewerV2 {
                 <div class="stats-card">
                     <div class="stats-card-header">
                         <div class="stats-card-icon red"><i class="fas fa-chart-pie"></i></div>
-                        <span class="stats-card-title">Общая статистика</span>
+                        <span class="stats-card-title">Summary</span>
                     </div>
                     <div class="stats-row">
-                        <span class="stats-label">Всего символов</span>
+                        <span class="stats-label">Total Characters</span>
                         <span class="stats-value highlight">${this.formatNumber(totalChars)}</span>
                     </div>
                     <div class="stats-row">
-                        <span class="stats-label">Всего слов</span>
+                        <span class="stats-label">Total Words</span>
                         <span class="stats-value">${this.formatNumber(totalWords)}</span>
                     </div>
                     <div class="stats-row">
-                        <span class="stats-label">Всего строк</span>
+                        <span class="stats-label">Total Lines</span>
                         <span class="stats-value">${promptLines + inputLines + responseLines}</span>
                     </div>
                     <div class="stats-row">
-                        <span class="stats-label">Средняя длина слова</span>
+                        <span class="stats-label">Avg Word Length</span>
                         <span class="stats-value">${totalWords > 0 ? (totalChars / totalWords).toFixed(1) : '—'}</span>
                     </div>
                     <div class="stats-row">
-                        <span class="stats-label">Автосохранение</span>
-                        <span class="stats-value">${item.autoSaved ? 'Да' : 'Нет'}</span>
+                        <span class="stats-label">Auto-saved</span>
+                        <span class="stats-value">${item.autoSaved ? 'Yes' : 'No'}</span>
                     </div>
                 </div>
             </div>
@@ -599,7 +599,7 @@ class HistoryViewerV2 {
     }
 
     formatNumber(num) {
-        return num.toLocaleString('ru-RU');
+        return num.toLocaleString('en-US');
     }
 
     toggleRawJson(toggleElement) {
@@ -616,7 +616,7 @@ class HistoryViewerV2 {
         const end = Math.min(this.currentPage * this.itemsPerPage, this.totalItems);
 
         const infoText = this.totalItems > 0 
-            ? `${start}-${end} из ${this.totalItems}`
+            ? `${start}-${end} of ${this.totalItems}`
             : '—';
 
         document.getElementById('paginationInfo').textContent = infoText;
@@ -694,11 +694,11 @@ class HistoryViewerV2 {
         const isRequestTab = document.getElementById('requestTab').classList.contains('active');
 
         if (isRequestTab) {
-            this.currentTextTitle = 'Запрос (Request)';
-            this.currentTextContent = `PROMPT:\n${item.prompt || 'Нет данных'}\n\nINPUT TEXT:\n${item.inputText || 'Нет данных'}`;
+            this.currentTextTitle = 'Request';
+            this.currentTextContent = `PROMPT:\n${item.prompt || 'No data'}\n\nINPUT TEXT:\n${item.inputText || 'No data'}`;
         } else {
-            this.currentTextTitle = 'Ответ (Response)';
-            this.currentTextContent = item.response || 'Нет данных';
+            this.currentTextTitle = 'Response';
+            this.currentTextContent = item.response || 'No data';
         }
 
         document.getElementById('textModalTitle').innerHTML = `<i class="fas fa-file-alt"></i> ${this.currentTextTitle}`;
@@ -757,11 +757,11 @@ class HistoryViewerV2 {
                     });
                 }
             } else {
-                container.innerHTML = '<div style="color: #f87171;">Marked.js не загружен</div>';
+                container.innerHTML = '<div style="color: #f87171;">Marked.js not loaded</div>';
             }
         } catch (error) {
             console.error('Markdown render error:', error);
-            container.innerHTML = '<div style="color: #f87171;">Ошибка рендеринга Markdown</div>';
+            container.innerHTML = '<div style="color: #f87171;">Markdown render error</div>';
         }
     }
 
