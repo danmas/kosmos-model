@@ -1,4 +1,4 @@
-﻿class AITestApp {
+class AITestApp {
   constructor() {
     this.prompts = [];
     this.activePrompt = null;
@@ -236,7 +236,7 @@
             <a href="/models.html" class="nav-link" target="_blank">
               <i class="fas fa-brain"></i> Доступные модели
             </a>
-            <a href="/history.html" class="nav-link" target="_blank">
+            <a href="/history-v2.html" class="nav-link" target="_blank">
               <i class="fas fa-history"></i> История запросов
             </a>
           </div>

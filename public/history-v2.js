@@ -297,8 +297,12 @@ class HistoryViewerV2 {
             </div>
 
             <div class="content-section">
-                <div class="content-section-title"><i class="fas fa-code"></i> System Prompt</div>
-                <div class="content-block">${this.escapeHtml(item.prompt || 'Нет данных')}</div>
+                <div class="raw-json-toggle" onclick="historyViewer.toggleRawJson(this)">
+                    <i class="fas fa-chevron-right"></i> <i class="fas fa-code"></i> System Prompt
+                </div>
+                <div class="raw-json-content">
+                    <div class="content-block">${this.escapeHtml(item.prompt || 'Нет данных')}</div>
+                </div>
             </div>
 
             <div class="content-section">
