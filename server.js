@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const fsPromises = require('fs').promises;
@@ -1809,14 +1809,9 @@ app.get('/api/all-models', async (req, res) => {
 });
 
 // === ТЕСТ МОДЕЛИ В ОДИН КЛИК (улучшенная версия) ===
-app.post('/api/test-model', async (req, res) => {
-  const { modelId } = req.body;
-  if (!modelId) return res.status(400).json({ error: 'modelId required' });
-
-  let models = await loadModels();
-  const model = models.find(m => m.id === modelId);
-  if (!model) return res.status(404).json({ error: 'Model not found' });
-
+// === ВНУТРЕННЯЯ ФУНКЦИЯ ТЕСТИРОВАНИЯ МОДЕЛИ ===
+// Используется как в /api/test-model, так и при валидации user_type моделей при старте
+async function testModelInternal(model) {
   const startTime = Date.now();
   let result = {
     success: false,
@@ -1937,6 +1932,144 @@ app.post('/api/test-model', async (req, res) => {
 
   result.response_time_ms = Date.now() - startTime;
   result.timestamp = new Date().toISOString();
+
+  return result;
+}
+
+// === ГЛОБАЛЬНОЕ ХРАНИЛИЩЕ РЕЗУЛЬТАТОВ ВАЛИДАЦИИ user_type ===
+let lastUserTypeValidation = {
+  timestamp: null,
+  total: 0,
+  passed: [],
+  failed: [],
+  inProgress: false
+};
+
+// === ВАЛИДАЦИЯ МОДЕЛЕЙ С user_type ПРИ СТАРТЕ СЕРВЕРА ===
+async function validateUserTypeModelsOnStartup() {
+  logger.info('🔍 Проверка моделей с user_type...');
+  
+  lastUserTypeValidation = {
+    timestamp: new Date().toISOString(),
+    total: 0,
+    passed: [],
+    failed: [],
+    inProgress: true
+  };
+  
+  try {
+    const models = await loadModels();
+    const userTypeModels = models.filter(m => m.user_type && m.enabled);
+    
+    if (userTypeModels.length === 0) {
+      logger.warn('⚠️ Нет активных моделей с user_type для проверки');
+      lastUserTypeValidation.inProgress = false;
+      return;
+    }
+    
+    lastUserTypeValidation.total = userTypeModels.length;
+    logger.info(`📋 Найдено ${userTypeModels.length} модел(ей) с user_type: ${userTypeModels.map(m => m.user_type).join(', ')}`);
+    
+    for (const model of userTypeModels) {
+      try {
+        logger.info(`🧪 Тестирование [${model.user_type}] → ${model.name} (${model.provider})...`);
+        const result = await testModelInternal(model);
+        
+        const modelInfo = {
+          id: model.id,
+          user_type: model.user_type,
+          name: model.name,
+          visible_name: model.visible_name,
+          provider: model.provider,
+          response_time_ms: result.response_time_ms,
+          error_message: result.error_message,
+          timestamp: result.timestamp
+        };
+        
+        if (result.success) {
+          lastUserTypeValidation.passed.push(modelInfo);
+          logger.info(`✅ [${model.user_type}] OK (${result.response_time_ms}ms)`);
+        } else {
+          lastUserTypeValidation.failed.push(modelInfo);
+          logger.error(`❌ [${model.user_type}] ОШИБКА: ${result.error_message}`);
+          logger.error(`   Модель: ${model.name}, Провайдер: ${model.provider}, ID: ${model.id}`);
+        }
+        
+        // Сохраняем результат теста в модель
+        const allModels = await loadModels();
+        const idx = allModels.findIndex(m => m.id === model.id);
+        if (idx !== -1) {
+          allModels[idx].last_test = result;
+          await saveModels(allModels);
+        }
+      } catch (err) {
+        lastUserTypeValidation.failed.push({
+          id: model.id,
+          user_type: model.user_type,
+          name: model.name,
+          visible_name: model.visible_name,
+          provider: model.provider,
+          error_message: `КРИТИЧЕСКАЯ ОШИБКА: ${err.message}`,
+          timestamp: new Date().toISOString()
+        });
+        logger.error(`❌ [${model.user_type}] КРИТИЧЕСКАЯ ОШИБКА: ${err.message}`);
+      }
+    }
+    
+    lastUserTypeValidation.inProgress = false;
+    
+    // Вывод итогового списка
+    const passedCount = lastUserTypeValidation.passed.length;
+    const failedCount = lastUserTypeValidation.failed.length;
+    
+    logger.info(`📊 Результаты проверки user_type моделей: ${passedCount} успешно, ${failedCount} с ошибками`);
+    
+    if (passedCount > 0) {
+      logger.info(`✅ ПРОШЛИ ПРОВЕРКУ (${passedCount}):`);
+      lastUserTypeValidation.passed.forEach(m => {
+        logger.info(`   • [${m.user_type}] ${m.name} (${m.provider}) — ${m.response_time_ms}ms`);
+      });
+    }
+    
+    if (failedCount > 0) {
+      logger.warn(`❌ НЕ ПРОШЛИ ПРОВЕРКУ (${failedCount}):`);
+      lastUserTypeValidation.failed.forEach(m => {
+        logger.error(`   • [${m.user_type}] ${m.name} (${m.provider}) — ${m.error_message}`);
+      });
+      logger.warn(`⚠️ ВНИМАНИЕ: Запросы с этими user_type могут завершаться ошибкой!`);
+    }
+  } catch (err) {
+    lastUserTypeValidation.inProgress = false;
+    logger.error(`❌ Ошибка при валидации user_type моделей: ${err.message}`);
+  }
+}
+
+// === ЭНДПОИНТ ДЛЯ ПОЛУЧЕНИЯ РЕЗУЛЬТАТОВ ВАЛИДАЦИИ user_type ===
+app.get('/api/user-type-validation', (req, res) => {
+  res.json(lastUserTypeValidation);
+});
+
+// === ЭНДПОИНТ ДЛЯ ПОВТОРНОЙ ВАЛИДАЦИИ user_type (вручную) ===
+app.post('/api/user-type-validation/rerun', async (req, res) => {
+  if (lastUserTypeValidation.inProgress) {
+    return res.status(409).json({ error: 'Валидация уже выполняется' });
+  }
+  
+  // Запускаем асинхронно, не блокируя ответ
+  validateUserTypeModelsOnStartup();
+  
+  res.json({ message: 'Валидация запущена', status: 'started' });
+});
+
+app.post('/api/test-model', async (req, res) => {
+  const { modelId } = req.body;
+  if (!modelId) return res.status(400).json({ error: 'modelId required' });
+
+  let models = await loadModels();
+  const model = models.find(m => m.id === modelId);
+  if (!model) return res.status(404).json({ error: 'Model not found' });
+
+  const result = await testModelInternal(model);
 
   // Сохраняем
   const idx = models.findIndex(m => m.id === modelId);
@@ -3769,7 +3902,10 @@ logger.info('📡 OpenAI-совместимые эндпоинты: /v1/chat/com
 
 const PORT = process.env.PORT || config.port;
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   logger.info(`Сервер запущен на порту ${PORT}`);
   logger.info(`Откройте http://localhost:${PORT} в вашем браузере`);
+  
+  // Валидация моделей с user_type при старте
+  await validateUserTypeModelsOnStartup();
 });

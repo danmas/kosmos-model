@@ -14,12 +14,16 @@ class ModelsPage {
     constructor() {
         this.allModels = [];
         this.filteredModels = [];
+        this.validationData = null;
         this.init();
     }
 
     async init() {
         try {
-            await this.loadModels();
+            await Promise.all([
+                this.loadModels(),
+                this.loadValidationData()
+            ]);
             this.setupEventListeners();
             this.renderStats();
             this.renderModels();
@@ -27,6 +31,17 @@ class ModelsPage {
         } catch (err) {
             this.showError(err.message);
             this.hideLoading();
+        }
+    }
+
+    async loadValidationData() {
+        try {
+            const res = await fetch('/api/user-type-validation');
+            if (res.ok) {
+                this.validationData = await res.json();
+            }
+        } catch (err) {
+            console.error('Failed to load validation data:', err);
         }
     }
 
@@ -87,12 +102,160 @@ class ModelsPage {
             })
             .join('');
 
+        // Кнопка валидации user_type (первой в ряду)
+        const validationButton = this.renderValidationButton();
+
         stats.innerHTML = `
+            ${validationButton}
             <div class="stat-card"><div class="stat-number">${total}</div><div class="stat-label">Total</div></div>
             ${providerCards}
             <div class="stat-card"><div class="stat-number" style="color:#17a2b8">${fast}</div><div class="stat-label">Fast ⚡</div></div>
             <div class="stat-card"><div class="stat-number" style="color:#ffc107">${defaults}</div><div class="stat-label">Default ★</div></div>
         `;
+    }
+
+    renderValidationButton() {
+        if (!this.validationData || !this.validationData.timestamp) {
+            return `<button class="validation-button" onclick="modelsPage.showValidationModal()">
+                <span class="validation-icon"><i class="fas fa-shield-alt"></i></span>
+                <span class="validation-status">?</span>
+                <span class="validation-label">user_type</span>
+            </button>`;
+        }
+
+        const passed = this.validationData.passed?.length || 0;
+        const failed = this.validationData.failed?.length || 0;
+        const hasErrors = failed > 0;
+        const inProgress = this.validationData.inProgress;
+
+        if (inProgress) {
+            return `<button class="validation-button" onclick="modelsPage.showValidationModal()">
+                <span class="validation-icon"><i class="fas fa-spinner fa-spin"></i></span>
+                <span class="validation-status">...</span>
+                <span class="validation-label">проверка</span>
+            </button>`;
+        }
+
+        const buttonClass = hasErrors ? 'validation-button has-errors' : 'validation-button';
+        const icon = hasErrors ? 'fa-exclamation-triangle' : 'fa-check-circle';
+        const statusText = hasErrors ? `${failed} ош.` : `${passed} OK`;
+
+        return `<button class="${buttonClass}" onclick="modelsPage.showValidationModal()">
+            <span class="validation-icon"><i class="fas ${icon}"></i></span>
+            <span class="validation-status">${statusText}</span>
+            <span class="validation-label">user_type</span>
+        </button>`;
+    }
+
+    showValidationModal() {
+        const modal = document.getElementById('validationModal');
+        const body = document.getElementById('validationModalBody');
+        const timestamp = document.getElementById('validationTimestamp');
+
+        if (!this.validationData || !this.validationData.timestamp) {
+            body.innerHTML = `<p style="text-align: center; color: #666;">Данные валидации недоступны. Сервер ещё не выполнял проверку.</p>`;
+            timestamp.textContent = '';
+        } else {
+            const passed = this.validationData.passed || [];
+            const failed = this.validationData.failed || [];
+
+            let html = '';
+
+            // Секция с ошибками (первой, если есть)
+            if (failed.length > 0) {
+                html += `<div class="validation-section failed">
+                    <h4><i class="fas fa-times-circle"></i> Не прошли проверку (${failed.length})</h4>
+                    ${failed.map(m => `
+                        <div class="validation-item failed">
+                            <div class="validation-item-header">
+                                <span class="validation-item-type">[${m.user_type}]</span>
+                                <span class="validation-item-time">${m.response_time_ms ? m.response_time_ms + 'ms' : '—'}</span>
+                            </div>
+                            <div class="validation-item-model">
+                                <strong>${m.visible_name || m.name}</strong> 
+                                <span style="color: #888;">(${m.provider})</span>
+                            </div>
+                            <div class="validation-item-error">
+                                <i class="fas fa-exclamation-circle"></i> ${m.error_message}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>`;
+            }
+
+            // Секция успешных
+            if (passed.length > 0) {
+                html += `<div class="validation-section passed">
+                    <h4><i class="fas fa-check-circle"></i> Прошли проверку (${passed.length})</h4>
+                    ${passed.map(m => `
+                        <div class="validation-item">
+                            <div class="validation-item-header">
+                                <span class="validation-item-type">[${m.user_type}]</span>
+                                <span class="validation-item-time">${m.response_time_ms}ms</span>
+                            </div>
+                            <div class="validation-item-model">
+                                <strong>${m.visible_name || m.name}</strong> 
+                                <span style="color: #888;">(${m.provider})</span>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>`;
+            }
+
+            if (passed.length === 0 && failed.length === 0) {
+                html = `<p style="text-align: center; color: #666;">Нет моделей с user_type для проверки.</p>`;
+            }
+
+            body.innerHTML = html;
+
+            // Форматируем timestamp
+            const date = new Date(this.validationData.timestamp);
+            timestamp.textContent = `Проверено: ${date.toLocaleString('ru-RU')}`;
+        }
+
+        modal.classList.add('show');
+    }
+
+    closeValidationModal() {
+        const modal = document.getElementById('validationModal');
+        modal.classList.remove('show');
+    }
+
+    async rerunValidation() {
+        const btn = document.getElementById('validationRerunBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Запуск...';
+
+        try {
+            const res = await fetch('/api/user-type-validation/rerun', { method: 'POST' });
+            if (!res.ok) {
+                const data = await res.json();
+                alert(data.error || 'Ошибка запуска валидации');
+                return;
+            }
+
+            // Закрываем модальное окно и ждём немного
+            this.closeValidationModal();
+
+            // Периодически проверяем статус
+            const checkStatus = async () => {
+                await this.loadValidationData();
+                if (this.validationData?.inProgress) {
+                    this.renderStats();
+                    setTimeout(checkStatus, 2000);
+                } else {
+                    this.renderStats();
+                    this.showValidationModal();
+                }
+            };
+
+            setTimeout(checkStatus, 1000);
+        } catch (err) {
+            alert('Ошибка: ' + err.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-sync-alt"></i> Перезапустить';
+        }
     }
 
     renderModels() {
