@@ -2,7 +2,7 @@
 
 // Provider config — extensible, new providers are added here
 const PROVIDER_CONFIG = {
-    direct: { name: 'Direct / Z.AI', icon: 'fas fa-server', color: '#9c27b0' },
+    direct: { name: 'Direct / (Togethr, Z.AI, ...)', icon: 'fas fa-server', color: '#9c27b0' },
     groq: { name: 'GROQ', icon: 'fas fa-rocket', color: '#ff6b35' },
     openroute: { name: 'OpenRouter', icon: 'fas fa-globe', color: '#28a745' },
     gigachat: { name: 'GigaChat (Sber)', icon: 'fas fa-comments', color: '#21a038' },
@@ -55,7 +55,8 @@ class ModelsPage {
         this.filteredModels = term
             ? this.allModels.filter(m =>
                 m.name.toLowerCase().includes(term) ||
-                (m.visible_name && m.visible_name.toLowerCase().includes(term))
+                (m.visible_name && m.visible_name.toLowerCase().includes(term)) ||
+                (m.user_type && m.user_type.toLowerCase().includes(term))
             )
             : [...this.allModels];
 
