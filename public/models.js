@@ -1,12 +1,12 @@
-// models.js – финальная версия с модалкой и умным обновлением (19.11.2025)
+// models.js – final version with modal and smart update (19.11.2025)
 
-// Конфиг провайдеров — расширяемый, новые провайдеры добавляются сюда
+// Provider config — extensible, new providers are added here
 const PROVIDER_CONFIG = {
     direct: { name: 'Direct / Z.AI', icon: 'fas fa-server', color: '#9c27b0' },
     groq: { name: 'GROQ', icon: 'fas fa-rocket', color: '#ff6b35' },
     openroute: { name: 'OpenRouter', icon: 'fas fa-globe', color: '#28a745' },
-    gigachat: { name: 'GigaChat (Сбер)', icon: 'fas fa-comments', color: '#21a038' },
-    // Дефолт для неизвестных провайдеров (автоматически подхватит любой новый)
+    gigachat: { name: 'GigaChat (Sber)', icon: 'fas fa-comments', color: '#21a038' },
+    // Default for unknown providers (will auto-pick any new one)
     _default: { name: 'Unknown Provider', icon: 'fas fa-cube', color: '#607d8b' }
 };
 
@@ -25,7 +25,7 @@ class ModelsPage {
             this.renderModels();
             this.hideLoading();
         } catch (err) {
-            this.showError('Не удалось загрузить модели: ' + err.message);
+            this.showError(err.message);
             this.hideLoading();
         }
     }
@@ -87,10 +87,10 @@ class ModelsPage {
             .join('');
 
         stats.innerHTML = `
-            <div class="stat-card"><div class="stat-number">${total}</div><div class="stat-label">Всего</div></div>
+            <div class="stat-card"><div class="stat-number">${total}</div><div class="stat-label">Total</div></div>
             ${providerCards}
-            <div class="stat-card"><div class="stat-number" style="color:#17a2b8">${fast}</div><div class="stat-label">Быстрые ⚡</div></div>
-            <div class="stat-card"><div class="stat-number" style="color:#ffc107">${defaults}</div><div class="stat-label">По умолчанию ★</div></div>
+            <div class="stat-card"><div class="stat-number" style="color:#17a2b8">${fast}</div><div class="stat-label">Fast ⚡</div></div>
+            <div class="stat-card"><div class="stat-number" style="color:#ffc107">${defaults}</div><div class="stat-label">Default ★</div></div>
         `;
     }
 
@@ -125,7 +125,7 @@ class ModelsPage {
         if (this.filteredModels.length === 0) {
             container.innerHTML = `<div style="text-align:center;padding:60px;color:#888">
                 <i class="fas fa-search" style="font-size:4em;opacity:0.3"></i>
-                <h3>Ничего не найдено</h3>
+                <h3>Nothing found</h3>
             </div>`;
         }
     }
@@ -139,16 +139,16 @@ class ModelsPage {
         section.dataset.provider = provider;
         section.innerHTML = `
             <div class="provider-header" style="background:linear-gradient(135deg, ${info.color} 0%, ${info.color}cc 100%)">
-                <button class="provider-toggle" onclick="modelsPage.toggleProviderSection('${provider}')" title="Свернуть/развернуть">
+                <button class="provider-toggle" onclick="modelsPage.toggleProviderSection('${provider}')" title="Collapse/expand">
                     <i class="fas fa-chevron-down"></i>
                 </button>
                 <i class="${info.icon} provider-icon"></i>
                 <h2 class="provider-title">${info.name}</h2>
-                <button class="refresh-provider-btn" onclick="modelsPage.refreshProviderModels('${provider}')" title="Обновить модели провайдера">
+                <button class="refresh-provider-btn" onclick="modelsPage.refreshProviderModels('${provider}')" title="Refresh provider models">
                     <i class="fas fa-sync-alt"></i>
                 </button>
-                <button class="add-model-btn" onclick="modelsPage.openAddModelModal('${provider}')" title="Добавить новую модель">+</button>
-                <div class="provider-stats">${models.length} модел${this.plural(models.length)}</div>
+                <button class="add-model-btn" onclick="modelsPage.openAddModelModal('${provider}')" title="Add new model">+</button>
+                <div class="provider-stats">${models.length} model${models.length === 1 ? '' : 's'}</div>
             </div>
             <div class="models-grid provider-models-container">
                 ${models.map(m => this.createModelCard(m, provider)).join('')}
@@ -165,11 +165,11 @@ class ModelsPage {
             const testDataEscaped = this.escapeForAttribute(JSON.stringify(test));
             if (test.success) {
                 testBadge = `<div class="test-badge success" onclick="modelsPage.showTestModal(${testDataEscaped}, true)" style="cursor:pointer">
-                    ✅ Работает (${ago}, ${test.response_time_ms}мс)
+                    ✅ OK (${ago}, ${test.response_time_ms}ms)
                 </div>`;
             } else {
                 testBadge = `<div class="test-badge error" onclick="modelsPage.showTestModal(${testDataEscaped}, false)" style="cursor:pointer">
-                    ❌ Ошибка (${ago})
+                    ❌ Error (${ago})
                 </div>`;
             }
         }
@@ -186,15 +186,15 @@ class ModelsPage {
                 </div>`;
             } else {
                 aboutBadge = `<div class="test-badge about-badge error" onclick="modelsPage.showTestModal(${aboutDataEscaped}, false, 'about')" style="cursor:pointer">
-                    ⚠️ About ошибка (${agoAbout})
+                    ⚠️ About error (${agoAbout})
                 </div>`;
             }
         }
 
         const badges = [];
         if (model.user_type) badges.push(`<span class="badge default">🏷️ ${model.user_type}</span>`);
-        if (model.isFast) badges.push(`<span class="badge fast">⚡ Быстрая</span>`);
-        if (model.isFree) badges.push(`<span class="badge free">БЕСПЛАТНО</span>`);
+        if (model.isFast) badges.push(`<span class="badge fast">⚡ Fast</span>`);
+        if (model.isFree) badges.push(`<span class="badge free">FREE</span>`);
 
         return `
             <div class="model-card ${provider}" data-model-id="${this.escapeHtml(model.id)}">
@@ -207,7 +207,7 @@ class ModelsPage {
                 </div>
                 <div class="model-details">
                     <div class="model-detail">
-                        <span class="detail-label">Контекст:</span>
+                        <span class="detail-label">Context:</span>
                         <span class="context-badge">${this.formatTokens(model.context)}</span>
                     </div>
                     ${badges.length ? `<div class="badges">${badges.join(' ')}</div>` : ''}
@@ -216,28 +216,28 @@ class ModelsPage {
                 </div>
                 <div class="model-controls">
                     <div class="control-item">
-                        <label for="enabled-${model.id}" class="switch-label">Включена:</label>
+                        <label for="enabled-${model.id}" class="switch-label">Enabled:</label>
                         <label class="switch">
                             <input type="checkbox" id="enabled-${model.id}" ${model.enabled ? 'checked' : ''} onchange="modelsPage.toggleModelEnabled('${this.escapeForAttribute(model.id)}', this.checked)">
                             <span class="slider round"></span>
                         </label>
                     </div>
                     <div class="control-item user-type-control">
-                        <label for="usertype-${model.id}" class="role-label" title="Уникальная метка для внешних систем (например: MY_FAST_EXPENSIVE)">User Type:</label>
+                        <label for="usertype-${model.id}" class="role-label" title="Unique label for external systems (e.g.: MY_FAST_EXPENSIVE)">User Type:</label>
                         <input type="text" 
                                id="usertype-${model.id}" 
                                class="user-type-input"
                                value="${this.escapeHtml(model.user_type || '')}" 
-                               placeholder="Нет"
+                               placeholder="None"
                                onchange="modelsPage.setUserType('${this.escapeForAttribute(model.id)}', this.value)"
-                               title="Уникальная метка модели для API (например: MY_FAST_EXPENSIVE)">
+                               title="Unique model label for API (e.g.: MY_FAST_EXPENSIVE)">
                     </div>
                 </div>
                 <div class="copy-section">
                     <input type="text" class="copy-input" value="${this.escapeHtml(model.name)}" readonly>
                     <div style="display:flex;gap:8px;">
                         <button class="copy-button" onclick="modelsPage.copy('${this.escapeForAttribute(model.name)}', this)">
-                            <i class="fas fa-copy"></i> Скопировать
+                            <i class="fas fa-copy"></i> Copy
                         </button>
                         <button class="test-button" onclick="modelsPage.testModel('${this.escapeForAttribute(model.id)}', this)">
                             <i class="fas fa-play"></i> Test
@@ -248,7 +248,7 @@ class ModelsPage {
                         <button class="test-button about-button" onclick="modelsPage.aboutModel('${this.escapeForAttribute(model.id)}', this)">
                             <i class="fas fa-info-circle"></i> About
                         </button>
-                        ${model.provider_info ? `<button class="test-button provider-info-button" onclick="modelsPage.showProviderInfo('${this.escapeForAttribute(model.id)}')" title="Информация от провайдера">
+                        ${model.provider_info ? `<button class="test-button provider-info-button" onclick="modelsPage.showProviderInfo('${this.escapeForAttribute(model.id)}')" title="Provider information">
                             <i class="fas fa-database"></i> Provider Info
                         </button>` : ''}
                     </div>
@@ -276,7 +276,7 @@ class ModelsPage {
             modal.innerHTML = `
                 <div onclick="event.stopPropagation()" style="background:#222; color:#eee; padding:20px; border-radius:12px; max-width:90%; width:700px; max-height:90%; overflow:auto; position:relative">
                     <h2 id="testModalTitle" style="margin-top:0; display:flex; justify-content:space-between; align-items:center">
-                        Результат теста модели
+                        Model test result
                         <span onclick="document.getElementById('testResultModal').style.display='none'" style="cursor:pointer; font-size:1.5em">×</span>
                     </h2>
                     <div id="testModalContent"></div>
@@ -285,24 +285,24 @@ class ModelsPage {
             document.body.appendChild(modal);
         }
 
-        const time = new Date(testData.timestamp).toLocaleString('ru-RU');
-        // Конвертируем литеральные \n в реальные переносы строк
+        const time = new Date(testData.timestamp).toLocaleString('en-US');
+        // Convert literal \n to real line breaks
         const formatResponse = (text) => this.escapeHtml(text || '').replace(/\\n/g, '\n');
         const content = success
-            ? `<pre style="background:#000; padding:15px; border-radius:8px; overflow-x:auto; margin:15px 0; border:1px solid #0f0; white-space:pre-wrap; word-wrap:break-word">${formatResponse(testData.sample_response) || 'Пустой ответ'}</pre>`
-            : `<pre style="background:#300; padding:15px; border-radius:8px; overflow-x:auto; margin:15px 0; border:1px solid #f33; color:#fcc; white-space:pre-wrap; word-wrap:break-word">${formatResponse(testData.error_message) || 'Неизвестная ошибка'}</pre>`;
+            ? `<pre style="background:#000; padding:15px; border-radius:8px; overflow-x:auto; margin:15px 0; border:1px solid #0f0; white-space:pre-wrap; word-wrap:break-word">${formatResponse(testData.sample_response) || 'Empty response'}</pre>`
+            : `<pre style="background:#300; padding:15px; border-radius:8px; overflow-x:auto; margin:15px 0; border:1px solid #f33; color:#fcc; white-space:pre-wrap; word-wrap:break-word">${formatResponse(testData.error_message) || 'Unknown error'}</pre>`;
 
-        // Заголовок зависит от типа
-        const titleText = type === 'about' ? 'Информация о модели (About)' : 'Результат теста модели';
+        // Title depends on type
+        const titleText = type === 'about' ? 'Model Information (About)' : 'Model test result';
         const titleEl = document.getElementById('testModalTitle');
         if (titleEl) {
             titleEl.innerHTML = `${titleText}<span onclick="document.getElementById('testResultModal').style.display='none'" style="cursor:pointer; font-size:1.5em">×</span>`;
         }
 
         document.getElementById('testModalContent').innerHTML = `
-            <p><strong>Время:</strong> ${time}</p>
-            <p><strong>Время ответа:</strong> ${testData.response_time_ms} мс</p>
-            <p><strong>Статус:</strong> ${success ? '<span style="color:#0f0">✅ Успешно</span>' : '<span style="color:#f33">❌ Ошибка</span>'}</p>
+            <p><strong>Time:</strong> ${time}</p>
+            <p><strong>Response time:</strong> ${testData.response_time_ms} ms</p>
+            <p><strong>Status:</strong> ${success ? '<span style="color:#0f0">✅ Success</span>' : '<span style="color:#f33">❌ Error</span>'}</p>
             <hr style="border-color:#444">
             ${content}
         `;
@@ -310,10 +310,10 @@ class ModelsPage {
         modal.style.display = 'flex';
     }
 
-    // === УЛУЧШЕННЫЙ ТЕСТ БЕЗ ПЕРЕЗАГРУЗКИ ===
+    // === IMPROVED TEST WITHOUT RELOAD ===
     async testModel(modelId, button) {
         button.disabled = true;
-        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Тест...';
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
 
         try {
             const res = await fetch('/api/test-model', {
@@ -324,7 +324,7 @@ class ModelsPage {
             const data = await res.json();
 
             if (data.success) {
-                // Обновляем только эту карточку
+                // Update only this card
                 const card = button.closest('.model-card');
                 const newTest = data.result;
                 const ago = this.timeAgo(new Date(newTest.timestamp));
@@ -332,22 +332,22 @@ class ModelsPage {
                 
                 const badgeHtml = newTest.success
                     ? `<div class="test-badge success" onclick="modelsPage.showTestModal(${testDataEscaped}, true)" style="cursor:pointer">
-                        ✅ Работает (${ago}, ${newTest.response_time_ms}мс)
+                        ✅ OK (${ago}, ${newTest.response_time_ms}ms)
                        </div>`
                     : `<div class="test-badge error" onclick="modelsPage.showTestModal(${testDataEscaped}, false)" style="cursor:pointer">
-                        ❌ Ошибка (${ago})
+                        ❌ Error (${ago})
                        </div>`;
 
-                // Находим место для бейджа и вставляем
+                // Find place for badge and insert
                 const details = card.querySelector('.model-details');
                 const oldBadge = details.querySelector('.test-badge:not(.about-badge)');
                 if (oldBadge) oldBadge.remove();
                 details.insertAdjacentHTML('beforeend', badgeHtml);
             } else {
-                alert('Ошибка теста: ' + (data.error || 'Неизвестная ошибка'));
+                alert('Test error: ' + (data.error || 'Unknown error'));
             }
         } catch (err) {
-            alert('Нет связи с сервером');
+            alert('No connection to server');
             console.error(err);
         } finally {
             button.disabled = false;
@@ -355,17 +355,17 @@ class ModelsPage {
         }
     }
 
-    // === CURL ТЕСТ (OpenAI-compat версия) ===
+    // === CURL TEST (OpenAI-compat version) ===
     async curlTest(modelId, modelName, button) {
         button.disabled = true;
         button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> CURL...';
 
         try {
-            // Берем текущий хост
+            // Get current host
             const baseUrl = window.location.origin;
             
-            // Выполняем тест через OpenAI-совместимый эндпоинт
-            // Без Authorization хедера - если KOSMOS_API_KEY не задан, он не нужен
+            // Run test through OpenAI-compatible endpoint
+            // Without Authorization header - if KOSMOS_API_KEY is not set, it's not needed
             const startTime = Date.now();
             const res = await fetch(`${baseUrl}/v1/chat/completions`, {
                 method: 'POST',
@@ -374,7 +374,7 @@ class ModelsPage {
                 },
                 body: JSON.stringify({
                     model: modelName,
-                    messages: [{ role: "user", content: "Кто ты? Ответь в одном предложении на русском." }],
+                    messages: [{ role: "user", content: "Who are you? Answer in one sentence." }],
                     max_tokens: 120,
                     temperature: 0,
                     stream: false
@@ -384,7 +384,7 @@ class ModelsPage {
             const responseTime = Date.now() - startTime;
             const data = await res.json();
             
-            // Формируем результат
+            // Build result
             const success = res.ok && data.choices?.[0]?.message?.content;
             let content;
             if (success) {
@@ -397,7 +397,7 @@ class ModelsPage {
                 content = JSON.stringify(data, null, 2);
             }
             
-            // Генерируем curl команду для показа (с опциональной авторизацией)
+            // Generate curl command for display (with optional authorization)
             const curlCommand = `curl -X POST "${baseUrl}/v1/chat/completions" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -406,14 +406,14 @@ class ModelsPage {
     "stream": false
   }'
 
-# Если включена авторизация (KOSMOS_API_KEY), добавьте:
+# If authorization is enabled (KOSMOS_API_KEY), add:
 # -H "Authorization: Bearer YOUR_API_KEY"`;
             
-            // Показываем результат в модалке
+            // Show result in modal
             this.showCurlModal(modelName, success, content, responseTime, curlCommand, res.status);
             
         } catch (err) {
-            alert('Ошибка CURL теста: ' + err.message);
+            alert('CURL test error: ' + err.message);
             console.error(err);
         } finally {
             button.disabled = false;
@@ -421,7 +421,7 @@ class ModelsPage {
         }
     }
 
-    // Модальное окно для CURL результата
+    // Modal window for CURL result
     showCurlModal(modelName, success, content, responseTime, curlCommand, httpStatus = 200) {
         let modal = document.getElementById('testResultModal');
         if (!modal) {
@@ -450,45 +450,45 @@ class ModelsPage {
         }
 
         const statusHtml = success 
-            ? '<span style="color:#0f0">✅ OpenAI-совместимый API работает</span>'
+            ? '<span style="color:#0f0">✅ OpenAI-compatible API works</span>'
             : `<span style="color:#f33">❌ HTTP ${httpStatus}</span>`;
         
         const responseHtml = success
             ? `<pre style="background:#000; padding:15px; border-radius:8px; overflow-x:auto; margin:15px 0; border:1px solid #0f0; white-space:pre-wrap; word-wrap:break-word">${this.escapeHtml(content)}</pre>`
             : `<pre style="background:#300; padding:15px; border-radius:8px; overflow-x:auto; margin:15px 0; border:1px solid #f33; color:#fcc; white-space:pre-wrap; word-wrap:break-word">${this.escapeHtml(content)}</pre>`;
 
-        // Экранируем curlCommand для использования в onclick
+        // Escape curlCommand for use in onclick
         const escapedCurlCommand = curlCommand.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
 
         document.getElementById('testModalContent').innerHTML = `
-            <p><strong>Статус:</strong> ${statusHtml}</p>
-            <p><strong>Время ответа:</strong> ${responseTime} мс</p>
+            <p><strong>Status:</strong> ${statusHtml}</p>
+            <p><strong>Response time:</strong> ${responseTime} ms</p>
             <hr style="border-color:#444">
-            <h4>Ответ:</h4>
+            <h4>Response:</h4>
             ${responseHtml}
             <hr style="border-color:#444">
-            <h4>CURL команда для копирования:</h4>
+            <h4>CURL command to copy:</h4>
             <pre style="background:#111; padding:15px; border-radius:8px; overflow-x:auto; margin:15px 0; border:1px solid #666; white-space:pre-wrap; word-wrap:break-word; font-size:12px">${this.escapeHtml(curlCommand)}</pre>
-            <button onclick="navigator.clipboard.writeText('${escapedCurlCommand}'); this.innerHTML='✅ Скопировано!'" style="background:#333; color:#eee; border:1px solid #666; padding:8px 16px; border-radius:4px; cursor:pointer">
-                <i class="fas fa-copy"></i> Копировать CURL
+            <button onclick="navigator.clipboard.writeText('${escapedCurlCommand}'); this.innerHTML='✅ Copied!'" style="background:#333; color:#eee; border:1px solid #666; padding:8px 16px; border-radius:4px; cursor:pointer">
+                <i class="fas fa-copy"></i> Copy CURL
             </button>
         `;
 
         modal.style.display = 'flex';
     }
 
-    // === ABOUT МОДЕЛИ — ПОДРОБНАЯ ИНФОРМАЦИЯ ===
-    // Если есть кэш (last_about) — показываем его, иначе запрашиваем у модели
+    // === ABOUT MODEL — DETAILED INFORMATION ===
+    // If cache exists (last_about) — show it, otherwise request from model
     async aboutModel(modelId, button) {
-        // Проверяем, есть ли уже сохранённый результат
+        // Check if saved result exists
         const model = this.allModels.find(m => m.id === modelId);
         if (model && model.last_about && model.last_about.success) {
-            // Показываем сохранённый результат без запроса
+            // Show saved result without request
             this.showTestModal(model.last_about, true, 'about');
             return;
         }
 
-        // Нет кэша — делаем запрос
+        // No cache — make request
         button.disabled = true;
         button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> About...';
 
@@ -501,7 +501,7 @@ class ModelsPage {
             const data = await res.json();
 
             if (data.success) {
-                // Обновляем только эту карточку
+                // Update only this card
                 const card = button.closest('.model-card');
                 const newAbout = data.result;
                 const ago = this.timeAgo(new Date(newAbout.timestamp));
@@ -512,25 +512,25 @@ class ModelsPage {
                         ℹ️ About (${ago})
                        </div>`
                     : `<div class="test-badge about-badge error" onclick="modelsPage.showTestModal(${aboutDataEscaped}, false, 'about')" style="cursor:pointer">
-                        ⚠️ About ошибка (${ago})
+                        ⚠️ About error (${ago})
                        </div>`;
 
-                // Находим место для бейджа и вставляем
+                // Find place for badge and insert
                 const details = card.querySelector('.model-details');
                 const oldAboutBadge = details.querySelector('.about-badge');
                 if (oldAboutBadge) oldAboutBadge.remove();
                 details.insertAdjacentHTML('beforeend', badgeHtml);
 
-                // Обновляем локальный кэш
+                // Update local cache
                 if (model) model.last_about = newAbout;
 
-                // Сразу показываем модальное окно с результатом
+                // Immediately show modal with result
                 this.showTestModal(newAbout, newAbout.success, 'about');
             } else {
-                alert('Ошибка About: ' + (data.error || 'Неизвестная ошибка'));
+                alert('About error: ' + (data.error || 'Unknown error'));
             }
         } catch (err) {
-            alert('Нет связи с сервером');
+            alert('No connection to server');
             console.error(err);
         } finally {
             button.disabled = false;
@@ -551,7 +551,7 @@ class ModelsPage {
     async copy(text, btn) {
         await navigator.clipboard.writeText(text);
         const old = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-check"></i> Скопировано!';
+        btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
         btn.classList.add('copied');
         setTimeout(() => {
             btn.innerHTML = old;
@@ -561,10 +561,10 @@ class ModelsPage {
 
     timeAgo(date) {
         const seconds = Math.floor((new Date() - date) / 1000);
-        if (seconds < 60) return `${seconds}с назад`;
-        if (seconds < 3600) return `${Math.floor(seconds/60)}м назад`;
-        if (seconds < 86400) return `${Math.floor(seconds/3600)}ч назад`;
-        return `${Math.floor(seconds/86400)}д назад`;
+        if (seconds < 60) return `${seconds}s ago`;
+        if (seconds < 3600) return `${Math.floor(seconds/60)}m ago`;
+        if (seconds < 86400) return `${Math.floor(seconds/3600)}h ago`;
+        return `${Math.floor(seconds/86400)}d ago`;
     }
 
     escapeHtml(text) {
@@ -584,7 +584,7 @@ class ModelsPage {
             .replace(/\r/g, '\\r');
     }
 
-    // === НОВЫЕ МЕТОДЫ ДЛЯ УПРАВЛЕНИЯ МОДЕЛЯМИ ===
+    // === NEW METHODS FOR MODEL MANAGEMENT ===
     async toggleModelEnabled(modelId, isEnabled) {
         try {
             const res = await fetch(`/api/models/update/${encodeURIComponent(modelId)}`, {
@@ -599,11 +599,11 @@ class ModelsPage {
             if (model) model.enabled = isEnabled;
         } catch (err) {
             console.error('Failed to update model:', err);
-            alert(`Ошибка обновления модели: ${err.message}`);
+            alert(`Model update error: ${err.message}`);
         }
     }
 
-    // === Установка user_type (уникальной метки модели) ===
+    // === Set user_type (unique model label) ===
     async setUserType(modelId, userType) {
         const normalizedType = userType ? userType.trim().toUpperCase() : null;
         
@@ -616,19 +616,19 @@ class ModelsPage {
             const data = await res.json();
             
             if (!res.ok) {
-                alert(`Ошибка: ${data.error || 'Server error'}`);
+                alert(`Error: ${data.error || 'Server error'}`);
                 return;
             }
             
-            console.log(`✅ user_type для ${modelId} установлен: ${normalizedType || 'null'}`);
+            console.log(`✅ user_type for ${modelId} set: ${normalizedType || 'null'}`);
             
-            // Перезагружаем все модели чтобы обновить UI (старая модель сбросилась)
+            // Reload all models to update UI (old model was reset)
             await this.loadModels();
             this.filterModels(document.getElementById('searchInput')?.value || '');
             
         } catch (err) {
             console.error('Failed to set user_type:', err);
-            alert(`Ошибка установки user_type: ${err.message}`);
+            alert(`user_type set error: ${err.message}`);
         }
     }
 
@@ -645,7 +645,7 @@ class ModelsPage {
         modal.innerHTML = `
             <div class="modal-content" onclick="event.stopPropagation()">
                 <div class="modal-header">
-                    <h2>Добавить новую модель</h2>
+                    <h2>Add new model</h2>
                     <span class="close-button" onclick="document.getElementById('addModelModal').style.display='none'">&times;</span>
                 </div>
                 <form id="addModelForm" onsubmit="modelsPage.saveNewModel(event)">
@@ -667,14 +667,14 @@ class ModelsPage {
                         <input type="number" id="newModelContext" value="8192" required>
                     </div>
                      <div class="form-group">
-                        <label for="newModelBaseUrl">Base URL (для 'direct' провайдера)</label>
+                        <label for="newModelBaseUrl">Base URL (for 'direct' provider)</label>
                         <input type="text" id="newModelBaseUrl" placeholder="e.g., https://api.example.com/v1">
                     </div>
                     <div class="form-group">
-                        <label for="newModelApiKey">API Key (для 'direct' провайдера)</label>
+                        <label for="newModelApiKey">API Key (for 'direct' provider)</label>
                         <input type="text" id="newModelApiKey" placeholder="e.g., env:MY_API_KEY or literal key">
                     </div>
-                    <button type="submit" class="submit-btn">Сохранить модель</button>
+                    <button type="submit" class="submit-btn">Save model</button>
                 </form>
             </div>
         `;
@@ -710,20 +710,20 @@ class ModelsPage {
             this.filterModels(document.getElementById('searchInput').value); // Re-filter and re-render
         } catch (err) {
             console.error('Failed to save new model:', err);
-            alert(`Ошибка сохранения модели: ${err.message}`);
+            alert(`Model save error: ${err.message}`);
         }
     }
 
 
-    // === ПОКАЗ ИНФОРМАЦИИ ОТ ПРОВАЙДЕРА ===
+    // === SHOW PROVIDER INFORMATION ===
     showProviderInfo(modelId) {
         const model = this.allModels.find(m => m.id === modelId);
         if (!model || !model.provider_info) {
-            alert('Информация от провайдера недоступна для этой модели');
+            alert('Provider information not available for this model');
             return;
         }
 
-        // Используем существующую модалку или создаем новую
+        // Use existing modal or create new one
         let modal = document.getElementById('testResultModal');
         if (!modal) {
             modal = document.createElement('div');
@@ -740,7 +740,7 @@ class ModelsPage {
             modal.innerHTML = `
                 <div onclick="event.stopPropagation()" style="background:#222; color:#eee; padding:20px; border-radius:12px; max-width:90%; width:700px; max-height:90%; overflow:auto; position:relative">
                     <h2 id="testModalTitle" style="margin-top:0; display:flex; justify-content:space-between; align-items:center">
-                        Информация от провайдера
+                        Provider information
                         <span onclick="document.getElementById('testResultModal').style.display='none'" style="cursor:pointer; font-size:1.5em">×</span>
                     </h2>
                     <div id="testModalContent"></div>
@@ -751,7 +751,7 @@ class ModelsPage {
 
         const titleEl = document.getElementById('testModalTitle');
         if (titleEl) {
-            titleEl.innerHTML = `Информация от провайдера: ${this.escapeHtml(model.visible_name || model.name)}<span onclick="document.getElementById('testResultModal').style.display='none'" style="cursor:pointer; font-size:1.5em">×</span>`;
+            titleEl.innerHTML = `Provider info: ${this.escapeHtml(model.visible_name || model.name)}<span onclick="document.getElementById('testResultModal').style.display='none'" style="cursor:pointer; font-size:1.5em">×</span>`;
         }
 
         document.getElementById('testModalContent').innerHTML = `
@@ -761,7 +761,7 @@ class ModelsPage {
         modal.style.display = 'flex';
     }
 
-    // === СВОРАЧИВАНИЕ/РАЗВОРАЧИВАНИЕ РАЗДЕЛА ПРОВАЙДЕРА ===
+    // === COLLAPSE/EXPAND PROVIDER SECTION ===
     toggleProviderSection(provider) {
         const section = document.querySelector(`.provider-section[data-provider="${provider}"]`);
         if (!section) return;
@@ -780,7 +780,7 @@ class ModelsPage {
         }
     }
 
-    // === ОБНОВЛЕНИЕ МОДЕЛЕЙ ПРОВАЙДЕРА ===
+    // === REFRESH PROVIDER MODELS ===
     async refreshProviderModels(provider) {
         const section = document.querySelector(`.provider-section[data-provider="${provider}"]`);
         const btn = section ? section.querySelector('.refresh-provider-btn') : null;
@@ -800,7 +800,7 @@ class ModelsPage {
             } else if (provider === 'direct') {
                 endpoint = '/api/refresh-direct-models';
             } else {
-                alert(`Обновление для провайдера ${provider} не поддерживается`);
+                alert(`Refresh for provider ${provider} is not supported`);
                 return;
             }
 
@@ -808,16 +808,16 @@ class ModelsPage {
             const data = await res.json();
 
             if (data.success) {
-                // Перезагружаем модели
+                // Reload models
                 await this.loadModels();
                 this.filterModels(document.getElementById('searchInput').value);
-                alert(`Модели провайдера ${provider} успешно обновлены`);
+                alert(`Provider ${provider} models successfully updated`);
             } else {
-                alert(`Ошибка обновления: ${data.error || 'Неизвестная ошибка'}`);
+                alert(`Update error: ${data.error || 'Unknown error'}`);
             }
         } catch (err) {
-            console.error('Ошибка обновления моделей:', err);
-            alert('Не удалось обновить модели: ' + err.message);
+            console.error('Model update error:', err);
+            alert('Failed to update models: ' + err.message);
         } finally {
             if (btn) {
                 btn.disabled = false;
@@ -828,7 +828,7 @@ class ModelsPage {
 
     showError(msg) {
         document.getElementById('errorMessage').style.display = 'block';
-        document.getElementById('errorMessage').textContent = msg;
+        document.getElementById('errorMessage').textContent = 'Failed to load models: ' + msg;
     }
 
     hideLoading() {
@@ -836,7 +836,7 @@ class ModelsPage {
     }
 }
 
-// Глобальный объект
+// Global object
 let modelsPage;
 
 document.addEventListener('DOMContentLoaded', () => {
