@@ -153,9 +153,10 @@ class HistoryViewerV2 {
             const promptName = item.promptName || 'Custom prompt';
             const inputPreview = (item.inputText || '').substring(0, 80);
             const isSelected = item.id === this.selectedItemId;
+            const hasError = item.response && item.response.includes('ERROR:');
 
             return `
-                <div class="list-item ${isSelected ? 'selected' : ''}" data-id="${item.id}">
+                <div class="list-item ${isSelected ? 'selected' : ''} ${hasError ? 'error' : ''}" data-id="${item.id}">
                     <div class="list-item-header">
                         <span class="list-item-date">${formattedDate}</span>
                         <span class="list-item-badge ${providerInfo.badgeClass}">${providerInfo.label}</span>
