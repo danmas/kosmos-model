@@ -1,8 +1,10 @@
 # Node modules
 node_modules/
+bun.lock
 data/
 tmp/
 logd/ 
+
 
 # Logs
 logs
@@ -26,6 +28,7 @@ pids
 props.env
 props.env.bak
 t.t
+
 
 # Output directories
 output_docs/
