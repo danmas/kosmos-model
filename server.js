@@ -3902,10 +3902,22 @@ logger.info('📡 OpenAI-совместимые эндпоинты: /v1/chat/com
 
 const PORT = process.env.PORT || config.port;
 
-app.listen(PORT, async () => {
+const server = app.listen(PORT, async () => {
   logger.info(`Сервер запущен на порту ${PORT}`);
   logger.info(`Откройте http://localhost:${PORT} в вашем браузере`);
   
   // Валидация моделей с user_type при старте
   await validateUserTypeModelsOnStartup();
+});
+
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    logger.error(`❌ Порт ${PORT} уже занят другим процессом!`);
+    logger.error(`   Освободите порт или измените PORT в .env`);
+    logger.error(`   Чтобы найти процесс: netstat -ano | findstr :${PORT}`);
+    process.exit(1);
+  } else {
+    logger.error(`Ошибка запуска сервера:`, err);
+    process.exit(1);
+  }
 });
