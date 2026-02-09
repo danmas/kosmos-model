@@ -634,12 +634,54 @@ async function resolveModelName(modelInput, providerInput) {
     const modelType = modelUpper.toLowerCase();
     resolvedModel = config.defaultModels[modelType].model;
     resolvedProvider = providerInput || config.defaultModels[modelType].provider;
-    logger.info(`⚙️ Базовый тип "${modelUpper}" (fallback config) → модель: ${resolvedModel} (${resolvedProvider})`);
-    return { model: resolvedModel, provider: resolvedProvider, wasResolved: true, resolvedType: modelType };
+    
+    // Проверяем, существует ли модель из конфига в available-models.json
+    try {
+      const allModels = await loadModels();
+      const modelExists = allModels.find(m => 
+        (m.name === resolvedModel || m.id === resolvedModel) && m.enabled
+      );
+      
+      if (!modelExists) {
+        const errorMsg = `NO MODEL FOUND: "${modelUpper}" → configured model "${resolvedModel}" not found in available-models.json`;
+        logger.error(`❌ ${errorMsg}`);
+        throw new Error(errorMsg);
+      }
+      
+      logger.info(`⚙️ Базовый тип "${modelUpper}" (fallback config) → модель: ${resolvedModel} (${resolvedProvider})`);
+      return { model: resolvedModel, provider: resolvedProvider, wasResolved: true, resolvedType: modelType, modelData: modelExists };
+    } catch (err) {
+      // Если ошибка уже выброшена выше, пробрасываем её дальше
+      if (err.message.startsWith('NO MODEL FOUND')) {
+        throw err;
+      }
+      // Для других ошибок логируем и пробрасываем
+      logger.error('⚠️ Ошибка при проверке модели из конфига:', err.message);
+      throw new Error(`NO MODEL FOUND: "${modelUpper}" → error validating configured model "${resolvedModel}": ${err.message}`);
+    }
   }
   
-  // 3. Если это обычное имя модели, возвращаем как есть
-  return { model: resolvedModel, provider: resolvedProvider, wasResolved: false };
+  // 3. Если это обычное имя модели, проверяем существует ли оно
+  try {
+    const allModels = await loadModels();
+    const modelExists = allModels.find(m => 
+      (m.name === modelInput || m.id === modelInput) && m.enabled
+    );
+    
+    if (!modelExists) {
+      const errorMsg = `NO MODEL FOUND: "${modelInput}" not found in available-models.json`;
+      logger.error(`❌ ${errorMsg}`);
+      throw new Error(errorMsg);
+    }
+    
+    return { model: resolvedModel, provider: resolvedProvider, wasResolved: false, modelData: modelExists };
+  } catch (err) {
+    if (err.message.startsWith('NO MODEL FOUND')) {
+      throw err;
+    }
+    logger.error('⚠️ Ошибка при проверке имени модели:', err.message);
+    throw new Error(`NO MODEL FOUND: "${modelInput}" → error: ${err.message}`);
+  }
 }
 
 // Функция для получения модели по имени из available-models.json
@@ -729,7 +771,17 @@ app.post('/api/send-request', async (req, res) => {
       }
       
       // Разрешаем имя модели (может быть CHEAP/FAST/RICH, произвольный user_type или пусто)
-      const resolved = await resolveModelName(model, provider);
+      let resolved;
+      try {
+        resolved = await resolveModelName(model, provider);
+      } catch (resolveError) {
+        logger.error('[SERVER] ❌ Ошибка разрешения модели:', resolveError.message);
+        return res.status(404).json({ 
+          error: resolveError.message,
+          details: `Модель "${model}" не найдена. Проверьте доступные модели через /api/models`
+        });
+      }
+      
       model = resolved.model;
       let selectedProvider = resolved.provider;
       
