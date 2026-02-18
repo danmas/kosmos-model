@@ -26,7 +26,7 @@ class AITestApp {
     // Добавляем свойства для моделей по умолчанию
     this.defaultModels = null;
     this.selectedModelType = null; // cheap, fast, rich или null для ручного выбора
-    
+
     // Добавляем свойства для user_type
     this.userTypesList = [];
     this.selectedUserType = null; // Выбранный user_type для отправки вместо модели
@@ -48,12 +48,12 @@ class AITestApp {
 
       const config = await response.json();
       console.log('Received config from server:', config);
-      
+
       if (!config.apiKey) {
         throw new Error('API key is missing in config');
       }
       this.apiKey = config.apiKey;
-      
+
       // Проверяем доступность RAG
       console.log('Checking RAG availability:', config.langchainPg);
       if (config.langchainPg && config.langchainPg.enabled) {
@@ -71,7 +71,7 @@ class AITestApp {
       } else {
         console.log('RAG is disabled or not configured');
       }
-      
+
       await this.loadPrompts();
       console.log('RAG enabled status before render:', this.ragEnabled);
       this.render();
@@ -104,7 +104,7 @@ class AITestApp {
       if (!allRes.ok) throw new Error('Network error');
 
       const allModels = await allRes.json();
-      
+
       // Загружаем user_types (если запрос успешен)
       if (userTypesRes.ok) {
         const userTypesData = await userTypesRes.json();
@@ -126,7 +126,7 @@ class AITestApp {
       this.modelsList = [];
     }
   }
-  
+
   // Заполнение селекта моделей (вызывается после render())
   populateModelSelect() {
     const select = document.getElementById('modelSelect');
@@ -233,6 +233,9 @@ class AITestApp {
         <div class="app-header">
           <h2>AI Analytics Interface</h2>
           <div class="nav-links">
+            <a href="/main" class="nav-link">
+              <i class="fas fa-th-large"></i> Dashboard
+            </a>
             <a href="/models.html" class="nav-link" target="_blank">
               <i class="fas fa-brain"></i> Доступные модели
             </a>
@@ -653,11 +656,11 @@ class AITestApp {
         this.selectedUserType = null; // Сбрасываем user_type при ручном выборе модели
         localStorage.setItem('selectedModel', selectedModel);
         localStorage.removeItem('selectedUserType');
-        
+
         // Сбрасываем селектор user_type
         const userTypeSelect = document.getElementById('userTypeSelect');
         if (userTypeSelect) userTypeSelect.value = '';
-        
+
         console.log('Выбрана модель:', selectedModel);
         this.saveState();
       });
@@ -669,11 +672,11 @@ class AITestApp {
       userTypeSelect.addEventListener('change', (e) => {
         const selectedUserType = e.target.value;
         this.selectedUserType = selectedUserType || null;
-        
+
         if (selectedUserType) {
           localStorage.setItem('selectedUserType', selectedUserType);
           console.log('Выбран user_type:', selectedUserType);
-          
+
           // Автоматически выбираем соответствующую модель в селекторе
           const userTypeInfo = this.userTypesList?.find(t => t.user_type === selectedUserType);
           if (userTypeInfo && userTypeInfo.model_name) {
@@ -700,7 +703,7 @@ class AITestApp {
         this.apiMode = e.target.value;
         localStorage.setItem('apiMode', this.apiMode);
         console.log('API режим:', this.apiMode);
-        
+
         // Показываем/скрываем опцию streaming
         const streamingOption = document.getElementById('streamingOption');
         if (streamingOption) {
@@ -717,7 +720,7 @@ class AITestApp {
         console.log('Streaming:', this.useStreaming ? 'включён' : 'выключен');
       });
     }
-    
+
     // Элементы для работы с файлами
     const fileInput = document.getElementById('fileInput');
     const clearFileBtn = document.getElementById('clearFileBtn');
@@ -885,7 +888,7 @@ class AITestApp {
         });
       }
     }
-    
+
     // Добавляем обработчик для кнопки Save as markdown
     const saveAsMarkdownBtn = document.getElementById('saveAsMarkdownBtn');
     if (saveAsMarkdownBtn) {
@@ -1211,22 +1214,22 @@ class AITestApp {
         if (state.prompt) document.getElementById('prompt').value = state.prompt;
         if (state.inputText) document.getElementById('inputText').value = state.inputText;
         if (state.activePrompt) this.activePrompt = state.activePrompt;
-        
+
         // Загружаем выбранный тип модели
         if (state.selectedModelType !== undefined) {
           this.selectedModelType = state.selectedModelType;
         }
-        
+
         // Загружаем настройки RAG
         if (this.ragEnabled) {
           if (state.useRag !== undefined) this.useRag = state.useRag;
           if (state.selectedContextCode !== undefined) this.selectedContextCode = state.selectedContextCode;
-          
+
           // Обновляем UI в соответствии с загруженными настройками
           const useRagCheckbox = document.getElementById('useRagCheckbox');
           const ragOptions = document.getElementById('ragOptions');
           const contextCodeSelect = document.getElementById('contextCodeSelect');
-          
+
           if (useRagCheckbox) useRagCheckbox.checked = this.useRag;
           if (ragOptions) ragOptions.style.display = this.useRag ? 'flex' : 'none';
           if (contextCodeSelect) {
@@ -1234,14 +1237,14 @@ class AITestApp {
             if (option) contextCodeSelect.value = this.selectedContextCode;
           }
         }
-        
+
         // Устанавливаем выбранную модель
         const modelSelect = document.getElementById('modelSelect');
         if (modelSelect) {
           const option = Array.from(modelSelect.options).find(opt => opt.value === this.model);
           if (option) modelSelect.value = this.model;
         }
-        
+
         // Устанавливаем выбранный промпт
         if (this.activePrompt) {
           const promptSelect = document.getElementById('promptSelect');
@@ -1258,7 +1261,7 @@ class AITestApp {
         this.apiMode = savedApiMode;
         const apiModeRadio = document.querySelector(`input[name="apiMode"][value="${savedApiMode}"]`);
         if (apiModeRadio) apiModeRadio.checked = true;
-        
+
         const streamingOption = document.getElementById('streamingOption');
         if (streamingOption) {
           streamingOption.style.display = this.apiMode === 'openai' ? 'flex' : 'none';
@@ -1298,7 +1301,7 @@ class AITestApp {
 
   validateInputs() {
     console.log('[CLIENT] validateInputs вызван');
-    
+
     const inputText = document.getElementById('inputText');
     const prompt = document.getElementById('prompt');
 
@@ -1366,9 +1369,9 @@ class AITestApp {
     const sendServerSysButton = document.getElementById('sendServerSysButton');
     const cancelButton = document.getElementById('cancelButton');
     const inputs = document.querySelectorAll('textarea, select');
-  
+
     if (!sendButton || !cancelButton || !sendServerButton || !sendServerSysButton) return;
-  
+
     if (isLoading) {
       sendButton.disabled = true;
       sendServerButton.disabled = true;
@@ -1531,7 +1534,7 @@ class AITestApp {
         useRag: this.useRag,
         contextCode: this.selectedContextCode
       });
-      
+
       const response = await fetch('/api/send-request', {
         method: 'POST',
         headers: {
@@ -1553,49 +1556,49 @@ class AITestApp {
       }
 
       const data = await response.json();
-      
+
       responseArea.innerHTML = '';
-      
+
       const responseText = document.createElement('div');
       responseText.className = 'response-text';
       responseText.textContent = data.content;
       responseArea.appendChild(responseText);
-      
+
       if (data.rag && data.rag.used) {
         const ragInfo = document.createElement('div');
         ragInfo.className = 'rag-info';
-        
+
         const ragTitle = document.createElement('h4');
         ragTitle.textContent = 'Информация о RAG';
         ragInfo.appendChild(ragTitle);
-        
+
         const ragDetails = document.createElement('p');
         ragDetails.textContent = `Использован контекстный код: ${data.rag.contextCode || 'все документы'}`;
         ragDetails.textContent += `, найдено документов: ${data.rag.documentsCount}`;
         ragInfo.appendChild(ragDetails);
-        
+
         if (data.rag.sources && data.rag.sources.length > 0) {
           const sourcesTitle = document.createElement('h4');
           sourcesTitle.textContent = 'Источники:';
           ragInfo.appendChild(sourcesTitle);
-          
+
           const sourcesList = document.createElement('div');
           sourcesList.className = 'rag-sources';
-          
+
           const ul = document.createElement('ul');
           data.rag.sources.forEach(source => {
             const li = document.createElement('li');
             li.textContent = `${source.filename} (${source.contextCode})`;
             ul.appendChild(li);
           });
-          
+
           sourcesList.appendChild(ul);
           ragInfo.appendChild(sourcesList);
         }
-        
+
         responseArea.appendChild(ragInfo);
       }
-      
+
       if (saveResponseButton) {
         saveResponseButton.disabled = false;
       }
@@ -1621,7 +1624,7 @@ class AITestApp {
     console.log('[CLIENT] Prompt length:', prompt.value?.length || 0);
     console.log('[CLIENT] Input text length:', inputText.value?.length || 0);
     console.log('[CLIENT] ResponseArea element:', responseArea ? 'найден' : 'не найден');
-    
+
     this.updateUIState(true);
     this.abortController = new AbortController();
 
@@ -1649,7 +1652,7 @@ class AITestApp {
         // Streaming режим - читаем SSE
         responseArea.value = '';
         responseArea.style.color = '#e0e0e0';
-        
+
         const response = await fetch('/v1/chat/completions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1680,90 +1683,90 @@ class AITestApp {
         console.log('[CLIENT] Начало чтения streaming данных...');
 
         while (true) {
-            const { done, value } = await reader.read();
-            if (done) {
-              console.log('[CLIENT] Streaming чтение завершено. Всего чанков:', chunkCount, 'С контентом:', contentChunksCount);
-              break;
+          const { done, value } = await reader.read();
+          if (done) {
+            console.log('[CLIENT] Streaming чтение завершено. Всего чанков:', chunkCount, 'С контентом:', contentChunksCount);
+            break;
+          }
+
+          chunkCount++;
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n');
+
+          console.log(`[CLIENT] Raw chunk #${chunkCount} received, length: ${chunk.length}`);
+          console.log(`[CLIENT] Raw chunk preview:`, chunk.substring(0, 500));
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+
+            // Логируем каждую строку для отладки
+            if (trimmed) {
+              console.log('[CLIENT] Raw line:', trimmed.substring(0, 200));
             }
 
-            chunkCount++;
-            const chunk = decoder.decode(value, { stream: true });
-            const lines = chunk.split('\n');
+            if (trimmed.startsWith('data: ')) {
+              const data = trimmed.slice(6);
 
-            console.log(`[CLIENT] Raw chunk #${chunkCount} received, length: ${chunk.length}`);
-            console.log(`[CLIENT] Raw chunk preview:`, chunk.substring(0, 500));
+              // Логируем raw data
+              console.log('[CLIENT] Raw data (first 300 chars):', data.substring(0, 300));
 
-            for (const line of lines) {
-              const trimmed = line.trim();
-              
-              // Логируем каждую строку для отладки
-              if (trimmed) {
-                console.log('[CLIENT] Raw line:', trimmed.substring(0, 200));
+              if (data === '[DONE]') {
+                console.log('[CLIENT] Получен маркер [DONE]');
+                continue;
               }
-              
-              if (trimmed.startsWith('data: ')) {
-                const data = trimmed.slice(6);
-                
-                // Логируем raw data
-                console.log('[CLIENT] Raw data (first 300 chars):', data.substring(0, 300));
-                
-                if (data === '[DONE]') {
-                  console.log('[CLIENT] Получен маркер [DONE]');
-                  continue;
+
+              try {
+                const parsed = JSON.parse(data);
+
+                // ПРОВЕРКА НА ОШИБКУ - должна быть первой!
+                if (parsed.error) {
+                  console.error('[CLIENT] ❌ Ошибка в SSE потоке!');
+                  console.error('[CLIENT] Error object:', parsed.error);
+
+                  const errorMessage = parsed.error.message || 'Неизвестная ошибка';
+                  console.error('[CLIENT] Error message:', errorMessage);
+
+                  // Сохраняем ошибку для обработки после выхода из циклов
+                  streamError = new Error(errorMessage);
+
+                  // Показываем ошибку пользователю
+                  responseArea.value = `ОШИБКА: ${errorMessage}`;
+                  responseArea.style.color = '#ff6b6b';
+
+                  // Прерываем чтение потока
+                  reader.cancel();
+                  break; // Выходим из цикла for
                 }
 
-                try {
-                  const parsed = JSON.parse(data);
-                  
-                  // ПРОВЕРКА НА ОШИБКУ - должна быть первой!
-                  if (parsed.error) {
-                    console.error('[CLIENT] ❌ Ошибка в SSE потоке!');
-                    console.error('[CLIENT] Error object:', parsed.error);
-                    
-                    const errorMessage = parsed.error.message || 'Неизвестная ошибка';
-                    console.error('[CLIENT] Error message:', errorMessage);
-                    
-                    // Сохраняем ошибку для обработки после выхода из циклов
-                    streamError = new Error(errorMessage);
-                    
-                    // Показываем ошибку пользователю
-                    responseArea.value = `ОШИБКА: ${errorMessage}`;
-                    responseArea.style.color = '#ff6b6b';
-                    
-                    // Прерываем чтение потока
-                    reader.cancel();
-                    break; // Выходим из цикла for
-                  }
-                
                 // ДЕТАЛЬНОЕ ЛОГИРОВАНИЕ
                 console.log('[CLIENT] Parsed chunk structure:');
                 console.log('[CLIENT] - Full parsed:', JSON.stringify(parsed, null, 2).substring(0, 800));
                 console.log('[CLIENT] - Has choices:', !!parsed.choices);
                 console.log('[CLIENT] - Choices length:', parsed.choices?.length || 0);
-                
+
                 if (parsed.choices && parsed.choices.length > 0) {
                   console.log('[CLIENT] - Choice[0]:', JSON.stringify(parsed.choices[0], null, 2).substring(0, 500));
                   console.log('[CLIENT] - Has delta:', !!parsed.choices[0].delta);
-                  
+
                   if (parsed.choices[0].delta) {
                     console.log('[CLIENT] - Delta:', JSON.stringify(parsed.choices[0].delta, null, 2).substring(0, 500));
                     console.log('[CLIENT] - Delta keys:', Object.keys(parsed.choices[0].delta));
                     console.log('[CLIENT] - Delta.content:', parsed.choices[0].delta.content);
                     console.log('[CLIENT] - Delta.role:', parsed.choices[0].delta.role);
                   }
-                  
+
                   console.log('[CLIENT] - Finish reason:', parsed.choices[0].finish_reason);
                 }
-                
+
                 const content = parsed.choices?.[0]?.delta?.content;
-                
+
                 if (content) {
                   contentChunksCount++;
                   fullContent += content;
                   responseArea.value = fullContent;
                   // Автопрокрутка вниз
                   responseArea.scrollTop = responseArea.scrollHeight;
-                  
+
                   console.log(`[CLIENT] ✅ Получен контент чанк #${contentChunksCount}, длина: ${content.length}, общая длина: ${fullContent.length}`);
                   console.log(`[CLIENT] Контент чанка:`, content.substring(0, 100));
                 } else {
@@ -1778,7 +1781,7 @@ class AITestApp {
                 console.error('[CLIENT] Ошибка message:', e.message);
                 console.error('[CLIENT] Data что не распарсилось:', data.substring(0, 200));
               }
-              
+
               // Если есть ошибка, выходим из цикла for
               if (streamError) {
                 break;
@@ -1788,7 +1791,7 @@ class AITestApp {
               console.log('[CLIENT] ⚠️ Неожиданная строка (не data:):', trimmed.substring(0, 100));
             }
           }
-          
+
           // Если есть ошибка, выходим из цикла while
           if (streamError) {
             break;
@@ -1805,12 +1808,12 @@ class AITestApp {
         console.log('[CLIENT] ResponseArea.value length:', responseArea.value?.length || 0);
         console.log('[CLIENT] ResponseArea.value preview:', responseArea.value?.substring(0, 100) || '(пусто)');
         console.log('[CLIENT] ========================================');
-        
+
       } else {
         console.log('[CLIENT] Отправка обычного (не-streaming) запроса на /v1/chat/completions');
         // Обычный режим без streaming
         responseArea.value = 'Отправка запроса...';
-        
+
         const response = await fetch('/v1/chat/completions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1832,11 +1835,11 @@ class AITestApp {
         console.log('[CLIENT] Response data keys:', Object.keys(data));
         console.log('[CLIENT] Choices count:', data.choices?.length || 0);
         console.log('[CLIENT] Content length:', data.choices?.[0]?.message?.content?.length || 0);
-        
+
         const finalContent = data.choices?.[0]?.message?.content || 'Пустой ответ';
         responseArea.value = finalContent;
         responseArea.style.color = '#e0e0e0';
-        
+
         console.log('[CLIENT] ✅ OpenAI запрос завершён, токенов:', data.usage?.total_tokens);
         console.log('[CLIENT] ResponseArea.value length:', responseArea.value?.length || 0);
         console.log('[CLIENT] ========================================');
@@ -1855,7 +1858,7 @@ class AITestApp {
         console.error('[CLIENT] Error stack:', error.stack.substring(0, 500));
       }
       console.error('[CLIENT] ========================================');
-      
+
       if (error.name === 'AbortError') {
         console.log('[CLIENT] Запрос отменен пользователем');
         responseArea.value = 'Запрос отменён';
@@ -1866,7 +1869,7 @@ class AITestApp {
         }
         responseArea.style.color = '#ff6b6b';
       }
-      
+
       if (saveResponseButton) {
         saveResponseButton.disabled = true;
       }
@@ -2393,7 +2396,7 @@ class AITestApp {
 
     if (modalTextarea && sourceElement) {
       modalTextarea.value = sourceElement.value;
-      
+
       // Если открывается модальное окно с ответом, подготавливаем Markdown-превью
       if (modalId === 'responseModal') {
         // Сбрасываем вкладки на текст по умолчанию
@@ -2487,10 +2490,10 @@ class AITestApp {
   // Добавьте этот метод в класс AITestApp после метода handleSubmit()
   async handleServerSubmit() {
     console.log('[CLIENT] handleServerSubmit вызван');
-    
+
     const validationResult = this.validateInputs();
     console.log('[CLIENT] Результат валидации:', validationResult);
-    
+
     if (!validationResult) {
       console.log('[CLIENT] Валидация не прошла, выход из метода');
       return;
@@ -2588,7 +2591,7 @@ class AITestApp {
       console.error('[CLIENT] Ошибка в handleServerSubmit:', error);
       console.error('[CLIENT] Error name:', error.name);
       console.error('[CLIENT] Error message:', error.message);
-      
+
       if (error.name === 'AbortError') {
         console.log('[CLIENT] Запрос отменен пользователем');
         responseArea.value = 'Request cancelled by user';
@@ -2615,23 +2618,23 @@ class AITestApp {
       if (!response.ok) {
         throw new Error(`Failed to fetch RAG debug info: ${response.status}`);
       }
-      
+
       const debugInfo = await response.json();
-      
+
       // Заполняем модальное окно данными
       const ragStatusDebug = document.getElementById('ragStatusDebug');
       const finalInputTextDebug = document.getElementById('finalInputTextDebug');
       const ragInfoDebug = document.getElementById('ragInfoDebug');
-      
+
       if (ragStatusDebug) {
         ragStatusDebug.textContent = `RAG Enabled: ${debugInfo.ragEnabled}
 Timestamp: ${debugInfo.timestamp || 'N/A'}`;
       }
-      
+
       if (finalInputTextDebug) {
         finalInputTextDebug.textContent = debugInfo.finalInputText || 'No input text available';
       }
-      
+
       if (ragInfoDebug) {
         if (debugInfo.ragInfo) {
           ragInfoDebug.textContent = JSON.stringify(debugInfo.ragInfo, null, 2);
@@ -2639,7 +2642,7 @@ Timestamp: ${debugInfo.timestamp || 'N/A'}`;
           ragInfoDebug.textContent = 'No RAG info available';
         }
       }
-      
+
       // Открываем модальное окно
       const modal = document.getElementById('debugRagModal');
       if (modal) {
@@ -2653,7 +2656,7 @@ Timestamp: ${debugInfo.timestamp || 'N/A'}`;
   }
 
   // Добавляем методы для работы с файлами
-  
+
   /**
    * Форматирует размер файла в удобочитаемый вид
    * @param {number} bytes - Размер файла в байтах
@@ -2664,19 +2667,19 @@ Timestamp: ${debugInfo.timestamp || 'N/A'}`;
     else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
     else return (bytes / 1048576).toFixed(1) + ' MB';
   }
-  
+
   /**
    * Обрабатывает загруженный файл и вставляет его содержимое в поле ввода
    */
   async handleFileContent() {
     console.log('handleFileContent вызван');
-    
+
     const fileInput = document.getElementById('fileInput');
     console.log('fileInput:', fileInput);
-    
+
     const inputText = document.getElementById('inputText');
     console.log('inputText:', inputText);
-    
+
     if (!fileInput || !fileInput.files[0] || !inputText) {
       console.log('Отсутствуют необходимые элементы:', {
         fileInput: !!fileInput,
@@ -2685,16 +2688,16 @@ Timestamp: ${debugInfo.timestamp || 'N/A'}`;
       });
       return;
     }
-    
+
     const file = fileInput.files[0];
     console.log('Файл выбран:', file.name, file.size, file.type);
-    
+
     const maxSize = 10485760; // 10MB
-    
+
     if (file.size > maxSize) {
       const confirmSplit = confirm(`Файл слишком большой (${this.formatFileSize(file.size)}). 
 Хотите разделить его на части и отправить по частям?`);
-      
+
       if (confirmSplit) {
         this.showMessage(`Подготовка к анализу файла ${file.name} по частям...`);
         this.processLargeFile(file);
@@ -2703,16 +2706,16 @@ Timestamp: ${debugInfo.timestamp || 'N/A'}`;
       }
       return;
     }
-    
+
     // Проверяем тип файла
     const textFileTypes = [
-      'text/plain', 'text/markdown', 'text/html', 'text/css', 'text/javascript', 
+      'text/plain', 'text/markdown', 'text/html', 'text/css', 'text/javascript',
       'application/json', 'application/javascript', 'application/x-javascript'
     ];
-    
+
     try {
       let content;
-      
+
       // Для текстовых файлов читаем как текст
       if (textFileTypes.includes(file.type) || file.name.match(/\.(txt|md|js|py|json|html|css|csv)$/i)) {
         content = await this.readFileAsText(file);
@@ -2722,20 +2725,20 @@ Timestamp: ${debugInfo.timestamp || 'N/A'}`;
         if (!confirmBinary) return;
         content = await this.readFileAsText(file);
       }
-      
+
       // Получаем текущий текст из поля ввода
       const currentText = inputText.value;
-      
+
       // Обрезаем содержимое, если оно слишком большое
       const maxContentLength = 1000000; // ~1MB текста
-      
+
       // Формируем новое содержимое: добавляем разделитель, если в поле уже есть текст
       let newContent = currentText;
-      
+
       if (newContent && newContent.trim() !== '') {
         newContent += '\n\n---- Содержимое файла ' + file.name + ' ----\n\n';
       }
-      
+
       if (content.length > maxContentLength) {
         const truncated = content.substring(0, maxContentLength);
         newContent += truncated + '\n\n[...Содержимое обрезано из-за большого размера...]';
@@ -2744,14 +2747,14 @@ Timestamp: ${debugInfo.timestamp || 'N/A'}`;
         newContent += content;
         this.showMessage(`Содержимое файла успешно добавлено: ${file.name}`);
       }
-      
+
       // Устанавливаем новое содержимое в поле ввода
       inputText.value = newContent;
-      
+
       // Фокусируемся на поле ввода и прокручиваем к концу
       inputText.focus();
       inputText.scrollTop = inputText.scrollHeight;
-      
+
     } catch (error) {
       console.error('Ошибка при чтении файла:', error);
       this.showError(`Не удалось прочитать файл: ${error.message}`);
@@ -2765,7 +2768,7 @@ Timestamp: ${debugInfo.timestamp || 'N/A'}`;
   async processLargeFile(file) {
     try {
       const content = await this.readFileAsText(file);
-      
+
       // Создаем модальное окно для разделения файла
       this.createFileSplitModal(file.name, content);
     } catch (error) {
@@ -2784,11 +2787,11 @@ Timestamp: ${debugInfo.timestamp || 'N/A'}`;
     const modal = document.createElement('div');
     modal.className = 'modal';
     modal.id = 'fileSplitModal';
-    
+
     // Разделяем файл на части (примерно по 800KB каждая)
     const partSize = 800000;
     const totalParts = Math.ceil(content.length / partSize);
-    
+
     const parts = [];
     for (let i = 0; i < totalParts; i++) {
       const start = i * partSize;
@@ -2799,7 +2802,7 @@ Timestamp: ${debugInfo.timestamp || 'N/A'}`;
         size: end - start
       });
     }
-    
+
     // HTML для модального окна
     modal.innerHTML = `
       <div class="modal-content resizable">
@@ -2851,16 +2854,16 @@ Timestamp: ${debugInfo.timestamp || 'N/A'}`;
         <div class="resize-handle"></div>
       </div>
     `;
-    
+
     document.body.appendChild(modal);
-    
+
     // Сохраняем данные частей
     this.fileParts = parts;
     this.filePartsResults = new Array(totalParts).fill(null);
-    
+
     // Отображаем модальное окно
     this.openModal('fileSplitModal');
-    
+
     // Добавляем обработчики событий
     this.attachFileSplitModalEvents();
   }
@@ -2871,23 +2874,23 @@ Timestamp: ${debugInfo.timestamp || 'N/A'}`;
   attachFileSplitModalEvents() {
     const modal = document.getElementById('fileSplitModal');
     if (!modal) return;
-    
+
     // Обработчик закрытия
     const closeBtn = modal.querySelector('.modal-close');
     const cancelBtn = modal.querySelector('.modal-cancel');
-    
+
     if (closeBtn) {
       closeBtn.addEventListener('click', () => {
         this.closeModal('fileSplitModal');
       });
     }
-    
+
     if (cancelBtn) {
       cancelBtn.addEventListener('click', () => {
         this.closeModal('fileSplitModal');
       });
     }
-    
+
     // Обработчики для кнопок обработки частей
     const processButtons = modal.querySelectorAll('.process-part-btn');
     processButtons.forEach(btn => {
@@ -2896,7 +2899,7 @@ Timestamp: ${debugInfo.timestamp || 'N/A'}`;
         this.processFilePart(partIndex);
       });
     });
-    
+
     // Кнопка для использования предыдущих результатов
     const previousPartsBtn = modal.querySelector('#processPreviousParts');
     if (previousPartsBtn) {
@@ -2904,7 +2907,7 @@ Timestamp: ${debugInfo.timestamp || 'N/A'}`;
         this.useResultsFromPreviousParts();
       });
     }
-    
+
     // Кнопка для сохранения всех результатов
     const saveAllBtn = modal.querySelector('#saveAllResultsBtn');
     if (saveAllBtn) {
@@ -2920,42 +2923,42 @@ Timestamp: ${debugInfo.timestamp || 'N/A'}`;
    */
   async processFilePart(partIndex) {
     if (!this.fileParts || !this.fileParts[partIndex - 1]) return;
-    
+
     const part = this.fileParts[partIndex - 1];
     const modal = document.getElementById('fileSplitModal');
-    
+
     if (!modal) return;
-    
+
     // Обновляем статус
     const statusCell = modal.querySelector(`.part-status[data-part="${partIndex}"]`);
     if (statusCell) {
       statusCell.textContent = 'Обработка...';
       statusCell.className = 'part-status processing';
     }
-    
+
     // Отключаем кнопку
     const processButton = modal.querySelector(`.process-part-btn[data-part="${partIndex}"]`);
     if (processButton) {
       processButton.disabled = true;
     }
-    
+
     // Получаем текущие значения полей
     const model = document.getElementById('modelSelect').value;
     const prompt = document.getElementById('prompt').value;
     const appendPartInfo = document.getElementById('appendPartInfo').checked;
-    
+
     // Формируем содержимое для обработки
     let contentToProcess = part.content;
-    
+
     // Если нужно добавить информацию о части
     if (appendPartInfo) {
       contentToProcess = `Это часть ${partIndex} из ${this.fileParts.length} файла. Анализируйте только эту часть.\n\n${contentToProcess}`;
     }
-    
+
     try {
       // Отправляем запрос
       const response = await this.sendServerRequest(model, prompt, contentToProcess);
-      
+
       // Сохраняем результат
       this.filePartsResults[partIndex - 1] = {
         content: response.content,
@@ -2964,35 +2967,35 @@ Timestamp: ${debugInfo.timestamp || 'N/A'}`;
         processed: true,
         timestamp: new Date().toISOString()
       };
-      
+
       // Обновляем статус
       if (statusCell) {
         statusCell.textContent = 'Обработано';
         statusCell.className = 'part-status success';
       }
-      
+
       // Активируем кнопку "Использовать результаты предыдущих частей", если есть обработанные части
       const hasProcessedParts = this.filePartsResults.some(result => result !== null);
       const previousPartsBtn = modal.querySelector('#processPreviousParts');
       if (previousPartsBtn && hasProcessedParts) {
         previousPartsBtn.disabled = false;
       }
-      
+
       this.showMessage(`Часть ${partIndex} успешно обработана`);
     } catch (error) {
       console.error(`Ошибка при обработке части ${partIndex}:`, error);
-      
+
       // Обновляем статус
       if (statusCell) {
         statusCell.textContent = `Ошибка: ${error.message || 'Не удалось обработать'}`;
         statusCell.className = 'part-status error';
       }
-      
+
       // Включаем кнопку обратно
       if (processButton) {
         processButton.disabled = false;
       }
-      
+
       this.showError(`Ошибка при обработке части ${partIndex}: ${error.message || 'Неизвестная ошибка'}`);
     }
   }
@@ -3008,7 +3011,7 @@ Timestamp: ${debugInfo.timestamp || 'N/A'}`;
     if (!model || !prompt || !inputText) {
       throw new Error('Не указаны обязательные параметры');
     }
-    
+
     try {
       const response = await fetch('/api/send-request', {
         method: 'POST',
@@ -3023,12 +3026,12 @@ Timestamp: ${debugInfo.timestamp || 'N/A'}`;
           contextCode: this.selectedContextCode
         })
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Ошибка при отправке запроса');
       }
-      
+
       return await response.json();
     } catch (error) {
       console.error('Ошибка при отправке запроса:', error);
@@ -3042,34 +3045,34 @@ Timestamp: ${debugInfo.timestamp || 'N/A'}`;
   async useResultsFromPreviousParts() {
     // Проверяем, есть ли результаты предыдущих частей
     const processedResults = this.filePartsResults.filter(result => result !== null);
-    
+
     if (processedResults.length === 0) {
       this.showError('Нет обработанных частей файла');
       return;
     }
-    
+
     // Находим первую необработанную часть
     const nextPartIndex = this.filePartsResults.findIndex(result => result === null);
-    
+
     if (nextPartIndex === -1) {
       this.showMessage('Все части уже обработаны');
       return;
     }
-    
+
     // Получаем текущие значения полей
     const model = document.getElementById('modelSelect').value;
     const basePrompt = document.getElementById('prompt').value;
-    
+
     // Создаем расширенный промпт с результатами предыдущих частей
     let enhancedPrompt = basePrompt + '\n\nРезультаты анализа предыдущих частей:\n\n';
-    
+
     processedResults.forEach(result => {
       enhancedPrompt += `--- Часть ${result.partIndex} из ${result.totalParts} ---\n`;
       enhancedPrompt += result.content + '\n\n';
     });
-    
+
     enhancedPrompt += `\nТеперь проанализируйте часть ${nextPartIndex + 1}, учитывая результаты предыдущих частей.`;
-    
+
     // Обновляем статус
     const modal = document.getElementById('fileSplitModal');
     const statusCell = modal.querySelector(`.part-status[data-part="${nextPartIndex + 1}"]`);
@@ -3077,21 +3080,21 @@ Timestamp: ${debugInfo.timestamp || 'N/A'}`;
       statusCell.textContent = 'Обработка с учетом предыдущих частей...';
       statusCell.className = 'part-status processing';
     }
-    
+
     // Отключаем кнопку
     const processButton = modal.querySelector(`.process-part-btn[data-part="${nextPartIndex + 1}"]`);
     if (processButton) {
       processButton.disabled = true;
     }
-    
+
     try {
       // Отправляем запрос
       const response = await this.sendServerRequest(
-        model, 
-        enhancedPrompt, 
+        model,
+        enhancedPrompt,
         this.fileParts[nextPartIndex].content
       );
-      
+
       // Сохраняем результат
       this.filePartsResults[nextPartIndex] = {
         content: response.content,
@@ -3101,28 +3104,28 @@ Timestamp: ${debugInfo.timestamp || 'N/A'}`;
         usedPreviousResults: true,
         timestamp: new Date().toISOString()
       };
-      
+
       // Обновляем статус
       if (statusCell) {
         statusCell.textContent = 'Обработано с учетом предыдущих частей';
         statusCell.className = 'part-status success';
       }
-      
+
       this.showMessage(`Часть ${nextPartIndex + 1} успешно обработана с учетом предыдущих результатов`);
     } catch (error) {
       console.error(`Ошибка при обработке части ${nextPartIndex + 1}:`, error);
-      
+
       // Обновляем статус
       if (statusCell) {
         statusCell.textContent = `Ошибка: ${error.message || 'Не удалось обработать'}`;
         statusCell.className = 'part-status error';
       }
-      
+
       // Включаем кнопку обратно
       if (processButton) {
         processButton.disabled = false;
       }
-      
+
       this.showError(`Ошибка при обработке части ${nextPartIndex + 1}: ${error.message || 'Неизвестная ошибка'}`);
     }
   }
@@ -3133,18 +3136,18 @@ Timestamp: ${debugInfo.timestamp || 'N/A'}`;
   saveAllFilePartsResults() {
     // Проверяем, есть ли результаты
     const processedResults = this.filePartsResults.filter(result => result !== null);
-    
+
     if (processedResults.length === 0) {
       this.showError('Нет обработанных частей файла для сохранения');
       return;
     }
-    
+
     // Формируем содержимое файла
     let content = `# Результаты анализа файла\n\n`;
     content += `Дата: ${new Date().toLocaleString()}\n`;
     content += `Всего частей: ${this.fileParts.length}\n`;
     content += `Обработано частей: ${processedResults.length}\n\n`;
-    
+
     // Добавляем результаты каждой части
     this.filePartsResults.forEach((result, index) => {
       if (result) {
@@ -3153,7 +3156,7 @@ Timestamp: ${debugInfo.timestamp || 'N/A'}`;
         content += `---\n\n`;
       }
     });
-    
+
     // Создаем и скачиваем файл
     const blob = new Blob([content], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
@@ -3164,7 +3167,7 @@ Timestamp: ${debugInfo.timestamp || 'N/A'}`;
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    
+
     this.showMessage('Результаты анализа файла успешно сохранены');
   }
 
@@ -3176,7 +3179,7 @@ Timestamp: ${debugInfo.timestamp || 'N/A'}`;
     const modal = document.getElementById(modalId);
     if (modal) {
       modal.style.display = 'none';
-      
+
       // Если это окно разделения файла, удаляем его из DOM
       if (modalId === 'fileSplitModal') {
         modal.remove();
@@ -3195,56 +3198,56 @@ Timestamp: ${debugInfo.timestamp || 'N/A'}`;
   readFileAsText(file) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      
+
       reader.onload = (event) => {
         resolve(event.target.result);
       };
-      
+
       reader.onerror = (error) => {
         reject(error);
       };
-      
+
       reader.readAsText(file);
     });
   }
-  
+
   /**
    * Показывает сообщение об успешном действии
    * @param {string} message - Текст сообщения
    */
   showMessage(message) {
     console.log('Success:', message);
-    
+
     // Создаем элемент для уведомления
     const notification = document.createElement('div');
     notification.className = 'notification success-notification';
     notification.textContent = message;
-    
+
     // Добавляем элемент в DOM
     document.body.appendChild(notification);
-    
+
     // Удаляем уведомление через 3 секунды
     setTimeout(() => {
       notification.classList.add('fade-out');
       setTimeout(() => notification.remove(), 500);
     }, 3000);
   }
-  
+
   /**
    * Показывает сообщение об ошибке
    * @param {string} message - Текст сообщения об ошибке
    */
   showError(message) {
     console.error('Error:', message);
-    
+
     // Создаем элемент для уведомления
     const notification = document.createElement('div');
     notification.className = 'notification error-notification';
     notification.textContent = message;
-    
+
     // Добавляем элемент в DOM
     document.body.appendChild(notification);
-    
+
     // Удаляем уведомление через 3 секунды
     setTimeout(() => {
       notification.classList.add('fade-out');
@@ -3262,68 +3265,68 @@ Timestamp: ${debugInfo.timestamp || 'N/A'}`;
       this.showError('Нет текста для сохранения');
       return;
     }
-    
+
     // Создаем дефолтное имя файла на основе даты и времени
     const defaultFilename = `response_${new Date().toISOString().replace(/:/g, '-')}.md`;
-    
+
     // Устанавливаем дефолтное имя файла
     const filenameInput = document.getElementById('saveFilename');
     if (filenameInput) {
       filenameInput.value = defaultFilename;
     }
-    
+
     // Очищаем поле директории
     const directoryInput = document.getElementById('saveDirectory');
     if (directoryInput) {
       directoryInput.value = '';
     }
-    
+
     // Открываем модальное окно
     const saveFileModal = document.getElementById('saveFileModal');
     if (saveFileModal) {
       saveFileModal.style.display = 'block';
-      
+
       // Добавляем обработчик для кнопки сохранения
       const confirmSaveBtn = document.getElementById('confirmSaveFileBtn');
       if (confirmSaveBtn) {
         // Удаляем предыдущие обработчики, если они есть
         const newBtn = confirmSaveBtn.cloneNode(true);
         confirmSaveBtn.parentNode.replaceChild(newBtn, confirmSaveBtn);
-        
+
         // Добавляем новый обработчик
         newBtn.addEventListener('click', () => {
           const filename = document.getElementById('saveFilename').value || defaultFilename;
           const directory = document.getElementById('saveDirectory').value || '';
-          
+
           this.saveMarkdownToServer(responseText, filename, directory);
           this.closeModal('saveFileModal');
         });
       }
-      
+
       // Добавляем обработчик для кнопки отмены
       const cancelBtn = saveFileModal.querySelector('.modal-cancel');
       if (cancelBtn) {
         const newCancelBtn = cancelBtn.cloneNode(true);
         cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
-        
+
         newCancelBtn.addEventListener('click', () => {
           this.closeModal('saveFileModal');
         });
       }
-      
+
       // Добавляем обработчик для кнопки закрытия
       const closeBtn = saveFileModal.querySelector('.modal-close');
       if (closeBtn) {
         const newCloseBtn = closeBtn.cloneNode(true);
         closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
-        
+
         newCloseBtn.addEventListener('click', () => {
           this.closeModal('saveFileModal');
         });
       }
     }
   }
-  
+
   /**
    * Сохраняет markdown-контент на сервере
    * @param {string} content - Контент для сохранения
@@ -3343,9 +3346,9 @@ Timestamp: ${debugInfo.timestamp || 'N/A'}`;
           directory
         })
       });
-      
+
       const data = await response.json();
-      
+
       if (response.ok) {
         this.showMessage(`Файл успешно сохранен: ${data.filePath}`);
       } else {

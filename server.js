@@ -30,12 +30,12 @@ const PROMPTS_DEFAULTS_FILE = path.join(__dirname, 'prompts.defaults.json');
 // Создаем директорию data, если она не существует
 const DATA_DIR = path.join(__dirname, 'data');
 try {
-    if (!fs.existsSync(DATA_DIR)) {
-        fs.mkdirSync(DATA_DIR, { recursive: true });
-        logger.info(`Создана директория для данных: ${DATA_DIR}`);
-    }
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    logger.info(`Создана директория для данных: ${DATA_DIR}`);
+  }
 } catch (err) {
-    logger.error(`Ошибка при создании директории ${DATA_DIR}:`, err);
+  logger.error(`Ошибка при создании директории ${DATA_DIR}:`, err);
 }
 async function loadModels() {
   try {
@@ -57,12 +57,12 @@ const OUTPUT_DOCS_DIR = process.env.OUTPUT_DOCS_DIR || path.join(__dirname, 'out
 
 // Создаем директорию, если она не существует
 try {
-    if (!fs.existsSync(OUTPUT_DOCS_DIR)) {
-        fs.mkdirSync(OUTPUT_DOCS_DIR, { recursive: true });
-        logger.info(`Создана директория для сохранения файлов: ${OUTPUT_DOCS_DIR}`);
-    }
+  if (!fs.existsSync(OUTPUT_DOCS_DIR)) {
+    fs.mkdirSync(OUTPUT_DOCS_DIR, { recursive: true });
+    logger.info(`Создана директория для сохранения файлов: ${OUTPUT_DOCS_DIR}`);
+  }
 } catch (err) {
-    logger.error(`Ошибка при создании директории ${OUTPUT_DOCS_DIR}:`, err);
+  logger.error(`Ошибка при создании директории ${OUTPUT_DOCS_DIR}:`, err);
 }
 
 const app = express();
@@ -74,7 +74,7 @@ app.use(cors({
   origin: '*', // Конкретно ваш источник вместо '*'
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
-})); 
+}));
 
 
 // Middleware
@@ -82,69 +82,69 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Redirect root to /main (placed BEFORE static files to override public/index.html)
+app.get('/', (req, res) => {
+  res.redirect('/main');
+});
+
 // Статические файлы
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Redirect root to /main
-app.get('/', (req, res) => {
-    res.redirect('/main');
-});
-
 // Route to serve the main page
 app.get('/main', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'main.html'));
+  res.sendFile(path.join(__dirname, 'public', 'main.html'));
 });
 
 // API endpoint to list markdown files
 app.get('/api/markdown_files', (req, res) => {
-    fs.readdir(__dirname, (err, files) => {
-        if (err) {
-            logger.error('Error reading directory:', err);
-            return res.status(500).json({ error: 'Could not list files' });
-        }
-        const mdFiles = files.filter(file => file.endsWith('.md'));
-        res.json(mdFiles);
-    });
+  fs.readdir(__dirname, (err, files) => {
+    if (err) {
+      logger.error('Error reading directory:', err);
+      return res.status(500).json({ error: 'Could not list files' });
+    }
+    const mdFiles = files.filter(file => file.endsWith('.md'));
+    res.json(mdFiles);
+  });
 });
 
 // Route to serve the markdown viewer page
 app.get('/show_md', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'show_md.html'));
+  res.sendFile(path.join(__dirname, 'public', 'show_md.html'));
 });
 
 // Route to get markdown file content
 app.get('/get_md_content', (req, res) => {
-    const filename = req.query.file;
-    if (!filename) {
-        return res.status(400).json({ error: 'Filename is required' });
+  const filename = req.query.file;
+  if (!filename) {
+    return res.status(400).json({ error: 'Filename is required' });
+  }
+
+  // Security check: ensure filename is just a filename and does not contain path traversal characters.
+  if (filename.includes('..') || filename.includes('/')) {
+    return res.status(400).json({ error: 'Invalid filename' });
+  }
+
+  const filePath = path.join(__dirname, filename); // Assume markdown files are in the root directory
+
+  fs.readFile(filePath, 'utf8', (err, data) => {
+    if (err) {
+      logger.error(`Error reading file: ${filename}`, err);
+      return res.status(404).json({ error: 'File not found' });
     }
-
-    // Security check: ensure filename is just a filename and does not contain path traversal characters.
-    if (filename.includes('..') || filename.includes('/')) {
-        return res.status(400).json({ error: 'Invalid filename' });
-    }
-
-    const filePath = path.join(__dirname, filename); // Assume markdown files are in the root directory
-
-    fs.readFile(filePath, 'utf8', (err, data) => {
-        if (err) {
-            logger.error(`Error reading file: ${filename}`, err);
-            return res.status(404).json({ error: 'File not found' });
-        }
-        res.json({ content: data });
-    });
+    res.json({ content: data });
+  });
 });
 
 
 // Вывод загруженных переменных окружения для отладки
 logger.info('Loaded environment variables:', {
-    N8N_WEBHOOK_URL: process.env.N8N_WEBHOOK_URL,
-    N8N_WEBHOOK_TEST_URL: process.env.N8N_WEBHOOK_TEST_URL,
-    PORT: process.env.PORT,
-    LOG_LEVEL: process.env.LOG_LEVEL,
-    IS_TEST_MODE: process.env.IS_TEST_MODE,
-    LANGCHAIN_PG_URL: process.env.LANGCHAIN_PG_URL,
-    LANGCHAIN_PG_ENABLED: process.env.LANGCHAIN_PG_ENABLED
+  N8N_WEBHOOK_URL: process.env.N8N_WEBHOOK_URL,
+  N8N_WEBHOOK_TEST_URL: process.env.N8N_WEBHOOK_TEST_URL,
+  PORT: process.env.PORT,
+  LOG_LEVEL: process.env.LOG_LEVEL,
+  IS_TEST_MODE: process.env.IS_TEST_MODE,
+  LANGCHAIN_PG_URL: process.env.LANGCHAIN_PG_URL,
+  LANGCHAIN_PG_ENABLED: process.env.LANGCHAIN_PG_ENABLED
 });
 
 // Создаем конфигурацию с переменными окружения
@@ -171,27 +171,27 @@ logger.info('══════════════════════�
 // Инициализируем GROQ сервис если ключ доступен
 let groqService = null;
 if (config.groqKey) {
-    try {
-        groqService = new GroqService(config.groqKey);
-        logger.info('✅ GROQ сервис инициализирован');
-    } catch (error) {
-        logger.warn('⚠️ GROQ сервис не инициализирован:', error.message);
-    }
+  try {
+    groqService = new GroqService(config.groqKey);
+    logger.info('✅ GROQ сервис инициализирован');
+  } catch (error) {
+    logger.warn('⚠️ GROQ сервис не инициализирован:', error.message);
+  }
 } else {
-    logger.warn('⚠️ GROQ_API_KEY не настроен');
+  logger.warn('⚠️ GROQ_API_KEY не настроен');
 }
 
 // Инициализируем GigaChat сервис если данные авторизации доступны
 let gigachatService = null;
 if (process.env.GIGACHAT_AUTH_DATA) {
-    try {
-        gigachatService = new GigaChatService(process.env.GIGACHAT_AUTH_DATA);
-        logger.info('✅ GigaChat сервис инициализирован');
-    } catch (error) {
-        logger.warn('⚠️ GigaChat сервис не инициализирован:', error.message);
-    }
+  try {
+    gigachatService = new GigaChatService(process.env.GIGACHAT_AUTH_DATA);
+    logger.info('✅ GigaChat сервис инициализирован');
+  } catch (error) {
+    logger.warn('⚠️ GigaChat сервис не инициализирован:', error.message);
+  }
 } else {
-    logger.warn('⚠️ GIGACHAT_AUTH_DATA не настроен');
+  logger.warn('⚠️ GIGACHAT_AUTH_DATA не настроен');
 }
 
 // Добавим проверку загруженных переменных
@@ -203,37 +203,37 @@ logger.info('openRouterKey:', config.openRouterKey ? '***' : null); // Маск�
 
 // После пересоздания конфигурации
 logger.info('Final configuration:', {
-    n8nWebhookUrl: config.n8nWebhookUrl,
-    port: config.port,
-    logging: config.logging,
-    openRouterKey: config.openRouterKey ? '***' : null, // Маскируем ключ для безопасности
-    groqKey: config.groqKey ? '***' : null // Маскируем ключ для безопасности
+  n8nWebhookUrl: config.n8nWebhookUrl,
+  port: config.port,
+  logging: config.logging,
+  openRouterKey: config.openRouterKey ? '***' : null, // Маскируем ключ для безопасности
+  groqKey: config.groqKey ? '***' : null // Маскируем ключ для безопасности
 });
 
 // Изменим endpoint для конфигурации в server.js
 app.get('/api/config', (req, res) => {
   res.json({
-      server: {
-          port: config.port,
-          nodeEnv: process.env.NODE_ENV || 'development',
-          isTestMode: config.isTestMode
-      },
-      n8n: {
-          webhookUrl: config.n8nWebhookUrl
-      },
-              apiKey: config.openRouterKey,
-        groqKey: config.groqKey ? '***' : null, // Скрываем ключ для безопасности
-        providers: {
-            openroute: !!config.openRouterKey,
-            groq: !!config.groqKey,
-            gigachat: !!gigachatService
-        }, 
-      logging: {
-          level: config.logging.level,
-          filename: config.logging.filename,
-          errorFilename: config.logging.errorFilename
-      },
-      langchainPg: config.langchainPg
+    server: {
+      port: config.port,
+      nodeEnv: process.env.NODE_ENV || 'development',
+      isTestMode: config.isTestMode
+    },
+    n8n: {
+      webhookUrl: config.n8nWebhookUrl
+    },
+    apiKey: config.openRouterKey,
+    groqKey: config.groqKey ? '***' : null, // Скрываем ключ для безопасности
+    providers: {
+      openroute: !!config.openRouterKey,
+      groq: !!config.groqKey,
+      gigachat: !!gigachatService
+    },
+    logging: {
+      level: config.logging.level,
+      filename: config.logging.filename,
+      errorFilename: config.logging.errorFilename
+    },
+    langchainPg: config.langchainPg
   });
 });
 
@@ -241,27 +241,27 @@ app.get('/api/config', (req, res) => {
 
 // Инициализация файла истории ответов, если он не существует
 async function initializeResponsesFile() {
-    try {
-        await fsPromises.access(RESPONSES_FILE);
-    } catch {
-        await fsPromises.writeFile(RESPONSES_FILE, JSON.stringify({ responses: [] }));
-    }
+  try {
+    await fsPromises.access(RESPONSES_FILE);
+  } catch {
+    await fsPromises.writeFile(RESPONSES_FILE, JSON.stringify({ responses: [] }));
+  }
 }
 
 // Чтение истории ответов из файла
 async function readResponses() {
-    try {
-        const data = await fsPromises.readFile(RESPONSES_FILE, 'utf8');
-        return JSON.parse(data);
-    } catch (error) {
-        logger.error('Error reading responses:', error);
-        return { responses: [] };
-    }
+  try {
+    const data = await fsPromises.readFile(RESPONSES_FILE, 'utf8');
+    return JSON.parse(data);
+  } catch (error) {
+    logger.error('Error reading responses:', error);
+    return { responses: [] };
+  }
 }
 
 // Запись истории ответов в файл
 async function writeResponses(responses) {
-    await fsPromises.writeFile(RESPONSES_FILE, JSON.stringify(responses, null, 2));
+  await fsPromises.writeFile(RESPONSES_FILE, JSON.stringify(responses, null, 2));
 }
 
 // Инициализация файла истории при запуске
@@ -269,231 +269,231 @@ initializeResponsesFile();
 
 // --- Token utils (approximate) ---
 function estimateTokensFromText(text) {
-    if (!text) return 0;
-    const chars = text.length;
-    const words = (text.trim().match(/\S+/g) || []).length;
-    const byChars = Math.round(chars / 4);
-    const byWords = Math.round(words * 1.2);
-    return Math.max(1, Math.max(byChars, byWords));
+  if (!text) return 0;
+  const chars = text.length;
+  const words = (text.trim().match(/\S+/g) || []).length;
+  const byChars = Math.round(chars / 4);
+  const byWords = Math.round(words * 1.2);
+  return Math.max(1, Math.max(byChars, byWords));
 }
 
 function extractTokensFromUsage(usage) {
-    if (!usage) return null;
-    const prompt = usage.prompt_tokens ?? usage.input_tokens ?? usage.promptTokens ?? usage.prompt;
-    const completion = usage.completion_tokens ?? usage.output_tokens ?? usage.completionTokens ?? usage.completion;
-    const total = usage.total_tokens ?? usage.total;
-    if (prompt != null || completion != null || total != null) {
-        return {
-            input: prompt ?? (total != null && completion != null ? total - completion : undefined),
-            output: completion ?? (total != null && prompt != null ? total - prompt : undefined),
-            total: total ?? (prompt != null && completion != null ? prompt + completion : undefined),
-            source: 'api'
-        };
-    }
-    return null;
+  if (!usage) return null;
+  const prompt = usage.prompt_tokens ?? usage.input_tokens ?? usage.promptTokens ?? usage.prompt;
+  const completion = usage.completion_tokens ?? usage.output_tokens ?? usage.completionTokens ?? usage.completion;
+  const total = usage.total_tokens ?? usage.total;
+  if (prompt != null || completion != null || total != null) {
+    return {
+      input: prompt ?? (total != null && completion != null ? total - completion : undefined),
+      output: completion ?? (total != null && prompt != null ? total - prompt : undefined),
+      total: total ?? (prompt != null && completion != null ? prompt + completion : undefined),
+      source: 'api'
+    };
+  }
+  return null;
 }
 
 function buildTokensInfo({ usage, promptText, inputTextUsed, modelResponse }) {
-    const apiTokens = extractTokensFromUsage(usage);
-    if (apiTokens) {
-        const estIn = estimateTokensFromText(`${promptText || ''}\n${inputTextUsed || ''}`);
-        const estOut = estimateTokensFromText(modelResponse || '');
-        return {
-            input: apiTokens.input ?? estIn,
-            output: apiTokens.output ?? estOut,
-            total: apiTokens.total ?? ((apiTokens.input ?? estIn) + (apiTokens.output ?? estOut)),
-            source: 'api'
-        };
-    }
-    const inputEst = estimateTokensFromText(`${promptText || ''}\n${inputTextUsed || ''}`);
-    const outputEst = estimateTokensFromText(modelResponse || '');
+  const apiTokens = extractTokensFromUsage(usage);
+  if (apiTokens) {
+    const estIn = estimateTokensFromText(`${promptText || ''}\n${inputTextUsed || ''}`);
+    const estOut = estimateTokensFromText(modelResponse || '');
     return {
-        input: inputEst,
-        output: outputEst,
-        total: inputEst + outputEst,
-        source: 'estimated'
+      input: apiTokens.input ?? estIn,
+      output: apiTokens.output ?? estOut,
+      total: apiTokens.total ?? ((apiTokens.input ?? estIn) + (apiTokens.output ?? estOut)),
+      source: 'api'
     };
+  }
+  const inputEst = estimateTokensFromText(`${promptText || ''}\n${inputTextUsed || ''}`);
+  const outputEst = estimateTokensFromText(modelResponse || '');
+  return {
+    input: inputEst,
+    output: outputEst,
+    total: inputEst + outputEst,
+    source: 'estimated'
+  };
 }
 
 // API для получения истории ответов с опциями сортировки и фильтрации
 app.get('/api/responses', async (req, res) => {
-    try {
-        const data = await readResponses();
-        
-        // Получаем параметры фильтрации и сортировки из запроса
-        const { sortBy, sortOrder, model, prompt, dateFrom, dateTo, limit, offset } = req.query;
-        
-        let responses = [...data.responses];
-        
-        // Применяем фильтры, если они указаны
-        if (model) {
-            responses = responses.filter(r => r.model && r.model.toLowerCase().includes(model.toLowerCase()));
-        }
-        
-        if (prompt) {
-            responses = responses.filter(r => 
-                (r.promptName && r.promptName.toLowerCase().includes(prompt.toLowerCase())) ||
-                (r.prompt && r.prompt.toLowerCase().includes(prompt.toLowerCase()))
-            );
-        }
-        
-        if (dateFrom) {
-            const fromDate = new Date(dateFrom);
-            responses = responses.filter(r => new Date(r.timestamp) >= fromDate);
-        }
-        
-        if (dateTo) {
-            const toDate = new Date(dateTo);
-            toDate.setHours(23, 59, 59, 999); // Устанавливаем конец дня
-            responses = responses.filter(r => new Date(r.timestamp) <= toDate);
-        }
-        
-        // Сортировка результатов
-        if (sortBy) {
-            const order = sortOrder === 'desc' ? -1 : 1;
-            responses.sort((a, b) => {
-                if (sortBy === 'date') {
-                    return order * (new Date(b.timestamp) - new Date(a.timestamp));
-                }
-                if (sortBy === 'model') {
-                    const aVal = a.model || '';
-                    const bVal = b.model || '';
-                    return order * aVal.localeCompare(bVal);
-                }
-                if (sortBy === 'promptName') {
-                    const aVal = a.promptName || '';
-                    const bVal = b.promptName || '';
-                    return order * aVal.localeCompare(bVal);
-                }
-                return 0;
-            });
-        } else {
-            // По умолчанию сортируем по дате (сначала новые)
-            responses.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-        }
-        
-        // Сохраняем общее количество записей для пагинации
-        const totalItems = responses.length;
-        
-        // Применяем пагинацию
-        let offsetInt = 0;
-        let limitInt = 50; // По умолчанию 50 записей на страницу
-        
-        if (offset) {
-            offsetInt = parseInt(offset);
-        }
-        
-        if (limit) {
-            limitInt = parseInt(limit);
-        }
-        
-        // Обрезаем результаты для пагинации
-        responses = responses.slice(offsetInt, offsetInt + limitInt);
-        
-        // Возвращаем результат с метаданными для пагинации
-        res.json({
-            responses: responses,
-            total: totalItems,
-            offset: offsetInt,
-            limit: limitInt,
-            hasMore: offsetInt + limitInt < totalItems
-        });
-    } catch (error) {
-        logger.error('Error reading responses:', error);
-        res.status(500).json({ error: 'Failed to read responses' });
+  try {
+    const data = await readResponses();
+
+    // Получаем параметры фильтрации и сортировки из запроса
+    const { sortBy, sortOrder, model, prompt, dateFrom, dateTo, limit, offset } = req.query;
+
+    let responses = [...data.responses];
+
+    // Применяем фильтры, если они указаны
+    if (model) {
+      responses = responses.filter(r => r.model && r.model.toLowerCase().includes(model.toLowerCase()));
     }
+
+    if (prompt) {
+      responses = responses.filter(r =>
+        (r.promptName && r.promptName.toLowerCase().includes(prompt.toLowerCase())) ||
+        (r.prompt && r.prompt.toLowerCase().includes(prompt.toLowerCase()))
+      );
+    }
+
+    if (dateFrom) {
+      const fromDate = new Date(dateFrom);
+      responses = responses.filter(r => new Date(r.timestamp) >= fromDate);
+    }
+
+    if (dateTo) {
+      const toDate = new Date(dateTo);
+      toDate.setHours(23, 59, 59, 999); // Устанавливаем конец дня
+      responses = responses.filter(r => new Date(r.timestamp) <= toDate);
+    }
+
+    // Сортировка результатов
+    if (sortBy) {
+      const order = sortOrder === 'desc' ? -1 : 1;
+      responses.sort((a, b) => {
+        if (sortBy === 'date') {
+          return order * (new Date(b.timestamp) - new Date(a.timestamp));
+        }
+        if (sortBy === 'model') {
+          const aVal = a.model || '';
+          const bVal = b.model || '';
+          return order * aVal.localeCompare(bVal);
+        }
+        if (sortBy === 'promptName') {
+          const aVal = a.promptName || '';
+          const bVal = b.promptName || '';
+          return order * aVal.localeCompare(bVal);
+        }
+        return 0;
+      });
+    } else {
+      // По умолчанию сортируем по дате (сначала новые)
+      responses.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    }
+
+    // Сохраняем общее количество записей для пагинации
+    const totalItems = responses.length;
+
+    // Применяем пагинацию
+    let offsetInt = 0;
+    let limitInt = 50; // По умолчанию 50 записей на страницу
+
+    if (offset) {
+      offsetInt = parseInt(offset);
+    }
+
+    if (limit) {
+      limitInt = parseInt(limit);
+    }
+
+    // Обрезаем результаты для пагинации
+    responses = responses.slice(offsetInt, offsetInt + limitInt);
+
+    // Возвращаем результат с метаданными для пагинации
+    res.json({
+      responses: responses,
+      total: totalItems,
+      offset: offsetInt,
+      limit: limitInt,
+      hasMore: offsetInt + limitInt < totalItems
+    });
+  } catch (error) {
+    logger.error('Error reading responses:', error);
+    res.status(500).json({ error: 'Failed to read responses' });
+  }
 });
 
 // API для сохранения нового ответа
 app.post('/api/responses', async (req, res) => {
-    try {
-        const { model, promptName, prompt, inputText, response } = req.body;
-        
-        if (!model || !prompt || !inputText || !response) {
-            return res.status(400).json({ error: 'All fields are required' });
-        }
-        
-        const data = await readResponses();
-        
-        // Добавляем новую запись в историю
-        const tokens = buildTokensInfo({
-            usage: null,
-            promptText: prompt,
-            inputTextUsed: inputText,
-            modelResponse: response
-        });
-        const newResponse = {
-            id: Date.now().toString(),
-            timestamp: new Date().toISOString(),
-            model,
-            promptName,
-            prompt,
-            inputText,
-            response,
-            tokens
-        };
-        
-        data.responses.push(newResponse);
-        await writeResponses(data);
-        
-        res.json({ message: 'Response saved successfully', id: newResponse.id });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to save response' });
+  try {
+    const { model, promptName, prompt, inputText, response } = req.body;
+
+    if (!model || !prompt || !inputText || !response) {
+      return res.status(400).json({ error: 'All fields are required' });
     }
+
+    const data = await readResponses();
+
+    // Добавляем новую запись в историю
+    const tokens = buildTokensInfo({
+      usage: null,
+      promptText: prompt,
+      inputTextUsed: inputText,
+      modelResponse: response
+    });
+    const newResponse = {
+      id: Date.now().toString(),
+      timestamp: new Date().toISOString(),
+      model,
+      promptName,
+      prompt,
+      inputText,
+      response,
+      tokens
+    };
+
+    data.responses.push(newResponse);
+    await writeResponses(data);
+
+    res.json({ message: 'Response saved successfully', id: newResponse.id });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to save response' });
+  }
 });
 
 // API для удаления записи из истории
 app.delete('/api/responses/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const data = await readResponses();
-        
-        const responseIndex = data.responses.findIndex(r => r.id === id);
-        if (responseIndex === -1) {
-            return res.status(404).json({ error: 'Response not found' });
-        }
-        
-        data.responses.splice(responseIndex, 1);
-        await writeResponses(data);
-        
-        res.json({ message: 'Response deleted successfully' });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to delete response' });
+  try {
+    const { id } = req.params;
+    const data = await readResponses();
+
+    const responseIndex = data.responses.findIndex(r => r.id === id);
+    if (responseIndex === -1) {
+      return res.status(404).json({ error: 'Response not found' });
     }
+
+    data.responses.splice(responseIndex, 1);
+    await writeResponses(data);
+
+    res.json({ message: 'Response deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete response' });
+  }
 });
 
 // Initialize prompts file if it doesn't exist
 async function initializePromptsFile() {
+  try {
+    await fsPromises.access(PROMPTS_FILE);
+  } catch {
+    logger.info('Файл prompts.json не найден.');
+    // Пытаемся скопировать из дефолтного файла
     try {
-        await fsPromises.access(PROMPTS_FILE);
-    } catch {
-        logger.info('Файл prompts.json не найден.');
-        // Пытаемся скопировать из дефолтного файла
-        try {
-            await fsPromises.access(PROMPTS_DEFAULTS_FILE);
-            logger.info('Создаем prompts.json из шаблона prompts.defaults.json');
-            await fsPromises.copyFile(PROMPTS_DEFAULTS_FILE, PROMPTS_FILE);
-        } catch (err) {
-            logger.warn('Файл prompts.defaults.json не найден, создаем пустой список промптов.');
-            await fsPromises.writeFile(PROMPTS_FILE, JSON.stringify({ prompts: [] }));
-        }
+      await fsPromises.access(PROMPTS_DEFAULTS_FILE);
+      logger.info('Создаем prompts.json из шаблона prompts.defaults.json');
+      await fsPromises.copyFile(PROMPTS_DEFAULTS_FILE, PROMPTS_FILE);
+    } catch (err) {
+      logger.warn('Файл prompts.defaults.json не найден, создаем пустой список промптов.');
+      await fsPromises.writeFile(PROMPTS_FILE, JSON.stringify({ prompts: [] }));
     }
+  }
 }
 
 // Read prompts from file
 async function readPrompts() {
-    try {
-        const data = await fsPromises.readFile(PROMPTS_FILE, 'utf8');
-        return JSON.parse(data);
-    } catch (error) {
-        logger.error('Error reading prompts:', error);
-        return { prompts: [] };
-    }
+  try {
+    const data = await fsPromises.readFile(PROMPTS_FILE, 'utf8');
+    return JSON.parse(data);
+  } catch (error) {
+    logger.error('Error reading prompts:', error);
+    return { prompts: [] };
+  }
 }
 
 // Write prompts to file
 async function writePrompts(prompts) {
-    await fsPromises.writeFile(PROMPTS_FILE, JSON.stringify(prompts, null, 2));
+  await fsPromises.writeFile(PROMPTS_FILE, JSON.stringify(prompts, null, 2));
 }
 
 // Initialize prompts file on startup
@@ -501,75 +501,75 @@ initializePromptsFile();
 
 // Get all prompts
 app.get('/api/prompts', async (req, res) => {
-    try {
-        const data = await readPrompts();
-        res.json(data.prompts);
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to read prompts' });
-    }
+  try {
+    const data = await readPrompts();
+    res.json(data.prompts);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to read prompts' });
+  }
 });
 
 // Add new prompt
 app.post('/api/prompts', async (req, res) => {
-    try {
-        const { name, text } = req.body;
-        if (!name || !text) {
-            return res.status(400).json({ error: 'Name and text are required' });
-        }
-
-        const data = await readPrompts();
-        const exists = data.prompts.some(p => p.name === name);
-        if (exists) {
-            return res.status(400).json({ error: 'Prompt with this name already exists' });
-        }
-
-        data.prompts.push({ name, text });
-        await writePrompts(data);
-        res.json({ message: 'Prompt added successfully' });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to add prompt' });
+  try {
+    const { name, text } = req.body;
+    if (!name || !text) {
+      return res.status(400).json({ error: 'Name and text are required' });
     }
+
+    const data = await readPrompts();
+    const exists = data.prompts.some(p => p.name === name);
+    if (exists) {
+      return res.status(400).json({ error: 'Prompt with this name already exists' });
+    }
+
+    data.prompts.push({ name, text });
+    await writePrompts(data);
+    res.json({ message: 'Prompt added successfully' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to add prompt' });
+  }
 });
 
 // Update prompt
 app.put('/api/prompts/:name', async (req, res) => {
-    try {
-        const { name } = req.params;
-        const { text } = req.body;
-        if (!text) {
-            return res.status(400).json({ error: 'Text is required' });
-        }
-
-        const data = await readPrompts();
-        const promptIndex = data.prompts.findIndex(p => p.name === name);
-        if (promptIndex === -1) {
-            return res.status(404).json({ error: 'Prompt not found' });
-        }
-
-        data.prompts[promptIndex].text = text;
-        await writePrompts(data);
-        res.json({ message: 'Prompt updated successfully' });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to update prompt' });
+  try {
+    const { name } = req.params;
+    const { text } = req.body;
+    if (!text) {
+      return res.status(400).json({ error: 'Text is required' });
     }
+
+    const data = await readPrompts();
+    const promptIndex = data.prompts.findIndex(p => p.name === name);
+    if (promptIndex === -1) {
+      return res.status(404).json({ error: 'Prompt not found' });
+    }
+
+    data.prompts[promptIndex].text = text;
+    await writePrompts(data);
+    res.json({ message: 'Prompt updated successfully' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update prompt' });
+  }
 });
 
 // Delete prompt
 app.delete('/api/prompts/:name', async (req, res) => {
-    try {
-        const { name } = req.params;
-        const data = await readPrompts();
-        const promptIndex = data.prompts.findIndex(p => p.name === name);
-        if (promptIndex === -1) {
-            return res.status(404).json({ error: 'Prompt not found' });
-        }
-
-        data.prompts.splice(promptIndex, 1);
-        await writePrompts(data);
-        res.json({ message: 'Prompt deleted successfully' });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to delete prompt' });
+  try {
+    const { name } = req.params;
+    const data = await readPrompts();
+    const promptIndex = data.prompts.findIndex(p => p.name === name);
+    if (promptIndex === -1) {
+      return res.status(404).json({ error: 'Prompt not found' });
     }
+
+    data.prompts.splice(promptIndex, 1);
+    await writePrompts(data);
+    res.json({ message: 'Prompt deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete prompt' });
+  }
 });
 
 // Добавляем глобальные переменные для хранения отладочной информации
@@ -588,7 +588,7 @@ let lastRagDebugInfo = {
 async function resolveModelName(modelInput, providerInput) {
   let resolvedModel = modelInput;
   let resolvedProvider = providerInput;
-  
+
   // Если модель не указана, используем CHEAP по умолчанию
   if (!modelInput || modelInput.trim() === '') {
     logger.info('⚙️ Модель не указана, используется CHEAP по умолчанию');
@@ -605,21 +605,21 @@ async function resolveModelName(modelInput, providerInput) {
     resolvedProvider = providerInput || config.defaultModels.cheap.provider;
     return { model: resolvedModel, provider: resolvedProvider, wasResolved: true, resolvedType: 'cheap' };
   }
-  
+
   const modelUpper = modelInput.trim().toUpperCase();
-  
+
   // 1. ПРИОРИТЕТ: Ищем по user_type в базе моделей (включая CHEAP/FAST/RICH)
   try {
     const allModels = await loadModels();
     const modelByUserType = allModels.find(m => m.user_type && m.user_type.toUpperCase() === modelUpper && m.enabled);
-    
+
     if (modelByUserType) {
       logger.info(`⚙️ user_type "${modelUpper}" найден → модель: ${modelByUserType.name} (${modelByUserType.provider})`);
       // user_type имеет АБСОЛЮТНЫЙ приоритет - игнорируем providerInput
-      return { 
-        model: modelByUserType.name, 
+      return {
+        model: modelByUserType.name,
         provider: modelByUserType.provider,  // ВСЕГДА берём из модели
-        wasResolved: true, 
+        wasResolved: true,
         resolvedType: modelUpper,
         modelData: modelByUserType,
         userTypeMatch: true  // флаг что это match по user_type
@@ -628,26 +628,26 @@ async function resolveModelName(modelInput, providerInput) {
   } catch (err) {
     logger.error('⚠️ Ошибка при поиске модели по user_type:', err.message);
   }
-  
+
   // 2. FALLBACK: Базовые типы из config.defaultModels (если user_type не назначен в базе)
   if (['CHEAP', 'FAST', 'RICH'].includes(modelUpper)) {
     const modelType = modelUpper.toLowerCase();
     resolvedModel = config.defaultModels[modelType].model;
     resolvedProvider = providerInput || config.defaultModels[modelType].provider;
-    
+
     // Проверяем, существует ли модель из конфига в available-models.json
     try {
       const allModels = await loadModels();
-      const modelExists = allModels.find(m => 
+      const modelExists = allModels.find(m =>
         (m.name === resolvedModel || m.id === resolvedModel) && m.enabled
       );
-      
+
       if (!modelExists) {
         const errorMsg = `NO MODEL FOUND: "${modelUpper}" → configured model "${resolvedModel}" not found in available-models.json`;
         logger.error(`❌ ${errorMsg}`);
         throw new Error(errorMsg);
       }
-      
+
       logger.info(`⚙️ Базовый тип "${modelUpper}" (fallback config) → модель: ${resolvedModel} (${resolvedProvider})`);
       return { model: resolvedModel, provider: resolvedProvider, wasResolved: true, resolvedType: modelType, modelData: modelExists };
     } catch (err) {
@@ -660,20 +660,20 @@ async function resolveModelName(modelInput, providerInput) {
       throw new Error(`NO MODEL FOUND: "${modelUpper}" → error validating configured model "${resolvedModel}": ${err.message}`);
     }
   }
-  
+
   // 3. Если это обычное имя модели, проверяем существует ли оно
   try {
     const allModels = await loadModels();
-    const modelExists = allModels.find(m => 
+    const modelExists = allModels.find(m =>
       (m.name === modelInput || m.id === modelInput) && m.enabled
     );
-    
+
     if (!modelExists) {
       const errorMsg = `NO MODEL FOUND: "${modelInput}" not found in available-models.json`;
       logger.error(`❌ ${errorMsg}`);
       throw new Error(errorMsg);
     }
-    
+
     return { model: resolvedModel, provider: resolvedProvider, wasResolved: false, modelData: modelExists };
   } catch (err) {
     if (err.message.startsWith('NO MODEL FOUND')) {
@@ -705,7 +705,7 @@ function getSafeMaxTokens(requestedMaxTokens, modelContext) {
   if (modelContext && modelContext > 0) {
     // Резервируем 20% на input токены, минимум 1024 output
     const safeLimit = Math.max(1024, Math.floor(modelContext * 0.8));
-    
+
     if (requestedMaxTokens !== undefined) {
       // Пользователь запросил конкретное значение — ограничиваем до safeLimit
       return Math.min(requestedMaxTokens, safeLimit);
@@ -713,7 +713,7 @@ function getSafeMaxTokens(requestedMaxTokens, modelContext) {
     // Дефолт — либо safeLimit, либо DEFAULT_MAX_TOKENS (что меньше)
     return Math.min(DEFAULT_MAX_TOKENS, safeLimit);
   }
-  
+
   // Context неизвестен — используем запрошенное или дефолт
   return requestedMaxTokens !== undefined ? requestedMaxTokens : DEFAULT_MAX_TOKENS;
 }
@@ -732,7 +732,7 @@ const openRouterService = {
         'Content-Type': 'application/json'
       }
     });
-    
+
     return {
       data: {
         choices: response.data.choices,
@@ -745,960 +745,88 @@ const openRouterService = {
 
 // Маршрут для прямой обработки запросов к AI моделям с поддержкой GROQ
 app.post('/api/send-request', async (req, res) => {
-    logger.info('[SERVER] ========================================');
-    logger.info('[SERVER] /api/send-request запрос получен');
-    logger.info('[SERVER] Timestamp:', new Date().toISOString());
-    logger.info('[SERVER] Request headers:', {
-      'content-type': req.headers['content-type'],
-      'user-agent': req.headers['user-agent']?.substring(0, 50) + '...'
-    });
-    
-    try {
-      let { model, prompt, inputText, useRag, contextCode, saveResponse = false, provider, temperature, maxTokens } = req.body;
-      
-      logger.info('[SERVER] Request body получен');
-      logger.info('[SERVER] DEBUG SERVER: Received request with parameters:');
-      logger.info('[SERVER] DEBUG SERVER: model =', model);
-      logger.info('[SERVER] DEBUG SERVER: provider =', provider);
-      logger.info('[SERVER] DEBUG SERVER: useRag =', useRag);
-      logger.info('[SERVER] DEBUG SERVER: contextCode =', contextCode);
-      logger.info('[SERVER] DEBUG SERVER: prompt length =', prompt?.length || 0);
-      logger.info('[SERVER] DEBUG SERVER: inputText length =', inputText?.length || 0);
-      
-      if (!prompt || !inputText) {
-        logger.error('[SERVER] Ошибка валидации: prompt или inputText отсутствуют');
-        return res.status(400).json({ error: 'Поля prompt и inputText обязательны' });
-      }
-      
-      // Разрешаем имя модели (может быть CHEAP/FAST/RICH, произвольный user_type или пусто)
-      let resolved;
-      try {
-        resolved = await resolveModelName(model, provider);
-      } catch (resolveError) {
-        logger.error('[SERVER] ❌ Ошибка разрешения модели:', resolveError.message);
-        return res.status(404).json({ 
-          error: resolveError.message,
-          details: `Модель "${model}" не найдена. Проверьте доступные модели через /api/models`
-        });
-      }
-      
-      model = resolved.model;
-      let selectedProvider = resolved.provider;
-      
-      // Получаем данные модели для определения провайдера и параметров
-      // Используем modelData из resolveModelName, если он есть (для моделей найденных по user_type)
-      const modelData = resolved.modelData || await getModelByName(model);
-      
-      // Определяем провайдера автоматически по модели, если не был указан
-      if (!selectedProvider) {
-        selectedProvider = modelData?.provider || 'openroute';
-      }
-      
-      logger.info(`📡 Используем провайдера: ${selectedProvider} для модели: ${model}`);
-      
-      // Проверяем доступность провайдера
-      if (selectedProvider === 'groq' && !groqService) {
-        return res.status(500).json({ error: 'GROQ сервис не настроен' });
-      }
-      
-      if (selectedProvider === 'openroute' && !config.openRouterKey) {
-        return res.status(500).json({ error: 'OpenRoute API ключ не настроен' });
-      }
-      
-      if (selectedProvider === 'direct' && !modelData) {
-        return res.status(500).json({ error: 'Модель не найдена в available-models.json' });
-      }
-      
-      if (selectedProvider === 'gigachat' && !gigachatService) {
-        return res.status(500).json({ error: 'GigaChat сервис не настроен. Добавьте GIGACHAT_AUTH_DATA в .env' });
-      }
-      
-      let finalInputText = inputText;
-      let ragInfo = null;
-      
-      // Если включен RAG и сервис доступен, обогащаем запрос контекстом из RAG
-      if (useRag && config.langchainPg.enabled) {
-        try {
-          logger.info(`Using RAG with context code: ${contextCode || 'all'}`);
-          const ragResponse = await langchainPgService.askQuestion(inputText, contextCode, true);
-          
-          // Если есть документы, добавляем их контекст к запросу
-          if (ragResponse.documents && ragResponse.documents.length > 0) {
-            const context = ragResponse.documents.map(doc => doc.pageContent).join('\n\n');
-            finalInputText = `Контекст из базы знаний:\n${context}\n\nВопрос пользователя: ${inputText}`;
-            
-            // Сохраняем информацию о RAG для ответа
-            ragInfo = {
-              used: true,
-              contextCode: ragResponse.contextCode,
-              documentsCount: ragResponse.documents.length,
-              sources: ragResponse.documents.map(doc => ({
-                filename: doc.metadata.filename,
-                source: doc.metadata.source,
-                contextCode: doc.metadata.contextCode
-              }))
-            };
-          }
-          else {
-            logger.info('!!! No documents found in RAG response');
-          }
-    
-        } catch (ragError) {
-          logger.error('Error using RAG:', ragError);
-          // Продолжаем без RAG в случае ошибки
-        }
-      }
-      else {
-        logger.info('!!! Without RAGs');
-      }
-
-      // Сохраняем отладочную информацию
-      lastRagDebugInfo = {
-        ragEnabled: useRag && config.langchainPg.enabled,
-        finalInputText: finalInputText,
-        ragInfo: ragInfo,
-        timestamp: new Date().toISOString()
-      };
-
-      // Формируем messages для всех провайдеров
-      const messages = [
-        { role: 'system', content: prompt },
-        { role: 'user', content: finalInputText }
-      ];
-      
-      // Устанавливаем значения по умолчанию для temperature и maxTokens
-      const finalTemperature = temperature !== undefined ? temperature : 0.7;
-      // Получаем context модели для безопасного ограничения maxTokens
-      const modelContext = modelData?.context || null;
-      const finalMaxTokens = getSafeMaxTokens(maxTokens, modelContext);
-      
-      // Детальное логирование для отладки (особенно для direct провайдера)
-      if (selectedProvider === 'direct') {
-        logger.info('🔍 DEBUG DIRECT: Исходные данные запроса:');
-        logger.info('  model:', model);
-        logger.info('  prompt:', prompt);
-        logger.info('  inputText:', inputText);
-        logger.info('  provider:', selectedProvider);
-        logger.info('  temperature:', temperature, '->', finalTemperature);
-        logger.info('  maxTokens:', maxTokens, '->', finalMaxTokens);
-        logger.info('  finalInputText (после RAG):', finalInputText);
-      }
-      
-      let response;
-      
-      logger.info('[SERVER] Готовимся отправить запрос к провайдеру:', selectedProvider);
-      logger.info('[SERVER] Messages подготовлены, количество:', messages.length);
-      
-      // Отправляем запрос в зависимости от провайдера
-      if (selectedProvider === 'groq') {
-        logger.info('[SERVER] Отправка запроса в GROQ...');
-        const groqResponse = await groqService.sendRequest({ 
-          model, 
-          messages, 
-          temperature: finalTemperature, 
-          maxTokens: finalMaxTokens 
-        });
-        
-        logger.info('[SERVER] Ответ от GROQ получен');
-        
-        response = {
-          data: {
-            choices: [{
-              message: { content: groqResponse.content }
-            }],
-            model: groqResponse.model,
-            usage: groqResponse.usage
-          }
-        };
-        
-      } else if (selectedProvider === 'openroute') {
-        logger.info('[SERVER] Отправка запроса в OpenRouter...');
-        response = await openRouterService.sendRequest({ 
-          model, 
-          messages, 
-          temperature: finalTemperature, 
-          maxTokens: finalMaxTokens 
-        });
-        logger.info('[SERVER] Ответ от OpenRouter получен');
-        
-      } else if (selectedProvider === 'direct') {
-        logger.info('[SERVER] Отправка запроса через Direct провайдер...');
-        // Получаем API ключ из env или из модели
-        let apiKey = modelData.api_key;
-        let envVar = null;
-        
-        if (typeof apiKey === 'string' && apiKey.startsWith('env:')) {
-          envVar = apiKey.slice(4);
-          apiKey = process.env[envVar];
-          if (!apiKey) {
-            const errorMsg = `Переменная окружения "${envVar}" не найдена для провайдера 'direct'. Проверьте .env файл.`;
-            logger.error(`❌ ${errorMsg}`);
-            // Логируем в файл, если есть логгер, иначе просто в консоль
-            // fs.appendFileSync('error.log', `${new Date().toISOString()} - ${errorMsg}\n`); // Раскомментируй, если нужно в файл
-            throw new Error(errorMsg);
-          }
-        } else {
-          apiKey = process.env[`${selectedProvider.toUpperCase()}_API_KEY`] || apiKey;
-          if (!apiKey) {
-            const errorMsg = `API ключ не найден: ни в модели, ни в env как "${selectedProvider.toUpperCase()}_API_KEY".`;
-            logger.error(`❌ ${errorMsg}`);
-            throw new Error(errorMsg);
-          }
-        }
-        
-        const baseUrl = modelData.base_url;
-        
-        logger.info('🔍 DEBUG DIRECT: Данные модели из available-models.json:', {
-          model: model,
-          modelData: modelData,
-          apiKey: apiKey ? `${apiKey.substring(0, 10)}...` : 'не найден',
-          baseUrl: baseUrl
-        });
-        
-        if (!baseUrl) {
-          const errorMsg = `Base URL не найден для провайдера 'direct' в модели.`;
-          logger.error(`❌ ${errorMsg}`);
-          throw new Error(errorMsg);
-        }
-        
-        logger.info('🔍 DEBUG DIRECT: Формируем messages:', JSON.stringify(messages, null, 2));
-        logger.info('🔍 DEBUG DIRECT: Параметры запроса:', {
-          model: model,
-          temperature: finalTemperature,
-          maxTokens: finalMaxTokens
-        });
-        
-        const directService = new DirectService(apiKey, baseUrl);
-        const directResponse = await directService.sendRequest({ 
-          model, 
-          messages, 
-          temperature: finalTemperature, 
-          maxTokens: finalMaxTokens 
-        });
-        
-        logger.info('[SERVER] Ответ от Direct провайдера получен');
-        
-        response = {
-          data: {
-            choices: [{
-              message: { content: directResponse.content }
-            }],
-            model: directResponse.model,
-            usage: directResponse.usage
-          }
-        };
-        
-      } else if (selectedProvider === 'gigachat') {
-        logger.info('[SERVER] Отправка запроса в GigaChat...');
-        const gigachatResponse = await gigachatService.sendRequest({
-          model,
-          messages,
-          temperature: finalTemperature,
-          maxTokens: finalMaxTokens
-        });
-        
-        logger.info('[SERVER] Ответ от GigaChat получен');
-        
-        response = {
-          data: {
-            choices: [{
-              message: { content: gigachatResponse.content }
-            }],
-            model: gigachatResponse.model,
-            usage: gigachatResponse.usage
-          }
-        };
-        
-      } else {
-        logger.error('[SERVER] Неизвестный провайдер:', selectedProvider);
-        throw new Error(`Неизвестный провайдер: ${selectedProvider}`);
-      }
-      
-      // Обработка ответа (унифицированная)
-      logger.info('[SERVER] Ответ от провайдера получен');
-      logger.info('[SERVER] Проверка структуры ответа...');
-      
-      if (response.data && response.data.choices && response.data.choices.length > 0) {
-        const modelResponse = response.data.choices[0].message.content;
-        
-        logger.info('[SERVER] ✅ Ответ валиден, содержимое получено');
-        logger.info(`[SERVER] ${selectedProvider.toUpperCase()}: Получен ответ:`, modelResponse.substring(0, 200) + '...');
-        logger.info(`[SERVER] 📊 ${selectedProvider.toUpperCase()}: Usage:`, response.data.usage);
-        logger.info(`[SERVER] 🤖 ${selectedProvider.toUpperCase()}: Model:`, response.data.model);
-        logger.info(`[SERVER] Длина ответа: ${modelResponse.length} символов`);
-        
-        // Всегда сохраняем ответ в историю
-        try {
-            logger.info('[SERVER] Попытка сохранить ответ в историю...');
-            const responseData = await readResponses();
-            const tokens = buildTokensInfo({
-                usage: response.data.usage,
-                promptText: prompt,
-                inputTextUsed: finalInputText,
-                modelResponse: modelResponse
-            });
-            const newResponse = {
-                id: Date.now().toString(),
-                timestamp: new Date().toISOString(),
-                model,
-                provider: selectedProvider,
-                prompt,
-                inputText,
-                response: modelResponse,
-                tokens,
-                autoSaved: !saveResponse // Помечаем автоматически сохраненные
-            };
-            responseData.responses.push(newResponse);
-            await writeResponses(responseData);
-            logger.info(`[SERVER] 💾 Ответ автоматически сохранен в историю: ${newResponse.id}`);
-        } catch (error) {
-            logger.error('[SERVER] ❌ Ошибка сохранения в историю:', error);
-        }
-
-        logger.info('[SERVER] Отправка успешного ответа клиенту...');
-        const responseToClient = {
-          success: true, 
-          content: modelResponse,
-          model: response.data.model,
-          usage: response.data.usage,
-          provider: selectedProvider,
-          rag: ragInfo
-        };
-        logger.info('[SERVER] Response to client keys:', Object.keys(responseToClient));
-        logger.info('[SERVER] ========================================');
-        
-        return res.json(responseToClient);
-      } else {
-        logger.error('[SERVER] ❌ Невалидный ответ от провайдера - нет choices');
-        logger.error('[SERVER] Response structure:', JSON.stringify(response, null, 2).substring(0, 500));
-        
-        // Сохраняем ошибку невалидного ответа в историю
-        try {
-          const responseData = await readResponses();
-          const newResponse = {
-            id: Date.now().toString(),
-            timestamp: new Date().toISOString(),
-            model: req.body.model || 'unknown',
-            provider: selectedProvider,
-            prompt: req.body.prompt || '--',
-            inputText: req.body.inputText || '',
-            response: `ERROR: Invalid response from AI model - no choices in response`,
-            tokens: {
-              input: 0,
-              output: 0,
-              total: 0,
-              source: 'error'
-            },
-            autoSaved: true,
-            errorDetails: response.data
-          };
-          
-          responseData.responses.push(newResponse);
-          await writeResponses(responseData);
-          logger.info(`[SERVER] 💾 Ошибка невалидного ответа сохранена в историю: ${newResponse.id}`);
-        } catch (saveError) {
-          logger.error('[SERVER] ❌ Ошибка сохранения ошибки в историю:', saveError);
-        }
-        
-        logger.error('[SERVER] Отправка ответа с ошибкой клиенту');
-        logger.error('[SERVER] ========================================');
-        
-        return res.status(500).json({ 
-          error: 'Invalid response from AI model',
-          provider: selectedProvider,
-          data: response.data 
-        });
-      }
-    } catch (error) {
-      logger.error('[SERVER] ========================================');
-      logger.error('[SERVER] ❌ ОШИБКА в /api/send-request');
-      logger.error('[SERVER] Error name:', error.name);
-      logger.error('[SERVER] Error message:', error.message);
-      logger.error(`[SERVER] Error with provider:`, error);
-      
-      if (error.stack) {
-        logger.error('[SERVER] Error stack:', error.stack.substring(0, 500));
-      }
-      
-      let errorMessage = 'Failed to process request';
-      let errorDetails = null;
-      
-      if (error.response) {
-        logger.error('[SERVER] Ошибка API ответа');
-        logger.error('[SERVER] Response status:', error.response.status);
-        logger.error('[SERVER] Response data:', JSON.stringify(error.response.data, null, 2).substring(0, 500));
-        
-        // Улучшенная обработка ошибок API
-        let apiError = error.response.data.error;
-        let detailedMessage = '';
-
-        if (apiError && typeof apiError === 'object' && apiError.message) {
-            detailedMessage = apiError.message; // OpenRouter/Groq style error
-        } else if (typeof apiError === 'string') {
-            detailedMessage = apiError; // Simple string error
-        } else {
-            detailedMessage = error.response.statusText; // Fallback
-        }
-
-        // Кастомное сообщение для неподдерживаемых моделей
-        if (error.response.status === 404 && detailedMessage.includes('No endpoints found')) {
-            const { model, provider } = req.body;
-            let finalProvider = provider;
-            if (!finalProvider) {
-                const modelConfig = config.availableModels.find(m => m.name === model);
-                finalProvider = modelConfig?.provider || 'openroute';
-            }
-            errorMessage = `Модель '${model}' не найдена или не поддерживается провайдером '${finalProvider}'. Проверьте имя модели или выберите другую.`;
-        } else {
-            errorMessage = `API Error: ${error.response.status} - ${detailedMessage}`;
-        }
-        
-        errorDetails = error.response.data;
-      } else if (error.request) {
-        logger.error('[SERVER] Ошибка сети - запрос не доставлен');
-        errorMessage = 'Network error. Could not connect to AI service.';
-        errorDetails = { request: error.request };
-      } else {
-        logger.error('[SERVER] Другая ошибка:', error.message);
-        errorMessage = error.message;
-        errorDetails = { stack: error.stack };
-      }
-      
-      // Сохраняем ошибку в историю
-      try {
-        logger.info('[SERVER] Попытка сохранить ошибку в историю...');
-        const responseData = await readResponses();
-        const newResponse = {
-          id: Date.now().toString(),
-          timestamp: new Date().toISOString(),
-          model: req.body.model || 'unknown',
-          provider: req.body.provider || 'unknown',
-          prompt: req.body.prompt || '--',
-          inputText: req.body.inputText || '',
-          response: `ERROR: ${errorMessage}`,
-          tokens: {
-            input: 0,
-            output: 0,
-            total: 0,
-            source: 'error'
-          },
-          autoSaved: true,
-          errorDetails: errorDetails
-        };
-        
-        responseData.responses.push(newResponse);
-        await writeResponses(responseData);
-        logger.info(`[SERVER] 💾 Ошибка сохранена в историю: ${newResponse.id}`);
-      } catch (saveError) {
-        logger.error('[SERVER] ❌ Ошибка сохранения ошибки в историю:', saveError);
-      }
-      
-      logger.error('[SERVER] Отправка ответа с ошибкой клиенту');
-      logger.error('[SERVER] ========================================');
-      
-      return res.status(500).json({ 
-        error: errorMessage,
-        details: errorDetails
-      });
-    }
-  });
-  
-// Добавьте этот маршрут в server.js после маршрута /api/send-request
-
-// Маршрут для обработки запросов к AI моделям с выбором промпта по имени
-app.post('/api/send-request-sys', async (req, res) => {
-    try {
-      let { model, prompt_name, inputText, saveResponse = true, provider } = req.body;
-      
-      if (!prompt_name || !inputText) {
-        return res.status(400).json({ error: 'Поля prompt_name и inputText обязательны' });
-      }
-      
-      // Разрешаем имя модели (может быть CHEAP/FAST/RICH, произвольный user_type или пусто)
-      const resolved = await resolveModelName(model, provider);
-      model = resolved.model;
-      const selectedProvider = resolved.provider;
-      
-      // Проверяем API ключ для соответствующего провайдера
-      if (selectedProvider === 'groq' && !config.groqKey) {
-        return res.status(500).json({ error: 'GROQ API ключ не настроен' });
-      }
-      
-      if (selectedProvider === 'openroute' && !config.openRouterKey) {
-        return res.status(500).json({ error: 'OpenRouter API ключ не настроен' });
-      }
-      
-      // Загружаем все промпты
-      const promptsData = await readPrompts();
-      
-      // Ищем запрошенный промпт по имени
-      const promptObj = promptsData.prompts.find(p => p.name === prompt_name);
-      if (!promptObj) {
-        return res.status(404).json({ error: `Prompt with name "${prompt_name}" not found` });
-      }
-      
-      // Логируем информацию о запросе
-      logger.info(`📤 Отправка запроса с промптом "${prompt_name}" к модели: ${model} (${selectedProvider})`);
-      
-      let response;
-      
-      // Отправляем запрос в зависимости от провайдера
-      if (selectedProvider === 'groq') {
-        // Используем GROQ
-        const messages = [
-          { role: 'system', content: promptObj.text },
-          { role: 'user', content: inputText }
-        ];
-        
-        const groqResponse = await groqService.sendRequest({
-          model,
-          messages,
-          temperature: 0.7,
-          maxTokens: 1024
-        });
-        
-        response = {
-          data: {
-            choices: [{
-              message: { content: groqResponse.content }
-            }],
-            model: groqResponse.model,
-            usage: groqResponse.usage
-          }
-        };
-        
-      } else {
-        // Используем OpenRoute
-        response = await axios.post('https://openrouter.ai/api/v1/chat/completions', {
-          model: model,
-          messages: [
-            { role: 'system', content: promptObj.text },
-            { role: 'user', content: inputText }
-          ]
-        }, {
-          headers: {
-            'Authorization': `Bearer ${config.openRouterKey}`,
-            'Content-Type': 'application/json'
-          }
-        });
-      }
-      
-      // Проверяем и возвращаем результат
-      if (response.data && response.data.choices && response.data.choices.length > 0) {
-        const modelResponse = response.data.choices[0].message.content;
-        logger.info('DEBUG SERVER: Model response via /api/send-request-sys:', modelResponse.substring(0, 500) + (modelResponse.length > 500 ? '...' : ''));
-        logger.info('DEBUG SERVER: Usage via /api/send-request-sys:', response.data.usage);
-        logger.info('DEBUG SERVER: Model used via /api/send-request-sys:', response.data.model);
-        logger.info('DEBUG SERVER: Prompt used:', prompt_name);
-
-        // Всегда сохраняем ответ в историю
-        try {
-          // Создаем новую запись в истории
-          const responseData = await readResponses();
-          const tokens = buildTokensInfo({
-            usage: response.data.usage,
-            promptText: promptObj.text,
-            inputTextUsed: inputText,
-            modelResponse: modelResponse
-          });
-          
-          const newResponse = {
-            id: Date.now().toString(),
-            timestamp: new Date().toISOString(),
-            model: model,
-            promptName: prompt_name,
-            prompt: promptObj.text,
-            inputText: inputText,
-            response: modelResponse,
-            tokens,
-            autoSaved: !saveResponse // Помечаем автоматически сохраненные
-          };
-          
-          responseData.responses.push(newResponse);
-          await writeResponses(responseData);
-          
-          logger.info(`Response automatically saved to history with ID: ${newResponse.id}`);
-        } catch (error) {
-          logger.error('Error saving response to history:', error);
-          // Продолжаем выполнение даже при ошибке сохранения в историю
-        }
-        
-        return res.json({ 
-          success: true, 
-          content: modelResponse,
-          model: response.data.model,
-          usage: response.data.usage,
-          prompt_used: {
-            name: prompt_name,
-            text: promptObj.text
-          }
-        });
-      } else {
-        logger.info('DEBUG SERVER: Invalid response structure from AI model via /api/send-request-sys:', response.data);
-        
-        // Сохраняем ошибку невалидного ответа в историю
-        try {
-          const responseData = await readResponses();
-          
-          // Получаем промпт для сохранения
-          let promptText = '--';
-          let promptName = req.body.prompt_name || '--';
-          try {
-            const promptsData = await readPrompts();
-            const promptObj = promptsData.prompts.find(p => p.name === promptName);
-            if (promptObj) {
-              promptText = promptObj.text;
-            }
-          } catch (e) {
-            logger.error('Error reading prompt for error save:', e);
-          }
-          
-          const newResponse = {
-            id: Date.now().toString(),
-            timestamp: new Date().toISOString(),
-            model: req.body.model || 'unknown',
-            provider: req.body.provider || 'unknown',
-            promptName: promptName,
-            prompt: promptText,
-            inputText: req.body.inputText || '',
-            response: `ERROR: Invalid response from AI model - no choices in response`,
-            tokens: {
-              input: 0,
-              output: 0,
-              total: 0,
-              source: 'error'
-            },
-            autoSaved: true,
-            errorDetails: response.data
-          };
-          
-          responseData.responses.push(newResponse);
-          await writeResponses(responseData);
-          logger.info(`💾 Ошибка невалидного ответа сохранена в историю: ${newResponse.id}`);
-        } catch (saveError) {
-          logger.error('❌ Ошибка сохранения ошибки в историю:', saveError);
-        }
-        
-        return res.status(500).json({ 
-          error: 'Invalid response from AI model',
-          data: response.data 
-        });
-      }
-    } catch (error) {
-      logger.error('Error sending request to AI model:', error);
-      
-      // Форматируем ошибку для клиента и логируем детали
-      let errorMessage = 'Failed to process request';
-      let errorDetails = null;
-      
-      if (error.response) {
-        // Ошибка от OpenRouter API
-        // Улучшенная обработка ошибок API
-        let apiError = error.response.data.error;
-        let detailedMessage = '';
-
-        if (apiError && typeof apiError === 'object' && apiError.message) {
-            detailedMessage = apiError.message;
-        } else if (typeof apiError === 'string') {
-            detailedMessage = apiError;
-        } else {
-            detailedMessage = error.response.statusText;
-        }
-        
-      errorMessage = `API Error: ${error.response.status} - ${detailedMessage}`;
-      errorDetails = error.response.data;
-      logger.info('DEBUG SERVER: API error details via /api/send-request-sys:', {
-          status: error.response.status,
-          data: error.response.data
-        });
-      } else if (error.request) {
-        // Ошибка сети
-        errorMessage = 'Network error. Could not connect to AI service.';
-        errorDetails = { request: error.request };
-        logger.info('DEBUG SERVER: Network error via /api/send-request-sys - no response received');
-      } else {
-        errorMessage = error.message;
-        errorDetails = { stack: error.stack };
-        logger.info('DEBUG SERVER: General error via /api/send-request-sys:', error.message, error.stack);
-      }
-      
-      // Сохраняем ошибку в историю
-      try {
-        const responseData = await readResponses();
-        
-        // Получаем промпт для сохранения
-        let promptText = '--';
-        let promptName = req.body.prompt_name || '--';
-        try {
-          const promptsData = await readPrompts();
-          const promptObj = promptsData.prompts.find(p => p.name === promptName);
-          if (promptObj) {
-            promptText = promptObj.text;
-          }
-        } catch (e) {
-          logger.error('Error reading prompt for error save:', e);
-        }
-        
-        const newResponse = {
-          id: Date.now().toString(),
-          timestamp: new Date().toISOString(),
-          model: req.body.model || 'unknown',
-          provider: req.body.provider || 'unknown',
-          promptName: promptName,
-          prompt: promptText,
-          inputText: req.body.inputText || '',
-          response: `ERROR: ${errorMessage}`,
-          tokens: {
-            input: 0,
-            output: 0,
-            total: 0,
-            source: 'error'
-          },
-          autoSaved: true,
-          errorDetails: errorDetails
-        };
-        
-        responseData.responses.push(newResponse);
-        await writeResponses(responseData);
-        logger.info(`💾 Ошибка сохранена в историю: ${newResponse.id}`);
-      } catch (saveError) {
-        logger.error('❌ Ошибка сохранения ошибки в историю:', saveError);
-      }
-      
-      return res.status(500).json({ 
-        error: errorMessage,
-        details: errorDetails
-      });
-    }
-  });
-  
-  // Добавим вспомогательный маршрут для получения доступных системных промптов
-  app.get('/api/available-prompts', async (req, res) => {
-    try {
-      const promptsData = await readPrompts();
-      // Возвращаем полные промпты вместо только имен
-      res.json(promptsData.prompts);
-    } catch (error) {
-      logger.error('Error fetching available prompts:', error);
-      res.status(500).json({ error: 'Failed to fetch available prompts' });
-    }
-  });
-  
-  
-  // Добавим маршрут для проверки доступности API-ключа
-  app.get('/api/check-api-key', (req, res) => {
-    const isKeyAvailable = !!config.openRouterKey;
-    res.json({ 
-      isAvailable: isKeyAvailable,
-      serviceProvider: 'OpenRouter'
-    });
+  logger.info('[SERVER] ========================================');
+  logger.info('[SERVER] /api/send-request запрос получен');
+  logger.info('[SERVER] Timestamp:', new Date().toISOString());
+  logger.info('[SERVER] Request headers:', {
+    'content-type': req.headers['content-type'],
+    'user-agent': req.headers['user-agent']?.substring(0, 50) + '...'
   });
 
-// Добавляем API эндпоинты для работы с langchain-pg
-
-// Получение списка контекстных кодов
-app.get('/api/rag/context-codes', async (req, res) => {
   try {
-    if (!config.langchainPg.enabled) {
-      return res.status(503).json({ error: 'Сервис langchain-pg отключен' });
-    }
-    
-    const contextCodes = await langchainPgService.getContextCodes();
-    res.json(contextCodes);
-  } catch (error) {
-    logger.error('Ошибка при получении контекстных кодов:', error);
-    res.status(500).json({ error: 'Не удалось получить контекстные коды' });
-  }
-});
+    let { model, prompt, inputText, useRag, contextCode, saveResponse = false, provider, temperature, maxTokens } = req.body;
 
-// Получение списка документов
-app.get('/api/rag/documents', async (req, res) => {
-  try {
-    if (!config.langchainPg.enabled) {
-      return res.status(503).json({ error: 'Сервис langchain-pg отключен' });
-    }
-    
-    const documents = await langchainPgService.getDocuments();
-    res.json(documents);
-  } catch (error) {
-    logger.error('Ошибка при получении списка документов:', error);
-    res.status(500).json({ error: 'Не удалось получить список документов' });
-  }
-});
+    logger.info('[SERVER] Request body получен');
+    logger.info('[SERVER] DEBUG SERVER: Received request with parameters:');
+    logger.info('[SERVER] DEBUG SERVER: model =', model);
+    logger.info('[SERVER] DEBUG SERVER: provider =', provider);
+    logger.info('[SERVER] DEBUG SERVER: useRag =', useRag);
+    logger.info('[SERVER] DEBUG SERVER: contextCode =', contextCode);
+    logger.info('[SERVER] DEBUG SERVER: prompt length =', prompt?.length || 0);
+    logger.info('[SERVER] DEBUG SERVER: inputText length =', inputText?.length || 0);
 
-// Запрос к RAG с использованием контекстного кода
-app.post('/api/rag/ask', async (req, res) => {
-  try {
-    if (!config.langchainPg.enabled) {
-      return res.status(503).json({ error: 'Сервис langchain-pg отключен' });
-    }
-    
-    const { question, contextCode, showDetails } = req.body;
-    
-    if (!question) {
-      return res.status(400).json({ error: 'Вопрос не указан' });
-    }
-    
-    const response = await langchainPgService.askQuestion(question, contextCode, showDetails);
-    res.json(response);
-  } catch (error) {
-    logger.error('Ошибка при запросе к RAG:', error);
-    res.status(500).json({ error: 'Не удалось получить ответ от RAG' });
-  }
-});
-
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// Маршрут для страницы моделей
-app.get('/models.html', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'models.html'));
-});
-
-// Добавляем эндпоинт для получения информации о сервере
-app.get('/server-info', (req, res) => {
-  const os = require('os');
-  
-  // Получаем информацию о сервере
-  const serverInfo = {
-    hostname: os.hostname(),
-    platform: os.platform(),
-    arch: os.arch(),
-    nodeVersion: process.version,
-    uptime: os.uptime(),
-    baseUrl: `http://${req.headers.host}`,
-    port: process.env.PORT || '3002',
-    appName: 'AI Analytics Interface',
-    timestamp: new Date().toISOString()
-  };
-  
-  res.json(serverInfo);
-});
-
-// Добавляем новый эндпоинт для получения отладочной информации RAG
-app.get('/api/rag/debug-info', (req, res) => {
-  res.json(lastRagDebugInfo);
-});
-
-// Добавляем API эндпоинт для сохранения файла markdown
-app.post('/api/save-markdown', async (req, res) => {
-  try {
-    const { content, filename, directory } = req.body;
-    
-    if (!content) {
-      return res.status(400).json({ error: 'Содержимое файла не указано' });
-    }
-    
-    // Генерируем имя файла, если оно не указано
-    const safeFilename = filename || `response_${new Date().toISOString().replace(/:/g, '-')}.md`;
-    
-    // Определяем директорию для сохранения
-    const saveDir = directory || OUTPUT_DOCS_DIR;
-    
-    // Создаем директорию, если она не существует
-    if (!fs.existsSync(saveDir)) {
-      await fsPromises.mkdir(saveDir, { recursive: true });
-    }
-    
-    // Полный путь к файлу
-    const filePath = path.join(saveDir, safeFilename);
-    
-    // Записываем файл
-    await fsPromises.writeFile(filePath, content);
-    
-    res.json({ 
-      success: true, 
-      filePath, 
-      message: `Файл успешно сохранен: ${filePath}` 
-    });
-  } catch (error) {
-    logger.error('Ошибка при сохранении файла:', error);
-    res.status(500).json({ 
-      error: 'Не удалось сохранить файл', 
-      details: error.message 
-    });
-  }
-});
-
-// Добавляем эндпоинт для получения структуры директории OUTPUT_DOCS_DIR
-app.get('/api/output-dir-info', (req, res) => {
-  try {
-    // Базовая информация о настройках
-    const dirInfo = {
-      outputDir: OUTPUT_DOCS_DIR,
-      exists: fs.existsSync(OUTPUT_DOCS_DIR)
-    };
-    
-    // Если директория существует, получаем список файлов
-    if (dirInfo.exists) {
-      dirInfo.files = fs.readdirSync(OUTPUT_DOCS_DIR)
-        .filter(file => file.endsWith('.md'))
-        .map(file => ({
-          name: file,
-          path: path.join(OUTPUT_DOCS_DIR, file),
-          size: fs.statSync(path.join(OUTPUT_DOCS_DIR, file)).size
-        }));
-    }
-    
-    res.json(dirInfo);
-  } catch (error) {
-    logger.error('Ошибка при получении информации о директории:', error);
-    res.status(500).json({ 
-      error: 'Не удалось получить информацию о директории', 
-      details: error.message 
-    });
-  }
-});
-
-// Добавляем маршрут /analyze для совместимости с другими клиентами
-app.post('/analyze', async (req, res) => {
-  try {
-    let { model, prompt, inputText, useRag, contextCode, provider } = req.body;
-    
-    logger.info('DEBUG: Received request to /analyze endpoint with params:', {
-      model,
-      promptLength: prompt ? prompt.length : 0,
-      inputTextLength: inputText ? inputText.length : 0,
-      useRag,
-      contextCode
-    });
-    
     if (!prompt || !inputText) {
+      logger.error('[SERVER] Ошибка валидации: prompt или inputText отсутствуют');
       return res.status(400).json({ error: 'Поля prompt и inputText обязательны' });
     }
-    
+
     // Разрешаем имя модели (может быть CHEAP/FAST/RICH, произвольный user_type или пусто)
-    const resolved = await resolveModelName(model, provider);
+    let resolved;
+    try {
+      resolved = await resolveModelName(model, provider);
+    } catch (resolveError) {
+      logger.error('[SERVER] ❌ Ошибка разрешения модели:', resolveError.message);
+      return res.status(404).json({
+        error: resolveError.message,
+        details: `Модель "${model}" не найдена. Проверьте доступные модели через /api/models`
+      });
+    }
+
     model = resolved.model;
-    const selectedProvider = resolved.provider;
-    
-    // Проверяем API ключ для соответствующего провайдера
-    if (selectedProvider === 'groq' && !config.groqKey) {
-      return res.status(500).json({ error: 'GROQ API ключ не настроен' });
+    let selectedProvider = resolved.provider;
+
+    // Получаем данные модели для определения провайдера и параметров
+    // Используем modelData из resolveModelName, если он есть (для моделей найденных по user_type)
+    const modelData = resolved.modelData || await getModelByName(model);
+
+    // Определяем провайдера автоматически по модели, если не был указан
+    if (!selectedProvider) {
+      selectedProvider = modelData?.provider || 'openroute';
     }
-    
+
+    logger.info(`📡 Используем провайдера: ${selectedProvider} для модели: ${model}`);
+
+    // Проверяем доступность провайдера
+    if (selectedProvider === 'groq' && !groqService) {
+      return res.status(500).json({ error: 'GROQ сервис не настроен' });
+    }
+
     if (selectedProvider === 'openroute' && !config.openRouterKey) {
-      return res.status(500).json({ error: 'OpenRouter API ключ не настроен' });
+      return res.status(500).json({ error: 'OpenRoute API ключ не настроен' });
     }
-    
-    // Логируем информацию о запросе
-    logger.info(`Sending request to model via /analyze: ${model}`);
-    
+
+    if (selectedProvider === 'direct' && !modelData) {
+      return res.status(500).json({ error: 'Модель не найдена в available-models.json' });
+    }
+
+    if (selectedProvider === 'gigachat' && !gigachatService) {
+      return res.status(500).json({ error: 'GigaChat сервис не настроен. Добавьте GIGACHAT_AUTH_DATA в .env' });
+    }
+
     let finalInputText = inputText;
     let ragInfo = null;
-    
+
     // Если включен RAG и сервис доступен, обогащаем запрос контекстом из RAG
     if (useRag && config.langchainPg.enabled) {
       try {
         logger.info(`Using RAG with context code: ${contextCode || 'all'}`);
         const ragResponse = await langchainPgService.askQuestion(inputText, contextCode, true);
-        
+
         // Если есть документы, добавляем их контекст к запросу
         if (ragResponse.documents && ragResponse.documents.length > 0) {
           const context = ragResponse.documents.map(doc => doc.pageContent).join('\n\n');
           finalInputText = `Контекст из базы знаний:\n${context}\n\nВопрос пользователя: ${inputText}`;
-          
+
           // Сохраняем информацию о RAG для ответа
           ragInfo = {
             used: true,
@@ -1714,7 +842,879 @@ app.post('/analyze', async (req, res) => {
         else {
           logger.info('!!! No documents found in RAG response');
         }
-  
+
+      } catch (ragError) {
+        logger.error('Error using RAG:', ragError);
+        // Продолжаем без RAG в случае ошибки
+      }
+    }
+    else {
+      logger.info('!!! Without RAGs');
+    }
+
+    // Сохраняем отладочную информацию
+    lastRagDebugInfo = {
+      ragEnabled: useRag && config.langchainPg.enabled,
+      finalInputText: finalInputText,
+      ragInfo: ragInfo,
+      timestamp: new Date().toISOString()
+    };
+
+    // Формируем messages для всех провайдеров
+    const messages = [
+      { role: 'system', content: prompt },
+      { role: 'user', content: finalInputText }
+    ];
+
+    // Устанавливаем значения по умолчанию для temperature и maxTokens
+    const finalTemperature = temperature !== undefined ? temperature : 0.7;
+    // Получаем context модели для безопасного ограничения maxTokens
+    const modelContext = modelData?.context || null;
+    const finalMaxTokens = getSafeMaxTokens(maxTokens, modelContext);
+
+    // Детальное логирование для отладки (особенно для direct провайдера)
+    if (selectedProvider === 'direct') {
+      logger.info('🔍 DEBUG DIRECT: Исходные данные запроса:');
+      logger.info('  model:', model);
+      logger.info('  prompt:', prompt);
+      logger.info('  inputText:', inputText);
+      logger.info('  provider:', selectedProvider);
+      logger.info('  temperature:', temperature, '->', finalTemperature);
+      logger.info('  maxTokens:', maxTokens, '->', finalMaxTokens);
+      logger.info('  finalInputText (после RAG):', finalInputText);
+    }
+
+    let response;
+
+    logger.info('[SERVER] Готовимся отправить запрос к провайдеру:', selectedProvider);
+    logger.info('[SERVER] Messages подготовлены, количество:', messages.length);
+
+    // Отправляем запрос в зависимости от провайдера
+    if (selectedProvider === 'groq') {
+      logger.info('[SERVER] Отправка запроса в GROQ...');
+      const groqResponse = await groqService.sendRequest({
+        model,
+        messages,
+        temperature: finalTemperature,
+        maxTokens: finalMaxTokens
+      });
+
+      logger.info('[SERVER] Ответ от GROQ получен');
+
+      response = {
+        data: {
+          choices: [{
+            message: { content: groqResponse.content }
+          }],
+          model: groqResponse.model,
+          usage: groqResponse.usage
+        }
+      };
+
+    } else if (selectedProvider === 'openroute') {
+      logger.info('[SERVER] Отправка запроса в OpenRouter...');
+      response = await openRouterService.sendRequest({
+        model,
+        messages,
+        temperature: finalTemperature,
+        maxTokens: finalMaxTokens
+      });
+      logger.info('[SERVER] Ответ от OpenRouter получен');
+
+    } else if (selectedProvider === 'direct') {
+      logger.info('[SERVER] Отправка запроса через Direct провайдер...');
+      // Получаем API ключ из env или из модели
+      let apiKey = modelData.api_key;
+      let envVar = null;
+
+      if (typeof apiKey === 'string' && apiKey.startsWith('env:')) {
+        envVar = apiKey.slice(4);
+        apiKey = process.env[envVar];
+        if (!apiKey) {
+          const errorMsg = `Переменная окружения "${envVar}" не найдена для провайдера 'direct'. Проверьте .env файл.`;
+          logger.error(`❌ ${errorMsg}`);
+          // Логируем в файл, если есть логгер, иначе просто в консоль
+          // fs.appendFileSync('error.log', `${new Date().toISOString()} - ${errorMsg}\n`); // Раскомментируй, если нужно в файл
+          throw new Error(errorMsg);
+        }
+      } else {
+        apiKey = process.env[`${selectedProvider.toUpperCase()}_API_KEY`] || apiKey;
+        if (!apiKey) {
+          const errorMsg = `API ключ не найден: ни в модели, ни в env как "${selectedProvider.toUpperCase()}_API_KEY".`;
+          logger.error(`❌ ${errorMsg}`);
+          throw new Error(errorMsg);
+        }
+      }
+
+      const baseUrl = modelData.base_url;
+
+      logger.info('🔍 DEBUG DIRECT: Данные модели из available-models.json:', {
+        model: model,
+        modelData: modelData,
+        apiKey: apiKey ? `${apiKey.substring(0, 10)}...` : 'не найден',
+        baseUrl: baseUrl
+      });
+
+      if (!baseUrl) {
+        const errorMsg = `Base URL не найден для провайдера 'direct' в модели.`;
+        logger.error(`❌ ${errorMsg}`);
+        throw new Error(errorMsg);
+      }
+
+      logger.info('🔍 DEBUG DIRECT: Формируем messages:', JSON.stringify(messages, null, 2));
+      logger.info('🔍 DEBUG DIRECT: Параметры запроса:', {
+        model: model,
+        temperature: finalTemperature,
+        maxTokens: finalMaxTokens
+      });
+
+      const directService = new DirectService(apiKey, baseUrl);
+      const directResponse = await directService.sendRequest({
+        model,
+        messages,
+        temperature: finalTemperature,
+        maxTokens: finalMaxTokens
+      });
+
+      logger.info('[SERVER] Ответ от Direct провайдера получен');
+
+      response = {
+        data: {
+          choices: [{
+            message: { content: directResponse.content }
+          }],
+          model: directResponse.model,
+          usage: directResponse.usage
+        }
+      };
+
+    } else if (selectedProvider === 'gigachat') {
+      logger.info('[SERVER] Отправка запроса в GigaChat...');
+      const gigachatResponse = await gigachatService.sendRequest({
+        model,
+        messages,
+        temperature: finalTemperature,
+        maxTokens: finalMaxTokens
+      });
+
+      logger.info('[SERVER] Ответ от GigaChat получен');
+
+      response = {
+        data: {
+          choices: [{
+            message: { content: gigachatResponse.content }
+          }],
+          model: gigachatResponse.model,
+          usage: gigachatResponse.usage
+        }
+      };
+
+    } else {
+      logger.error('[SERVER] Неизвестный провайдер:', selectedProvider);
+      throw new Error(`Неизвестный провайдер: ${selectedProvider}`);
+    }
+
+    // Обработка ответа (унифицированная)
+    logger.info('[SERVER] Ответ от провайдера получен');
+    logger.info('[SERVER] Проверка структуры ответа...');
+
+    if (response.data && response.data.choices && response.data.choices.length > 0) {
+      const modelResponse = response.data.choices[0].message.content;
+
+      logger.info('[SERVER] ✅ Ответ валиден, содержимое получено');
+      logger.info(`[SERVER] ${selectedProvider.toUpperCase()}: Получен ответ:`, modelResponse.substring(0, 200) + '...');
+      logger.info(`[SERVER] 📊 ${selectedProvider.toUpperCase()}: Usage:`, response.data.usage);
+      logger.info(`[SERVER] 🤖 ${selectedProvider.toUpperCase()}: Model:`, response.data.model);
+      logger.info(`[SERVER] Длина ответа: ${modelResponse.length} символов`);
+
+      // Всегда сохраняем ответ в историю
+      try {
+        logger.info('[SERVER] Попытка сохранить ответ в историю...');
+        const responseData = await readResponses();
+        const tokens = buildTokensInfo({
+          usage: response.data.usage,
+          promptText: prompt,
+          inputTextUsed: finalInputText,
+          modelResponse: modelResponse
+        });
+        const newResponse = {
+          id: Date.now().toString(),
+          timestamp: new Date().toISOString(),
+          model,
+          provider: selectedProvider,
+          prompt,
+          inputText,
+          response: modelResponse,
+          tokens,
+          autoSaved: !saveResponse // Помечаем автоматически сохраненные
+        };
+        responseData.responses.push(newResponse);
+        await writeResponses(responseData);
+        logger.info(`[SERVER] 💾 Ответ автоматически сохранен в историю: ${newResponse.id}`);
+      } catch (error) {
+        logger.error('[SERVER] ❌ Ошибка сохранения в историю:', error);
+      }
+
+      logger.info('[SERVER] Отправка успешного ответа клиенту...');
+      const responseToClient = {
+        success: true,
+        content: modelResponse,
+        model: response.data.model,
+        usage: response.data.usage,
+        provider: selectedProvider,
+        rag: ragInfo
+      };
+      logger.info('[SERVER] Response to client keys:', Object.keys(responseToClient));
+      logger.info('[SERVER] ========================================');
+
+      return res.json(responseToClient);
+    } else {
+      logger.error('[SERVER] ❌ Невалидный ответ от провайдера - нет choices');
+      logger.error('[SERVER] Response structure:', JSON.stringify(response, null, 2).substring(0, 500));
+
+      // Сохраняем ошибку невалидного ответа в историю
+      try {
+        const responseData = await readResponses();
+        const newResponse = {
+          id: Date.now().toString(),
+          timestamp: new Date().toISOString(),
+          model: req.body.model || 'unknown',
+          provider: selectedProvider,
+          prompt: req.body.prompt || '--',
+          inputText: req.body.inputText || '',
+          response: `ERROR: Invalid response from AI model - no choices in response`,
+          tokens: {
+            input: 0,
+            output: 0,
+            total: 0,
+            source: 'error'
+          },
+          autoSaved: true,
+          errorDetails: response.data
+        };
+
+        responseData.responses.push(newResponse);
+        await writeResponses(responseData);
+        logger.info(`[SERVER] 💾 Ошибка невалидного ответа сохранена в историю: ${newResponse.id}`);
+      } catch (saveError) {
+        logger.error('[SERVER] ❌ Ошибка сохранения ошибки в историю:', saveError);
+      }
+
+      logger.error('[SERVER] Отправка ответа с ошибкой клиенту');
+      logger.error('[SERVER] ========================================');
+
+      return res.status(500).json({
+        error: 'Invalid response from AI model',
+        provider: selectedProvider,
+        data: response.data
+      });
+    }
+  } catch (error) {
+    logger.error('[SERVER] ========================================');
+    logger.error('[SERVER] ❌ ОШИБКА в /api/send-request');
+    logger.error('[SERVER] Error name:', error.name);
+    logger.error('[SERVER] Error message:', error.message);
+    logger.error(`[SERVER] Error with provider:`, error);
+
+    if (error.stack) {
+      logger.error('[SERVER] Error stack:', error.stack.substring(0, 500));
+    }
+
+    let errorMessage = 'Failed to process request';
+    let errorDetails = null;
+
+    if (error.response) {
+      logger.error('[SERVER] Ошибка API ответа');
+      logger.error('[SERVER] Response status:', error.response.status);
+      logger.error('[SERVER] Response data:', JSON.stringify(error.response.data, null, 2).substring(0, 500));
+
+      // Улучшенная обработка ошибок API
+      let apiError = error.response.data.error;
+      let detailedMessage = '';
+
+      if (apiError && typeof apiError === 'object' && apiError.message) {
+        detailedMessage = apiError.message; // OpenRouter/Groq style error
+      } else if (typeof apiError === 'string') {
+        detailedMessage = apiError; // Simple string error
+      } else {
+        detailedMessage = error.response.statusText; // Fallback
+      }
+
+      // Кастомное сообщение для неподдерживаемых моделей
+      if (error.response.status === 404 && detailedMessage.includes('No endpoints found')) {
+        const { model, provider } = req.body;
+        let finalProvider = provider;
+        if (!finalProvider) {
+          const modelConfig = config.availableModels.find(m => m.name === model);
+          finalProvider = modelConfig?.provider || 'openroute';
+        }
+        errorMessage = `Модель '${model}' не найдена или не поддерживается провайдером '${finalProvider}'. Проверьте имя модели или выберите другую.`;
+      } else {
+        errorMessage = `API Error: ${error.response.status} - ${detailedMessage}`;
+      }
+
+      errorDetails = error.response.data;
+    } else if (error.request) {
+      logger.error('[SERVER] Ошибка сети - запрос не доставлен');
+      errorMessage = 'Network error. Could not connect to AI service.';
+      errorDetails = { request: error.request };
+    } else {
+      logger.error('[SERVER] Другая ошибка:', error.message);
+      errorMessage = error.message;
+      errorDetails = { stack: error.stack };
+    }
+
+    // Сохраняем ошибку в историю
+    try {
+      logger.info('[SERVER] Попытка сохранить ошибку в историю...');
+      const responseData = await readResponses();
+      const newResponse = {
+        id: Date.now().toString(),
+        timestamp: new Date().toISOString(),
+        model: req.body.model || 'unknown',
+        provider: req.body.provider || 'unknown',
+        prompt: req.body.prompt || '--',
+        inputText: req.body.inputText || '',
+        response: `ERROR: ${errorMessage}`,
+        tokens: {
+          input: 0,
+          output: 0,
+          total: 0,
+          source: 'error'
+        },
+        autoSaved: true,
+        errorDetails: errorDetails
+      };
+
+      responseData.responses.push(newResponse);
+      await writeResponses(responseData);
+      logger.info(`[SERVER] 💾 Ошибка сохранена в историю: ${newResponse.id}`);
+    } catch (saveError) {
+      logger.error('[SERVER] ❌ Ошибка сохранения ошибки в историю:', saveError);
+    }
+
+    logger.error('[SERVER] Отправка ответа с ошибкой клиенту');
+    logger.error('[SERVER] ========================================');
+
+    return res.status(500).json({
+      error: errorMessage,
+      details: errorDetails
+    });
+  }
+});
+
+// Добавьте этот маршрут в server.js после маршрута /api/send-request
+
+// Маршрут для обработки запросов к AI моделям с выбором промпта по имени
+app.post('/api/send-request-sys', async (req, res) => {
+  try {
+    let { model, prompt_name, inputText, saveResponse = true, provider } = req.body;
+
+    if (!prompt_name || !inputText) {
+      return res.status(400).json({ error: 'Поля prompt_name и inputText обязательны' });
+    }
+
+    // Разрешаем имя модели (может быть CHEAP/FAST/RICH, произвольный user_type или пусто)
+    const resolved = await resolveModelName(model, provider);
+    model = resolved.model;
+    const selectedProvider = resolved.provider;
+
+    // Проверяем API ключ для соответствующего провайдера
+    if (selectedProvider === 'groq' && !config.groqKey) {
+      return res.status(500).json({ error: 'GROQ API ключ не настроен' });
+    }
+
+    if (selectedProvider === 'openroute' && !config.openRouterKey) {
+      return res.status(500).json({ error: 'OpenRouter API ключ не настроен' });
+    }
+
+    // Загружаем все промпты
+    const promptsData = await readPrompts();
+
+    // Ищем запрошенный промпт по имени
+    const promptObj = promptsData.prompts.find(p => p.name === prompt_name);
+    if (!promptObj) {
+      return res.status(404).json({ error: `Prompt with name "${prompt_name}" not found` });
+    }
+
+    // Логируем информацию о запросе
+    logger.info(`📤 Отправка запроса с промптом "${prompt_name}" к модели: ${model} (${selectedProvider})`);
+
+    let response;
+
+    // Отправляем запрос в зависимости от провайдера
+    if (selectedProvider === 'groq') {
+      // Используем GROQ
+      const messages = [
+        { role: 'system', content: promptObj.text },
+        { role: 'user', content: inputText }
+      ];
+
+      const groqResponse = await groqService.sendRequest({
+        model,
+        messages,
+        temperature: 0.7,
+        maxTokens: 1024
+      });
+
+      response = {
+        data: {
+          choices: [{
+            message: { content: groqResponse.content }
+          }],
+          model: groqResponse.model,
+          usage: groqResponse.usage
+        }
+      };
+
+    } else {
+      // Используем OpenRoute
+      response = await axios.post('https://openrouter.ai/api/v1/chat/completions', {
+        model: model,
+        messages: [
+          { role: 'system', content: promptObj.text },
+          { role: 'user', content: inputText }
+        ]
+      }, {
+        headers: {
+          'Authorization': `Bearer ${config.openRouterKey}`,
+          'Content-Type': 'application/json'
+        }
+      });
+    }
+
+    // Проверяем и возвращаем результат
+    if (response.data && response.data.choices && response.data.choices.length > 0) {
+      const modelResponse = response.data.choices[0].message.content;
+      logger.info('DEBUG SERVER: Model response via /api/send-request-sys:', modelResponse.substring(0, 500) + (modelResponse.length > 500 ? '...' : ''));
+      logger.info('DEBUG SERVER: Usage via /api/send-request-sys:', response.data.usage);
+      logger.info('DEBUG SERVER: Model used via /api/send-request-sys:', response.data.model);
+      logger.info('DEBUG SERVER: Prompt used:', prompt_name);
+
+      // Всегда сохраняем ответ в историю
+      try {
+        // Создаем новую запись в истории
+        const responseData = await readResponses();
+        const tokens = buildTokensInfo({
+          usage: response.data.usage,
+          promptText: promptObj.text,
+          inputTextUsed: inputText,
+          modelResponse: modelResponse
+        });
+
+        const newResponse = {
+          id: Date.now().toString(),
+          timestamp: new Date().toISOString(),
+          model: model,
+          promptName: prompt_name,
+          prompt: promptObj.text,
+          inputText: inputText,
+          response: modelResponse,
+          tokens,
+          autoSaved: !saveResponse // Помечаем автоматически сохраненные
+        };
+
+        responseData.responses.push(newResponse);
+        await writeResponses(responseData);
+
+        logger.info(`Response automatically saved to history with ID: ${newResponse.id}`);
+      } catch (error) {
+        logger.error('Error saving response to history:', error);
+        // Продолжаем выполнение даже при ошибке сохранения в историю
+      }
+
+      return res.json({
+        success: true,
+        content: modelResponse,
+        model: response.data.model,
+        usage: response.data.usage,
+        prompt_used: {
+          name: prompt_name,
+          text: promptObj.text
+        }
+      });
+    } else {
+      logger.info('DEBUG SERVER: Invalid response structure from AI model via /api/send-request-sys:', response.data);
+
+      // Сохраняем ошибку невалидного ответа в историю
+      try {
+        const responseData = await readResponses();
+
+        // Получаем промпт для сохранения
+        let promptText = '--';
+        let promptName = req.body.prompt_name || '--';
+        try {
+          const promptsData = await readPrompts();
+          const promptObj = promptsData.prompts.find(p => p.name === promptName);
+          if (promptObj) {
+            promptText = promptObj.text;
+          }
+        } catch (e) {
+          logger.error('Error reading prompt for error save:', e);
+        }
+
+        const newResponse = {
+          id: Date.now().toString(),
+          timestamp: new Date().toISOString(),
+          model: req.body.model || 'unknown',
+          provider: req.body.provider || 'unknown',
+          promptName: promptName,
+          prompt: promptText,
+          inputText: req.body.inputText || '',
+          response: `ERROR: Invalid response from AI model - no choices in response`,
+          tokens: {
+            input: 0,
+            output: 0,
+            total: 0,
+            source: 'error'
+          },
+          autoSaved: true,
+          errorDetails: response.data
+        };
+
+        responseData.responses.push(newResponse);
+        await writeResponses(responseData);
+        logger.info(`💾 Ошибка невалидного ответа сохранена в историю: ${newResponse.id}`);
+      } catch (saveError) {
+        logger.error('❌ Ошибка сохранения ошибки в историю:', saveError);
+      }
+
+      return res.status(500).json({
+        error: 'Invalid response from AI model',
+        data: response.data
+      });
+    }
+  } catch (error) {
+    logger.error('Error sending request to AI model:', error);
+
+    // Форматируем ошибку для клиента и логируем детали
+    let errorMessage = 'Failed to process request';
+    let errorDetails = null;
+
+    if (error.response) {
+      // Ошибка от OpenRouter API
+      // Улучшенная обработка ошибок API
+      let apiError = error.response.data.error;
+      let detailedMessage = '';
+
+      if (apiError && typeof apiError === 'object' && apiError.message) {
+        detailedMessage = apiError.message;
+      } else if (typeof apiError === 'string') {
+        detailedMessage = apiError;
+      } else {
+        detailedMessage = error.response.statusText;
+      }
+
+      errorMessage = `API Error: ${error.response.status} - ${detailedMessage}`;
+      errorDetails = error.response.data;
+      logger.info('DEBUG SERVER: API error details via /api/send-request-sys:', {
+        status: error.response.status,
+        data: error.response.data
+      });
+    } else if (error.request) {
+      // Ошибка сети
+      errorMessage = 'Network error. Could not connect to AI service.';
+      errorDetails = { request: error.request };
+      logger.info('DEBUG SERVER: Network error via /api/send-request-sys - no response received');
+    } else {
+      errorMessage = error.message;
+      errorDetails = { stack: error.stack };
+      logger.info('DEBUG SERVER: General error via /api/send-request-sys:', error.message, error.stack);
+    }
+
+    // Сохраняем ошибку в историю
+    try {
+      const responseData = await readResponses();
+
+      // Получаем промпт для сохранения
+      let promptText = '--';
+      let promptName = req.body.prompt_name || '--';
+      try {
+        const promptsData = await readPrompts();
+        const promptObj = promptsData.prompts.find(p => p.name === promptName);
+        if (promptObj) {
+          promptText = promptObj.text;
+        }
+      } catch (e) {
+        logger.error('Error reading prompt for error save:', e);
+      }
+
+      const newResponse = {
+        id: Date.now().toString(),
+        timestamp: new Date().toISOString(),
+        model: req.body.model || 'unknown',
+        provider: req.body.provider || 'unknown',
+        promptName: promptName,
+        prompt: promptText,
+        inputText: req.body.inputText || '',
+        response: `ERROR: ${errorMessage}`,
+        tokens: {
+          input: 0,
+          output: 0,
+          total: 0,
+          source: 'error'
+        },
+        autoSaved: true,
+        errorDetails: errorDetails
+      };
+
+      responseData.responses.push(newResponse);
+      await writeResponses(responseData);
+      logger.info(`💾 Ошибка сохранена в историю: ${newResponse.id}`);
+    } catch (saveError) {
+      logger.error('❌ Ошибка сохранения ошибки в историю:', saveError);
+    }
+
+    return res.status(500).json({
+      error: errorMessage,
+      details: errorDetails
+    });
+  }
+});
+
+// Добавим вспомогательный маршрут для получения доступных системных промптов
+app.get('/api/available-prompts', async (req, res) => {
+  try {
+    const promptsData = await readPrompts();
+    // Возвращаем полные промпты вместо только имен
+    res.json(promptsData.prompts);
+  } catch (error) {
+    logger.error('Error fetching available prompts:', error);
+    res.status(500).json({ error: 'Failed to fetch available prompts' });
+  }
+});
+
+
+// Добавим маршрут для проверки доступности API-ключа
+app.get('/api/check-api-key', (req, res) => {
+  const isKeyAvailable = !!config.openRouterKey;
+  res.json({
+    isAvailable: isKeyAvailable,
+    serviceProvider: 'OpenRouter'
+  });
+});
+
+// Добавляем API эндпоинты для работы с langchain-pg
+
+// Получение списка контекстных кодов
+app.get('/api/rag/context-codes', async (req, res) => {
+  try {
+    if (!config.langchainPg.enabled) {
+      return res.status(503).json({ error: 'Сервис langchain-pg отключен' });
+    }
+
+    const contextCodes = await langchainPgService.getContextCodes();
+    res.json(contextCodes);
+  } catch (error) {
+    logger.error('Ошибка при получении контекстных кодов:', error);
+    res.status(500).json({ error: 'Не удалось получить контекстные коды' });
+  }
+});
+
+// Получение списка документов
+app.get('/api/rag/documents', async (req, res) => {
+  try {
+    if (!config.langchainPg.enabled) {
+      return res.status(503).json({ error: 'Сервис langchain-pg отключен' });
+    }
+
+    const documents = await langchainPgService.getDocuments();
+    res.json(documents);
+  } catch (error) {
+    logger.error('Ошибка при получении списка документов:', error);
+    res.status(500).json({ error: 'Не удалось получить список документов' });
+  }
+});
+
+// Запрос к RAG с использованием контекстного кода
+app.post('/api/rag/ask', async (req, res) => {
+  try {
+    if (!config.langchainPg.enabled) {
+      return res.status(503).json({ error: 'Сервис langchain-pg отключен' });
+    }
+
+    const { question, contextCode, showDetails } = req.body;
+
+    if (!question) {
+      return res.status(400).json({ error: 'Вопрос не указан' });
+    }
+
+    const response = await langchainPgService.askQuestion(question, contextCode, showDetails);
+    res.json(response);
+  } catch (error) {
+    logger.error('Ошибка при запросе к RAG:', error);
+    res.status(500).json({ error: 'Не удалось получить ответ от RAG' });
+  }
+});
+
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Маршрут для страницы моделей
+app.get('/models.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'models.html'));
+});
+
+// Добавляем эндпоинт для получения информации о сервере
+app.get('/server-info', (req, res) => {
+  const os = require('os');
+
+  // Получаем информацию о сервере
+  const serverInfo = {
+    hostname: os.hostname(),
+    platform: os.platform(),
+    arch: os.arch(),
+    nodeVersion: process.version,
+    uptime: os.uptime(),
+    baseUrl: `http://${req.headers.host}`,
+    port: process.env.PORT || '3002',
+    appName: 'AI Analytics Interface',
+    timestamp: new Date().toISOString()
+  };
+
+  res.json(serverInfo);
+});
+
+// Добавляем новый эндпоинт для получения отладочной информации RAG
+app.get('/api/rag/debug-info', (req, res) => {
+  res.json(lastRagDebugInfo);
+});
+
+// Добавляем API эндпоинт для сохранения файла markdown
+app.post('/api/save-markdown', async (req, res) => {
+  try {
+    const { content, filename, directory } = req.body;
+
+    if (!content) {
+      return res.status(400).json({ error: 'Содержимое файла не указано' });
+    }
+
+    // Генерируем имя файла, если оно не указано
+    const safeFilename = filename || `response_${new Date().toISOString().replace(/:/g, '-')}.md`;
+
+    // Определяем директорию для сохранения
+    const saveDir = directory || OUTPUT_DOCS_DIR;
+
+    // Создаем директорию, если она не существует
+    if (!fs.existsSync(saveDir)) {
+      await fsPromises.mkdir(saveDir, { recursive: true });
+    }
+
+    // Полный путь к файлу
+    const filePath = path.join(saveDir, safeFilename);
+
+    // Записываем файл
+    await fsPromises.writeFile(filePath, content);
+
+    res.json({
+      success: true,
+      filePath,
+      message: `Файл успешно сохранен: ${filePath}`
+    });
+  } catch (error) {
+    logger.error('Ошибка при сохранении файла:', error);
+    res.status(500).json({
+      error: 'Не удалось сохранить файл',
+      details: error.message
+    });
+  }
+});
+
+// Добавляем эндпоинт для получения структуры директории OUTPUT_DOCS_DIR
+app.get('/api/output-dir-info', (req, res) => {
+  try {
+    // Базовая информация о настройках
+    const dirInfo = {
+      outputDir: OUTPUT_DOCS_DIR,
+      exists: fs.existsSync(OUTPUT_DOCS_DIR)
+    };
+
+    // Если директория существует, получаем список файлов
+    if (dirInfo.exists) {
+      dirInfo.files = fs.readdirSync(OUTPUT_DOCS_DIR)
+        .filter(file => file.endsWith('.md'))
+        .map(file => ({
+          name: file,
+          path: path.join(OUTPUT_DOCS_DIR, file),
+          size: fs.statSync(path.join(OUTPUT_DOCS_DIR, file)).size
+        }));
+    }
+
+    res.json(dirInfo);
+  } catch (error) {
+    logger.error('Ошибка при получении информации о директории:', error);
+    res.status(500).json({
+      error: 'Не удалось получить информацию о директории',
+      details: error.message
+    });
+  }
+});
+
+// Добавляем маршрут /analyze для совместимости с другими клиентами
+app.post('/analyze', async (req, res) => {
+  try {
+    let { model, prompt, inputText, useRag, contextCode, provider } = req.body;
+
+    logger.info('DEBUG: Received request to /analyze endpoint with params:', {
+      model,
+      promptLength: prompt ? prompt.length : 0,
+      inputTextLength: inputText ? inputText.length : 0,
+      useRag,
+      contextCode
+    });
+
+    if (!prompt || !inputText) {
+      return res.status(400).json({ error: 'Поля prompt и inputText обязательны' });
+    }
+
+    // Разрешаем имя модели (может быть CHEAP/FAST/RICH, произвольный user_type или пусто)
+    const resolved = await resolveModelName(model, provider);
+    model = resolved.model;
+    const selectedProvider = resolved.provider;
+
+    // Проверяем API ключ для соответствующего провайдера
+    if (selectedProvider === 'groq' && !config.groqKey) {
+      return res.status(500).json({ error: 'GROQ API ключ не настроен' });
+    }
+
+    if (selectedProvider === 'openroute' && !config.openRouterKey) {
+      return res.status(500).json({ error: 'OpenRouter API ключ не настроен' });
+    }
+
+    // Логируем информацию о запросе
+    logger.info(`Sending request to model via /analyze: ${model}`);
+
+    let finalInputText = inputText;
+    let ragInfo = null;
+
+    // Если включен RAG и сервис доступен, обогащаем запрос контекстом из RAG
+    if (useRag && config.langchainPg.enabled) {
+      try {
+        logger.info(`Using RAG with context code: ${contextCode || 'all'}`);
+        const ragResponse = await langchainPgService.askQuestion(inputText, contextCode, true);
+
+        // Если есть документы, добавляем их контекст к запросу
+        if (ragResponse.documents && ragResponse.documents.length > 0) {
+          const context = ragResponse.documents.map(doc => doc.pageContent).join('\n\n');
+          finalInputText = `Контекст из базы знаний:\n${context}\n\nВопрос пользователя: ${inputText}`;
+
+          // Сохраняем информацию о RAG для ответа
+          ragInfo = {
+            used: true,
+            contextCode: ragResponse.contextCode,
+            documentsCount: ragResponse.documents.length,
+            sources: ragResponse.documents.map(doc => ({
+              filename: doc.metadata.filename,
+              source: doc.metadata.source,
+              contextCode: doc.metadata.contextCode
+            }))
+          };
+        }
+        else {
+          logger.info('!!! No documents found in RAG response');
+        }
+
       } catch (ragError) {
         logger.error('Error using RAG:', ragError);
         // Продолжаем без RAG в случае ошибки
@@ -1733,7 +1733,7 @@ app.post('/analyze', async (req, res) => {
     };
 
     let response;
-    
+
     // Отправляем запрос в зависимости от провайдера
     if (selectedProvider === 'groq') {
       // Используем GROQ
@@ -1741,14 +1741,14 @@ app.post('/analyze', async (req, res) => {
         { role: 'system', content: prompt },
         { role: 'user', content: finalInputText }
       ];
-      
+
       const groqResponse = await groqService.sendRequest({
         model,
         messages,
         temperature: 0.7,
         maxTokens: 1024
       });
-      
+
       response = {
         data: {
           choices: [{
@@ -1758,7 +1758,7 @@ app.post('/analyze', async (req, res) => {
           usage: groqResponse.usage
         }
       };
-      
+
     } else {
       // Используем OpenRoute
       response = await axios.post('https://openrouter.ai/api/v1/chat/completions', {
@@ -1774,16 +1774,16 @@ app.post('/analyze', async (req, res) => {
         }
       });
     }
-    
+
     // Проверяем и возвращаем результат
     if (response.data && response.data.choices && response.data.choices.length > 0) {
       const modelResponse = response.data.choices[0].message.content;
       logger.info('DEBUG SERVER: Model response via /analyze:', modelResponse.substring(0, 500) + (modelResponse.length > 500 ? '...' : ''));
       logger.info('DEBUG SERVER: Usage via /analyze:', response.data.usage);
       logger.info('DEBUG SERVER: Model used via /analyze:', response.data.model);
-      
-      return res.json({ 
-        success: true, 
+
+      return res.json({
+        success: true,
         content: modelResponse,
         model: response.data.model,
         usage: response.data.usage,
@@ -1791,32 +1791,32 @@ app.post('/analyze', async (req, res) => {
       });
     } else {
       logger.info('DEBUG SERVER: Invalid response structure from AI model via /analyze:', response.data);
-      return res.status(500).json({ 
+      return res.status(500).json({
         error: 'Invalid response from AI model',
-        data: response.data 
+        data: response.data
       });
     }
   } catch (error) {
     logger.error('Error sending request to AI model via /analyze:', error);
-    
+
     // Форматируем ошибку для клиента и логируем детали
     let errorMessage = 'Failed to process request';
     let errorDetails = null;
-    
+
     if (error.response) {
       // Ошибка от OpenRouter API
       // Улучшенная обработка ошибок API
-        let apiError = error.response.data.error;
-        let detailedMessage = '';
+      let apiError = error.response.data.error;
+      let detailedMessage = '';
 
-        if (apiError && typeof apiError === 'object' && apiError.message) {
-            detailedMessage = apiError.message;
-        } else if (typeof apiError === 'string') {
-            detailedMessage = apiError;
-        } else {
-            detailedMessage = error.response.statusText;
-        }
-        
+      if (apiError && typeof apiError === 'object' && apiError.message) {
+        detailedMessage = apiError.message;
+      } else if (typeof apiError === 'string') {
+        detailedMessage = apiError;
+      } else {
+        detailedMessage = error.response.statusText;
+      }
+
       errorMessage = `API Error: ${error.response.status} - ${detailedMessage}`;
       errorDetails = error.response.data;
       logger.info('DEBUG SERVER: API error details via /analyze:', {
@@ -1833,8 +1833,8 @@ app.post('/analyze', async (req, res) => {
       errorDetails = { stack: error.stack };
       logger.info('DEBUG SERVER: General error via /analyze:', error.message, error.stack);
     }
-    
-    return res.status(500).json({ 
+
+    return res.status(500).json({
       error: errorMessage,
       details: errorDetails
     });
@@ -1843,10 +1843,10 @@ app.post('/analyze', async (req, res) => {
 
 // Добавьте этот маршрут в server.js
 app.get('/api/available-models', (req, res) => {
-    const models = config.availableModels
-        .filter(m => m.showInApi)
-        .map(m => m.name);
-    res.json(models);
+  const models = config.availableModels
+    .filter(m => m.showInApi)
+    .map(m => m.name);
+  res.json(models);
 });
 
 // === НОВЫЙ УМНЫЙ СПИСОК МОДЕЛЕЙ ===
@@ -1917,14 +1917,14 @@ async function testModelInternal(model) {
       } else {
         apiKey = process.env['ZAI_API_KEY'] || apiKey;
       }
-      
+
       if (!apiKey) {
         throw new Error('Не удалось найти API ключ для теста модели direct');
       }
 
       const baseUrl = model.base_url || "https://api.z.ai/api/paas/v4";
       const directService = new DirectService(apiKey, baseUrl);
-      
+
       // Унифицированный вызов через DirectService (как в /v1/chat/completions)
       const directResponse = await directService.sendRequest({
         model: model.name,
@@ -1932,7 +1932,7 @@ async function testModelInternal(model) {
         temperature: 0.7,  // дефолтный
         maxTokens: 120
       });
-      
+
       apiRes = {
         data: {
           choices: [{ message: { content: directResponse.content } }]
@@ -1942,14 +1942,14 @@ async function testModelInternal(model) {
       if (!gigachatService) {
         throw new Error('GigaChat сервис не инициализирован. Добавьте GIGACHAT_AUTH_DATA в .env');
       }
-      
+
       const gcResponse = await gigachatService.sendRequest({
         model: model.name,
         messages: [{ role: "user", content: "Кто ты? Ответь в одном предложении на русском." }],
         temperature: 0,
         maxTokens: 120
       });
-      
+
       apiRes = {
         data: {
           choices: [{ message: { content: gcResponse.content } }]
@@ -2000,7 +2000,7 @@ let lastUserTypeValidation = {
 // === ВАЛИДАЦИЯ МОДЕЛЕЙ С user_type ПРИ СТАРТЕ СЕРВЕРА ===
 async function validateUserTypeModelsOnStartup() {
   logger.info('🔍 Проверка моделей с user_type...');
-  
+
   lastUserTypeValidation = {
     timestamp: new Date().toISOString(),
     total: 0,
@@ -2008,25 +2008,25 @@ async function validateUserTypeModelsOnStartup() {
     failed: [],
     inProgress: true
   };
-  
+
   try {
     const models = await loadModels();
     const userTypeModels = models.filter(m => m.user_type && m.enabled);
-    
+
     if (userTypeModels.length === 0) {
       logger.warn('⚠️ Нет активных моделей с user_type для проверки');
       lastUserTypeValidation.inProgress = false;
       return;
     }
-    
+
     lastUserTypeValidation.total = userTypeModels.length;
     logger.info(`📋 Найдено ${userTypeModels.length} модел(ей) с user_type: ${userTypeModels.map(m => m.user_type).join(', ')}`);
-    
+
     for (const model of userTypeModels) {
       try {
         logger.info(`🧪 Тестирование [${model.user_type}] → ${model.name} (${model.provider})...`);
         const result = await testModelInternal(model);
-        
+
         const modelInfo = {
           id: model.id,
           user_type: model.user_type,
@@ -2037,7 +2037,7 @@ async function validateUserTypeModelsOnStartup() {
           error_message: result.error_message,
           timestamp: result.timestamp
         };
-        
+
         if (result.success) {
           lastUserTypeValidation.passed.push(modelInfo);
           logger.info(`✅ [${model.user_type}] OK (${result.response_time_ms}ms)`);
@@ -2046,7 +2046,7 @@ async function validateUserTypeModelsOnStartup() {
           logger.error(`❌ [${model.user_type}] ОШИБКА: ${result.error_message}`);
           logger.error(`   Модель: ${model.name}, Провайдер: ${model.provider}, ID: ${model.id}`);
         }
-        
+
         // Сохраняем результат теста в модель
         const allModels = await loadModels();
         const idx = allModels.findIndex(m => m.id === model.id);
@@ -2067,22 +2067,22 @@ async function validateUserTypeModelsOnStartup() {
         logger.error(`❌ [${model.user_type}] КРИТИЧЕСКАЯ ОШИБКА: ${err.message}`);
       }
     }
-    
+
     lastUserTypeValidation.inProgress = false;
-    
+
     // Вывод итогового списка
     const passedCount = lastUserTypeValidation.passed.length;
     const failedCount = lastUserTypeValidation.failed.length;
-    
+
     logger.info(`📊 Результаты проверки user_type моделей: ${passedCount} успешно, ${failedCount} с ошибками`);
-    
+
     if (passedCount > 0) {
       logger.info(`✅ ПРОШЛИ ПРОВЕРКУ (${passedCount}):`);
       lastUserTypeValidation.passed.forEach(m => {
         logger.info(`   • [${m.user_type}] ${m.name} (${m.provider}) — ${m.response_time_ms}ms`);
       });
     }
-    
+
     if (failedCount > 0) {
       logger.warn(`❌ НЕ ПРОШЛИ ПРОВЕРКУ (${failedCount}):`);
       lastUserTypeValidation.failed.forEach(m => {
@@ -2106,10 +2106,10 @@ app.post('/api/user-type-validation/rerun', async (req, res) => {
   if (lastUserTypeValidation.inProgress) {
     return res.status(409).json({ error: 'Валидация уже выполняется' });
   }
-  
+
   // Запускаем асинхронно, не блокируя ответ
   validateUserTypeModelsOnStartup();
-  
+
   res.json({ message: 'Валидация запущена', status: 'started' });
 });
 
@@ -2195,14 +2195,14 @@ app.post('/api/about-model', async (req, res) => {
       } else {
         apiKey = process.env['ZAI_API_KEY'] || apiKey;
       }
-      
+
       if (!apiKey) {
         throw new Error('Не удалось найти API ключ для модели direct');
       }
 
       const baseUrl = model.base_url || "https://api.z.ai/api/paas/v4";
       const modelName = model.name;
-      
+
       apiRes = await axios.post(
         `${baseUrl}/chat/completions`,
         {
@@ -2216,14 +2216,14 @@ app.post('/api/about-model', async (req, res) => {
       if (!gigachatService) {
         throw new Error('GigaChat сервис не инициализирован. Добавьте GIGACHAT_AUTH_DATA в .env');
       }
-      
+
       const gcResponse = await gigachatService.sendRequest({
         model: model.name,
         messages: [{ role: "user", content: ABOUT_MODEL_PROMPT }],
         temperature: 0.7,
         maxTokens: 512
       });
-      
+
       apiRes = {
         data: {
           choices: [{ message: { content: gcResponse.content } }]
@@ -2286,21 +2286,21 @@ app.post('/api/models/update/:id', async (req, res) => {
     // === ОБРАБОТКА user_type (автоматический перенос) ===
     if (updates.user_type !== undefined) {
       const newUserType = updates.user_type ? updates.user_type.trim().toUpperCase() : null;
-      
+
       if (newUserType) {
         // Если этот user_type занят другой моделью - сбрасываем у неё
-        const existingModelIndex = models.findIndex(m => 
-          m.user_type && 
-          m.user_type.toUpperCase() === newUserType && 
+        const existingModelIndex = models.findIndex(m =>
+          m.user_type &&
+          m.user_type.toUpperCase() === newUserType &&
           m.id !== id
         );
-        
+
         if (existingModelIndex !== -1) {
           const oldModel = models[existingModelIndex];
           logger.info(`🔄 user_type "${newUserType}" переназначен: ${oldModel.name} → ${models[modelIndex].name}`);
           models[existingModelIndex].user_type = null;
         }
-        
+
         // Нормализуем user_type к верхнему регистру
         updates.user_type = newUserType;
       } else {
@@ -2313,7 +2313,7 @@ app.post('/api/models/update/:id', async (req, res) => {
     models[modelIndex] = { ...models[modelIndex], ...updates };
 
     await saveModels(models);
-    
+
     logger.info(`✅ Модель ${id} обновлена:`, updates);
 
     res.json({ success: true, model: models[modelIndex] });
@@ -2365,7 +2365,7 @@ app.get('/api/user-types', async (req, res) => {
     const models = await loadModels();
     // Собираем уникальные user_type, исключая null/undefined
     const types = [...new Set(models.map(m => m.user_type).filter(Boolean))];
-    
+
     // Возвращаем с информацией о связанных моделях
     const typesWithModels = types.map(type => {
       const model = models.find(m => m.user_type === type);
@@ -2378,7 +2378,7 @@ app.get('/api/user-types', async (req, res) => {
         enabled: model?.enabled
       };
     });
-    
+
     res.json({
       success: true,
       count: types.length,
@@ -2403,7 +2403,7 @@ async function refreshGroqModels() {
     });
 
     let localModels = await loadModels();
-    
+
     const activeRemoteMap = new Map();
     for (const remote of data.data) {
       const internalId = `groq-${remote.id}`;
@@ -2529,17 +2529,17 @@ async function refreshOpenRouterModels() {
 async function refreshDirectModels() {
   try {
     logger.info('Обновляем список Direct моделей...');
-    
+
     let localModels = await loadModels();
-    
+
     // 1. Находим все модели с provider: "direct"
     const directModels = localModels.filter(m => m.provider === 'direct' && m.base_url);
-    
+
     if (directModels.length === 0) {
       logger.info('Direct модели не найдены, пропускаем синхронизацию.');
       return;
     }
-    
+
     // 2. Группируем по base_url
     const baseUrlGroups = new Map();
     for (const model of directModels) {
@@ -2549,18 +2549,18 @@ async function refreshDirectModels() {
       }
       baseUrlGroups.get(baseUrl).push(model);
     }
-    
+
     let totalAdded = 0;
     let totalDisabled = 0;
     let skippedUrls = 0;
-    
+
     // 3. Для каждого base_url пытаемся получить список моделей
     for (const [baseUrl, modelsForUrl] of baseUrlGroups) {
       try {
         // Получаем API ключ из первой модели с этим base_url
         const sampleModel = modelsForUrl[0];
         let apiKey = sampleModel.api_key;
-        
+
         if (typeof apiKey === 'string' && apiKey.startsWith('env:')) {
           const envVar = apiKey.slice(4);
           apiKey = process.env[envVar];
@@ -2581,35 +2581,35 @@ async function refreshDirectModels() {
             continue;
           }
         }
-        
+
         // Формируем URL для запроса списка моделей
-        const modelsUrl = baseUrl.endsWith('/v1') || baseUrl.endsWith('/v1/') 
+        const modelsUrl = baseUrl.endsWith('/v1') || baseUrl.endsWith('/v1/')
           ? `${baseUrl}/models`
           : `${baseUrl}/v1/models`;
-        
+
         logger.info(`  Проверяем ${baseUrl}...`);
-        
+
         // Запрашиваем список моделей
         const headers = {};
         if (apiKey) {
           headers['Authorization'] = `Bearer ${apiKey}`;
         }
-        
+
         const { data } = await axios.get(modelsUrl, {
           headers,
           timeout: 10000 // 10 секунд таймаут
         });
-        
+
         // Универсальная обработка разных форматов /v1/models
         let remoteModels = [];
-        
+
         // Вариант 1: OpenAI-совместимый формат (Groq, Ollama, Fireworks и т.д.)
         if (data && data.data && Array.isArray(data.data)) {
           remoteModels = data.data;
-        // Вариант 2: Together AI — возвращает сразу массив моделей
+          // Вариант 2: Together AI — возвращает сразу массив моделей
         } else if (Array.isArray(data)) {
           remoteModels = data;
-        // Вариант 3: На всякий случай — если вдруг в data.models или другом поле
+          // Вариант 3: На всякий случай — если вдруг в data.models или другом поле
         } else if (data && data.models && Array.isArray(data.models)) {
           remoteModels = data.models;
         } else {
@@ -2618,16 +2618,16 @@ async function refreshDirectModels() {
           skippedUrls++;
           continue;
         }
-        
+
         if (remoteModels.length === 0) {
           logger.info(`  ⚠️ ${baseUrl}: пустой список моделей`);
           skippedUrls++;
           continue;
         }
-        
+
         // 4. Создаем Map активных моделей для этого base_url
         const activeRemoteMap = new Map();
-        
+
         // Генерируем slug из base_url для уникальности ID
         let urlSlug;
         try {
@@ -2636,7 +2636,7 @@ async function refreshDirectModels() {
           // Если не удалось распарсить, используем упрощенный вариант
           urlSlug = baseUrl.replace(/https?:\/\//, '').replace(/[^a-zA-Z0-9-]/g, '-').toLowerCase();
         }
-        
+
         for (const remote of remoteModels) {
           // Генерируем внутренний ID: {urlSlug}-{model_id}
           // Заменяем недопустимые символы в model.id
@@ -2644,10 +2644,10 @@ async function refreshDirectModels() {
           const internalId = `direct-${urlSlug}-${modelIdSlug}`;
           activeRemoteMap.set(internalId, remote);
         }
-        
+
         let addedCount = 0;
         let disabledCount = 0;
-        
+
         // 5. Обновляем существующие модели для этого base_url
         localModels = localModels.map(model => {
           if (model.provider === 'direct' && model.base_url === baseUrl) {
@@ -2662,7 +2662,7 @@ async function refreshDirectModels() {
           }
           return model;
         });
-        
+
         // 6. Добавляем новые модели для этого base_url
         for (const [id, remote] of activeRemoteMap) {
           const exists = localModels.some(m => m.id === id);
@@ -2680,14 +2680,14 @@ async function refreshDirectModels() {
                 context = parseInt(contextMatch[1], 10) * (contextMatch[0].toLowerCase().includes('k') ? 1024 : 1);
               }
             }
-            
+
             // Формируем visible_name
             const modelName = remote.name || remote.id;
-            const providerName = baseUrl.includes('together.xyz') ? 'Together' : 
-                               baseUrl.includes('ollama') ? 'Ollama' :
-                               baseUrl.includes('fireworks') ? 'Fireworks' : 'Direct';
+            const providerName = baseUrl.includes('together.xyz') ? 'Together' :
+              baseUrl.includes('ollama') ? 'Ollama' :
+                baseUrl.includes('fireworks') ? 'Fireworks' : 'Direct';
             const visibleName = `${providerName} → ${modelName}`;
-            
+
             const newModel = {
               id: id,
               provider: "direct",
@@ -2701,21 +2701,21 @@ async function refreshDirectModels() {
               added_at: new Date().toISOString(),
               provider_info: remote // Сохраняем полную информацию от провайдера
             };
-            
+
             localModels.push(newModel);
             addedCount++;
           }
         }
-        
+
         totalAdded += addedCount;
         totalDisabled += disabledCount;
-        
+
         if (addedCount > 0 || disabledCount > 0) {
           logger.info(`  ✅ ${baseUrl}: ${addedCount} новых, ${disabledCount} отключено`);
         } else {
           logger.info(`  ✓ ${baseUrl}: актуально`);
         }
-        
+
       } catch (err) {
         // Тихая обработка ошибок - просто пропускаем этот base_url
         if (err.response && err.response.status === 404) {
@@ -2731,10 +2731,10 @@ async function refreshDirectModels() {
         skippedUrls++;
       }
     }
-    
+
     // 7. Сохраняем обновленные модели
     await saveModels(localModels);
-    
+
     if (totalAdded > 0 || totalDisabled > 0) {
       logger.info(`Direct синхронизирован: ${totalAdded} новых добавлено, ${totalDisabled} устаревших отключено.`);
     } else if (skippedUrls === 0) {
@@ -2742,7 +2742,7 @@ async function refreshDirectModels() {
     } else {
       logger.info(`Direct синхронизирован: ${skippedUrls} URL пропущено (не поддерживают /v1/models или ошибки).`);
     }
-    
+
   } catch (err) {
     logger.error('Ошибка автообновления Direct:', err.message);
   }
@@ -2791,12 +2791,12 @@ setInterval(refreshDirectModels, 8 * 60 * 60 * 1000);
 // Middleware для Bearer Token аутентификации (только для /v1/* путей)
 function openaiAuthMiddleware(req, res, next) {
   const apiKey = process.env.KOSMOS_API_KEY;
-  
+
   // Если ключ не задан — пропускаем без проверки (обратная совместимость)
   if (!apiKey) {
     return next();
   }
-  
+
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({
@@ -2807,7 +2807,7 @@ function openaiAuthMiddleware(req, res, next) {
       }
     });
   }
-  
+
   const token = authHeader.slice(7); // Убираем "Bearer "
   if (token !== apiKey) {
     return res.status(401).json({
@@ -2818,7 +2818,7 @@ function openaiAuthMiddleware(req, res, next) {
       }
     });
   }
-  
+
   next();
 }
 
@@ -2867,17 +2867,17 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
     'content-type': req.headers['content-type'],
     'user-agent': req.headers['user-agent']?.substring(0, 50) + '...'
   });
-  
+
   try {
     const { model, messages, temperature, max_tokens, stream } = req.body;
-    
+
     logger.info('[SERVER] Request body получен:');
     logger.info('[SERVER] model:', model);
     logger.info('[SERVER] messages count:', messages?.length || 0);
     logger.info('[SERVER] temperature:', temperature);
     logger.info('[SERVER] max_tokens:', max_tokens);
     logger.info('[SERVER] stream:', stream);
-    
+
     // Проверка обязательных полей
     if (!model) {
       logger.error('[SERVER] Ошибка: model отсутствует');
@@ -2890,7 +2890,7 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
         }
       });
     }
-    
+
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       logger.error('[SERVER] Ошибка: messages отсутствуют или пусты');
       return res.status(400).json({
@@ -2902,13 +2902,13 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
         }
       });
     }
-    
+
     // Извлекаем system prompt и формируем inputText из истории
     // ВАЖНО: не добавляем дефолтный system prompt - некоторые модели его не поддерживают
     let systemPrompt = null;  // null = не был передан
     let hasExplicitSystemPrompt = false;
     let conversationHistory = [];
-    
+
     for (const msg of messages) {
       if (msg.role === 'system') {
         systemPrompt = msg.content;
@@ -2917,10 +2917,10 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
         conversationHistory.push(msg);
       }
     }
-    
+
     logger.info('[SERVER] System prompt length:', systemPrompt?.length || 0, hasExplicitSystemPrompt ? '(explicit)' : '(none)');
     logger.info('[SERVER] Conversation history length:', conversationHistory.length);
-    
+
     // Формируем inputText: склеиваем историю, последний user message - основной вопрос
     let inputText = '';
     if (conversationHistory.length === 0) {
@@ -2934,10 +2934,10 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
         }
       });
     }
-    
+
     // Если есть история диалога (больше одного сообщения), склеиваем
     if (conversationHistory.length > 1) {
-      const historyParts = conversationHistory.slice(0, -1).map(msg => 
+      const historyParts = conversationHistory.slice(0, -1).map(msg =>
         `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}`
       );
       const lastUserMsg = conversationHistory[conversationHistory.length - 1];
@@ -2945,27 +2945,27 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
     } else {
       inputText = conversationHistory[0].content;
     }
-    
+
     logger.info('[SERVER] Input text length:', inputText.length);
     logger.info(`[SERVER] 🔗 OpenAI-compat: Запрос к модели ${model}`);
-    
+
     // Разрешаем имя модели через существующую логику
     const resolved = await resolveModelName(model, null);
     const resolvedModel = resolved.model;
     let selectedProvider = resolved.provider;
-    
+
     logger.info('[SERVER] Resolved model:', resolvedModel);
     logger.info('[SERVER] Resolved provider:', selectedProvider);
-    
+
     // Получаем данные модели для определения провайдера
     // Используем modelData из resolveModelName, если он есть (для моделей найденных по user_type)
     const modelData = resolved.modelData || await getModelByName(resolvedModel);
     if (!selectedProvider) {
       selectedProvider = modelData?.provider || 'openroute';
     }
-    
+
     logger.info(`[SERVER] 🔗 OpenAI-compat: Провайдер ${selectedProvider}, модель ${resolvedModel}`);
-    
+
     // Проверяем доступность провайдера
     if (selectedProvider === 'groq' && !groqService) {
       logger.error('[SERVER] GROQ сервис не настроен');
@@ -2977,7 +2977,7 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
         }
       });
     }
-    
+
     if (selectedProvider === 'openroute' && !config.openRouterKey) {
       logger.error('[SERVER] OpenRouter API ключ не настроен');
       return res.status(503).json({
@@ -2988,7 +2988,7 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
         }
       });
     }
-    
+
     if (selectedProvider === 'gigachat' && !gigachatService) {
       logger.error('[SERVER] GigaChat сервис не настроен');
       return res.status(503).json({
@@ -2999,7 +2999,7 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
         }
       });
     }
-    
+
     // Формируем messages для провайдеров
     // Добавляем system только если был явно передан (некоторые модели не поддерживают system role)
     const providerMessages = [];
@@ -3007,17 +3007,17 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
       providerMessages.push({ role: 'system', content: systemPrompt });
     }
     providerMessages.push({ role: 'user', content: inputText });
-    
+
     const finalTemperature = temperature !== undefined ? temperature : 0.7;
     // Получаем context модели для безопасного ограничения maxTokens
     const modelContext = modelData?.context || null;
     const finalMaxTokens = getSafeMaxTokens(max_tokens, modelContext);
-    
+
     logger.info('[SERVER] Final parameters:', {
       temperature: finalTemperature,
       maxTokens: finalMaxTokens
     });
-    
+
     // ═══════════════════════════════════════════════════════════════════
     // STREAMING MODE
     // ═══════════════════════════════════════════════════════════════════
@@ -3025,24 +3025,24 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
       logger.info('[SERVER] Режим: STREAMING');
       const streamId = generateChatCompletionId();
       const streamCreated = Math.floor(Date.now() / 1000);
-      
+
       // Устанавливаем SSE заголовки
       res.setHeader('Content-Type', 'text/event-stream');
       res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Connection', 'keep-alive');
       res.setHeader('X-Accel-Buffering', 'no'); // Отключаем буферизацию nginx
-      
+
       logger.info(`[SERVER] 🔗 OpenAI-compat STREAM: Начинаем стриминг от ${selectedProvider}`);
-      
+
       // Переменная для накопления контента из стрима
       let streamedContent = '';
       let streamUsage = null;
-      
+
       try {
         // Отправляем первый чанк с ролью
         logger.info('[SERVER] Отправка первого чанка с ролью assistant');
         sendSSEChunk(res, createStreamChunk(streamId, resolvedModel, { role: 'assistant' }, null));
-        
+
         if (selectedProvider === 'groq') {
           logger.info('[SERVER] Отправка запроса в GROQ (streaming)...');
           // GROQ SDK поддерживает streaming нативно
@@ -3059,10 +3059,10 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
           } catch (groqInitError) {
             // Ошибка при создании стрима (например, 403)
             logger.error('[SERVER] ❌ Ошибка при создании GROQ stream:', groqInitError);
-            
+
             let errorMessage = 'GROQ API Error: ' + (groqInitError.message || groqInitError.toString());
             let errorDetails = null;
-            
+
             if (groqInitError.response) {
               errorMessage = `GROQ API Error: ${groqInitError.response.status} ${JSON.stringify(groqInitError.response.data)}`;
               errorDetails = groqInitError.response.data;
@@ -3070,7 +3070,7 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
               errorMessage = `GROQ API Error: ${groqInitError.message}`;
               errorDetails = { message: groqInitError.message, stack: groqInitError.stack };
             }
-            
+
             // Сохраняем ошибку в историю
             try {
               logger.info('[SERVER] Попытка сохранить ошибку GROQ (при создании стрима) в историю...');
@@ -3098,26 +3098,26 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
             } catch (saveError) {
               logger.error('[SERVER] ❌ Ошибка сохранения ошибки GROQ (при создании стрима) в историю:', saveError);
             }
-            
+
             // Отправляем ошибку клиенту
             sendSSEChunk(res, { error: { message: errorMessage } });
             endSSEStream(res);
             return;
           }
-          
+
           let chunkIndex = 0;
-          
+
           try {
             // Итерируем по async iterable от GROQ SDK
             for await (const chunk of streamResponse) {
               chunkIndex++;
-              
+
               // Проверяем наличие ошибки в чанке
               if (chunk.error) {
                 logger.error('[SERVER] ❌ Ошибка в GROQ chunk:', chunk.error);
-                const errorMessage = typeof chunk.error === 'string' ? chunk.error : 
-                                    (chunk.error.message || JSON.stringify(chunk.error));
-                
+                const errorMessage = typeof chunk.error === 'string' ? chunk.error :
+                  (chunk.error.message || JSON.stringify(chunk.error));
+
                 // Сохраняем ошибку в историю
                 try {
                   const responseData = await readResponses();
@@ -3144,36 +3144,36 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
                 } catch (saveError) {
                   logger.error('[SERVER] ❌ Ошибка сохранения ошибки GROQ в историю:', saveError);
                 }
-                
+
                 // Отправляем ошибку клиенту
                 sendSSEChunk(res, { error: { message: `GROQ API Error: ${errorMessage}` } });
                 endSSEStream(res);
                 return;
               }
-              
+
               const content = chunk.choices?.[0]?.delta?.content;
               const finishReason = chunk.choices?.[0]?.finish_reason;
-              
+
               if (content) {
                 streamedContent += content;
                 sendSSEChunk(res, createStreamChunk(streamId, resolvedModel, { content }, null));
-                
+
                 if (chunkIndex <= 3 || chunkIndex % 20 === 0) {
                   logger.info(`[SERVER] GROQ chunk #${chunkIndex}, content length: ${content.length}, total: ${streamedContent.length}`);
                 }
               }
-              
+
               // Сохраняем usage из последнего чанка, если есть
               if (chunk.usage) {
                 streamUsage = chunk.usage;
               }
-              
+
               if (finishReason) {
                 logger.info('[SERVER] GROQ finish reason:', finishReason);
                 sendSSEChunk(res, createStreamChunk(streamId, resolvedModel, {}, finishReason));
               }
             }
-            
+
             logger.info(`[SERVER] GROQ streaming завершен. Всего чанков: ${chunkIndex}, итоговый контент: ${streamedContent.length} символов`);
           } catch (groqError) {
             // Обработка ошибки от GROQ (например, 403)
@@ -3181,24 +3181,24 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
             logger.error('[SERVER] GROQ error type:', typeof groqError);
             logger.error('[SERVER] GROQ error message:', groqError.message);
             logger.error('[SERVER] GROQ error response:', groqError.response);
-            
+
             let errorMessage = 'GROQ API Error: ' + (groqError.message || groqError.toString());
             let errorDetails = null;
-            
+
             if (groqError.response) {
               logger.error('[SERVER] GROQ error response status:', groqError.response.status);
               logger.error('[SERVER] GROQ error response data:', JSON.stringify(groqError.response.data, null, 2));
               errorMessage = `GROQ API Error: ${groqError.response.status} ${JSON.stringify(groqError.response.data)}`;
               errorDetails = groqError.response.data;
             } else {
-              errorDetails = { 
-                message: groqError.message, 
+              errorDetails = {
+                message: groqError.message,
                 stack: groqError.stack,
                 name: groqError.name,
                 toString: groqError.toString()
               };
             }
-            
+
             // Сохраняем ошибку в историю
             try {
               logger.info('[SERVER] Попытка сохранить ошибку GROQ (при обработке стрима) в историю...');
@@ -3206,7 +3206,7 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
               logger.info('[SERVER] selectedProvider:', selectedProvider);
               logger.info('[SERVER] systemPrompt length:', systemPrompt?.length || 0);
               logger.info('[SERVER] inputText length:', inputText?.length || 0);
-              
+
               const responseData = await readResponses();
               const newResponse = {
                 id: Date.now().toString(),
@@ -3225,9 +3225,9 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
                 autoSaved: true,
                 errorDetails: errorDetails
               };
-              
+
               logger.info('[SERVER] Новый response для сохранения:', JSON.stringify(newResponse, null, 2).substring(0, 500));
-              
+
               responseData.responses.push(newResponse);
               await writeResponses(responseData);
               logger.info(`[SERVER] 💾 Ошибка GROQ (при обработке стрима) сохранена в историю: ${newResponse.id}`);
@@ -3236,13 +3236,13 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
               logger.error('[SERVER] ❌ Ошибка сохранения ошибки GROQ в историю:', saveError);
               logger.error('[SERVER] Save error stack:', saveError.stack);
             }
-            
+
             // Отправляем ошибку клиенту
             sendSSEChunk(res, { error: { message: errorMessage } });
             endSSEStream(res);
             return;
           }
-          
+
         } else if (selectedProvider === 'openroute') {
           logger.info('[SERVER] Отправка запроса в OpenRouter (streaming)...');
           // OpenRouter streaming через axios
@@ -3259,16 +3259,16 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
             },
             responseType: 'stream'
           });
-          
+
           // Обрабатываем SSE от OpenRouter
           let buffer = '';
           let chunkIndex = 0;
-          
+
           streamResponse.data.on('data', (chunk) => {
             buffer += chunk.toString();
             const lines = buffer.split('\n');
             buffer = lines.pop() || ''; // Сохраняем неполную строку
-            
+
             for (const line of lines) {
               const trimmed = line.trim();
               if (trimmed.startsWith('data: ')) {
@@ -3279,12 +3279,12 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
                 }
                 try {
                   const parsed = JSON.parse(data);
-                  
+
                   // Проверяем наличие ошибки в чанке
                   if (parsed.error) {
                     logger.error('[SERVER] ❌ Ошибка в OpenRouter chunk:', parsed.error);
                     const errorMessage = parsed.error.message || JSON.stringify(parsed.error);
-                    
+
                     // Сохраняем ошибку в историю
                     (async () => {
                       try {
@@ -3313,31 +3313,31 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
                         logger.error('[SERVER] ❌ Ошибка сохранения ошибки OpenRouter в историю:', saveError);
                       }
                     })();
-                    
+
                     // Отправляем ошибку клиенту
                     sendSSEChunk(res, { error: { message: `OpenRouter API Error: ${errorMessage}` } });
                     endSSEStream(res);
                     return;
                   }
-                  
+
                   const content = parsed.choices?.[0]?.delta?.content;
                   const finishReason = parsed.choices?.[0]?.finish_reason;
-                  
+
                   if (content) {
                     chunkIndex++;
                     streamedContent += content;
                     sendSSEChunk(res, createStreamChunk(streamId, resolvedModel, { content }, null));
-                    
+
                     if (chunkIndex <= 3 || chunkIndex % 20 === 0) {
                       logger.info(`[SERVER] OpenRouter chunk #${chunkIndex}, content length: ${content.length}, total: ${streamedContent.length}`);
                     }
                   }
-                  
+
                   // Сохраняем usage из последнего чанка, если есть
                   if (parsed.usage) {
                     streamUsage = parsed.usage;
                   }
-                  
+
                   if (finishReason) {
                     logger.info('[SERVER] OpenRouter finish reason:', finishReason);
                     sendSSEChunk(res, createStreamChunk(streamId, resolvedModel, {}, finishReason));
@@ -3348,7 +3348,7 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
               }
             }
           });
-          
+
           await new Promise((resolve, reject) => {
             streamResponse.data.on('end', () => {
               logger.info(`[SERVER] OpenRouter streaming завершен. Всего чанков: ${chunkIndex}, итоговый контент: ${streamedContent.length} символов`);
@@ -3356,7 +3356,7 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
             });
             streamResponse.data.on('error', async (error) => {
               logger.error('[SERVER] OpenRouter stream error:', error);
-              
+
               // Сохраняем ошибку в историю
               try {
                 const responseData = await readResponses();
@@ -3383,18 +3383,18 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
               } catch (saveError) {
                 logger.error('[SERVER] ❌ Ошибка сохранения ошибки OpenRouter stream в историю:', saveError);
               }
-              
+
               // Отправляем ошибку клиенту
               sendSSEChunk(res, { error: { message: `OpenRouter stream error: ${error.message || error.toString()}` } });
               endSSEStream(res);
-              
+
               reject(error);
             });
           }).catch(async (error) => {
             // Дополнительная обработка ошибок от Promise
             if (error.response) {
               const errorMessage = `OpenRouter API Error: ${error.response.status} ${JSON.stringify(error.response.data)}`;
-              
+
               // Сохраняем ошибку в историю
               try {
                 const responseData = await readResponses();
@@ -3421,20 +3421,20 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
               } catch (saveError) {
                 logger.error('[SERVER] ❌ Ошибка сохранения ошибки OpenRouter в историю:', saveError);
               }
-              
+
               sendSSEChunk(res, { error: { message: errorMessage } });
               endSSEStream(res);
             }
             throw error;
           });
-          
+
         } else {
           // Для провайдеров без поддержки streaming - эмулируем через обычный запрос
           logger.info(`[SERVER] ⚠️ OpenAI-compat: Провайдер ${selectedProvider} не поддерживает streaming, эмулируем`);
-          
+
           let fullContent = '';
           let fullUsage = null;
-          
+
           if (selectedProvider === 'direct') {
             if (!modelData) {
               throw new Error(`Model ${model} not found`);
@@ -3447,12 +3447,12 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
                 throw new Error(`Environment variable ${envVar} not found for direct provider`);
               }
             }
-            
+
             const baseUrl = modelData.base_url;
             if (!baseUrl) {
               throw new Error('Base URL not configured for direct provider');
             }
-            
+
             const directService = new DirectService(apiKey, baseUrl);
             const directResponse = await directService.sendRequest({
               model: resolvedModel,
@@ -3462,7 +3462,7 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
             });
             fullContent = directResponse.content;
             fullUsage = directResponse.usage;
-            
+
           } else if (selectedProvider === 'gigachat') {
             const gcResponse = await gigachatService.sendRequest({
               model: resolvedModel,
@@ -3473,10 +3473,10 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
             fullContent = gcResponse.content;
             fullUsage = gcResponse.usage;
           }
-          
+
           streamedContent = fullContent;
           streamUsage = fullUsage;
-          
+
           // Эмулируем streaming - отправляем контент чанками по ~20 символов
           const chunkSize = 20;
           for (let i = 0; i < fullContent.length; i += chunkSize) {
@@ -3485,11 +3485,11 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
             // Небольшая задержка для эмуляции стриминга
             await new Promise(r => setTimeout(r, 10));
           }
-          
+
           // Финальный чанк
           sendSSEChunk(res, createStreamChunk(streamId, resolvedModel, {}, 'stop'));
         }
-        
+
         // Сохраняем ответ в историю перед завершением стрима
         logger.info('[SERVER] Итоговый streamedContent length:', streamedContent.length);
         try {
@@ -3518,33 +3518,33 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
         } catch (error) {
           logger.error('[SERVER] ❌ OpenAI-compat STREAM: Ошибка сохранения в историю:', error);
         }
-        
+
         // Завершаем стрим
         logger.info('[SERVER] Завершение SSE стрима...');
         endSSEStream(res);
         logger.info(`[SERVER] ✅ OpenAI-compat STREAM: Стриминг завершён`);
         logger.info('[SERVER] ========================================');
         return;
-        
+
       } catch (streamError) {
         logger.error('[SERVER] ========================================');
         logger.error('[SERVER] ❌ ОШИБКА в OpenAI-compat STREAM');
         logger.error('[SERVER] Error name:', streamError.name);
         logger.error('[SERVER] Error message:', streamError.message);
         logger.error('[SERVER] ❌ OpenAI-compat STREAM error:', streamError);
-        
+
         if (streamError.stack) {
           logger.error('[SERVER] Error stack:', streamError.stack.substring(0, 500));
         }
-        
+
         let streamErrorMessage = 'Stream error';
         let streamErrorDetails = null;
-        
+
         if (streamError.response) {
           logger.error('[SERVER] Ошибка API ответа в streaming');
           logger.error('[SERVER] Response status:', streamError.response.status);
           logger.error('[SERVER] Response data:', JSON.stringify(streamError.response.data, null, 2).substring(0, 500));
-          
+
           const apiError = streamError.response.data?.error;
           if (apiError && typeof apiError === 'object' && apiError.message) {
             streamErrorMessage = apiError.message;
@@ -3563,7 +3563,7 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
           streamErrorMessage = streamError.message;
           streamErrorDetails = { stack: streamError.stack };
         }
-        
+
         // Сохраняем ошибку в историю
         try {
           logger.info('[SERVER] Попытка сохранить ошибку (внешний catch) в историю...');
@@ -3572,7 +3572,7 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
           logger.info('[SERVER] systemPrompt:', systemPrompt ? systemPrompt.substring(0, 100) : 'null/undefined');
           logger.info('[SERVER] inputText:', typeof inputText !== 'undefined' ? inputText.substring(0, 100) : 'undefined');
           logger.info('[SERVER] streamErrorMessage:', streamErrorMessage);
-          
+
           const responseData = await readResponses();
           const newResponse = {
             id: Date.now().toString(),
@@ -3591,9 +3591,9 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
             autoSaved: true,
             errorDetails: streamErrorDetails
           };
-          
+
           logger.info('[SERVER] Новый response для сохранения (внешний catch):', JSON.stringify(newResponse, null, 2).substring(0, 500));
-          
+
           responseData.responses.push(newResponse);
           await writeResponses(responseData);
           logger.info(`[SERVER] 💾 OpenAI-compat STREAM: Ошибка сохранена в историю: ${newResponse.id}`);
@@ -3602,7 +3602,7 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
           logger.error('[SERVER] ❌ OpenAI-compat STREAM: Ошибка сохранения ошибки в историю:', saveError);
           logger.error('[SERVER] Save error stack:', saveError.stack);
         }
-        
+
         // Если стрим уже начался, отправляем ошибку в SSE формате
         if (res.headersSent) {
           logger.error('[SERVER] Стрим уже начат, отправляем ошибку в SSE формате');
@@ -3622,13 +3622,13 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
         return;
       }
     }
-    
+
     // ═══════════════════════════════════════════════════════════════════
     // NON-STREAMING MODE (обычный режим)
     // ═══════════════════════════════════════════════════════════════════
     logger.info('[SERVER] Режим: NON-STREAMING');
     let response;
-    
+
     // Отправляем запрос в зависимости от провайдера
     if (selectedProvider === 'groq') {
       logger.info('[SERVER] Отправка запроса в GROQ (non-streaming)...');
@@ -3638,15 +3638,15 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
         temperature: finalTemperature,
         maxTokens: finalMaxTokens
       });
-      
+
       logger.info('[SERVER] Ответ от GROQ получен, длина контента:', groqResponse.content?.length || 0);
-      
+
       response = {
         content: groqResponse.content,
         model: groqResponse.model,
         usage: groqResponse.usage
       };
-      
+
     } else if (selectedProvider === 'openroute') {
       logger.info('[SERVER] Отправка запроса в OpenRouter (non-streaming)...');
       const orResponse = await openRouterService.sendRequest({
@@ -3655,15 +3655,15 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
         temperature: finalTemperature,
         maxTokens: finalMaxTokens
       });
-      
+
       logger.info('[SERVER] Ответ от OpenRouter получен, длина контента:', orResponse.data.choices[0].message.content?.length || 0);
-      
+
       response = {
         content: orResponse.data.choices[0].message.content,
         model: orResponse.data.model,
         usage: orResponse.data.usage
       };
-      
+
     } else if (selectedProvider === 'direct') {
       logger.info('[SERVER] Отправка запроса через Direct провайдер (non-streaming)...');
       if (!modelData) {
@@ -3675,7 +3675,7 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
           }
         });
       }
-      
+
       let apiKey = modelData.api_key;
       if (typeof apiKey === 'string' && apiKey.startsWith('env:')) {
         const envVar = apiKey.slice(4);
@@ -3690,7 +3690,7 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
           });
         }
       }
-      
+
       const baseUrl = modelData.base_url;
       if (!baseUrl) {
         return res.status(503).json({
@@ -3701,7 +3701,7 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
           }
         });
       }
-      
+
       const directService = new DirectService(apiKey, baseUrl);
       const directResponse = await directService.sendRequest({
         model: resolvedModel,
@@ -3709,15 +3709,15 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
         temperature: finalTemperature,
         maxTokens: finalMaxTokens
       });
-      
+
       logger.info('[SERVER] Ответ от Direct провайдера получен, длина контента:', directResponse.content?.length || 0);
-      
+
       response = {
         content: directResponse.content,
         model: directResponse.model,
         usage: directResponse.usage
       };
-      
+
     } else if (selectedProvider === 'gigachat') {
       logger.info('[SERVER] Отправка запроса в GigaChat (non-streaming)...');
       const gcResponse = await gigachatService.sendRequest({
@@ -3726,15 +3726,15 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
         temperature: finalTemperature,
         maxTokens: finalMaxTokens
       });
-      
+
       logger.info('[SERVER] Ответ от GigaChat получен, длина контента:', gcResponse.content?.length || 0);
-      
+
       response = {
         content: gcResponse.content,
         model: gcResponse.model,
         usage: gcResponse.usage
       };
-      
+
     } else {
       logger.error('[SERVER] Неизвестный провайдер:', selectedProvider);
       return res.status(400).json({
@@ -3745,10 +3745,10 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
         }
       });
     }
-    
+
     logger.info('[SERVER] Формируем OpenAI-совместимый ответ...');
     logger.info('[SERVER] Response content length:', response.content?.length || 0);
-    
+
     // Формируем OpenAI-совместимый ответ
     const openaiResponse = {
       id: generateChatCompletionId(),
@@ -3771,60 +3771,60 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
         total_tokens: response.usage?.total_tokens || 0
       }
     };
-    
-      logger.info(`[SERVER] ✅ OpenAI-compat: Ответ сформирован, ${openaiResponse.usage.total_tokens} токенов`);
-      
-      // Всегда сохраняем ответ в историю
-      try {
-        logger.info('[SERVER] Попытка сохранить non-streaming ответ в историю...');
-        const responseData = await readResponses();
-        const tokens = buildTokensInfo({
-          usage: response.usage,
-          promptText: systemPrompt,
-          inputTextUsed: inputText,
-          modelResponse: response.content
-        });
-        const newResponse = {
-          id: Date.now().toString(),
-          timestamp: new Date().toISOString(),
-          model: resolvedModel,
-          provider: selectedProvider,
-          prompt: systemPrompt,
-          inputText: inputText,
-          response: response.content,
-          tokens,
-          autoSaved: true
-        };
-        responseData.responses.push(newResponse);
-        await writeResponses(responseData);
-        logger.info(`[SERVER] 💾 OpenAI-compat: Ответ автоматически сохранен в историю: ${newResponse.id}`);
-      } catch (error) {
-        logger.error('[SERVER] ❌ OpenAI-compat: Ошибка сохранения в историю:', error);
-      }
-      
-      logger.info('[SERVER] Отправка non-streaming ответа клиенту...');
-      logger.info('[SERVER] Response keys:', Object.keys(openaiResponse));
-      logger.info('[SERVER] ========================================');
-      
-      return res.json(openaiResponse);
-      
+
+    logger.info(`[SERVER] ✅ OpenAI-compat: Ответ сформирован, ${openaiResponse.usage.total_tokens} токенов`);
+
+    // Всегда сохраняем ответ в историю
+    try {
+      logger.info('[SERVER] Попытка сохранить non-streaming ответ в историю...');
+      const responseData = await readResponses();
+      const tokens = buildTokensInfo({
+        usage: response.usage,
+        promptText: systemPrompt,
+        inputTextUsed: inputText,
+        modelResponse: response.content
+      });
+      const newResponse = {
+        id: Date.now().toString(),
+        timestamp: new Date().toISOString(),
+        model: resolvedModel,
+        provider: selectedProvider,
+        prompt: systemPrompt,
+        inputText: inputText,
+        response: response.content,
+        tokens,
+        autoSaved: true
+      };
+      responseData.responses.push(newResponse);
+      await writeResponses(responseData);
+      logger.info(`[SERVER] 💾 OpenAI-compat: Ответ автоматически сохранен в историю: ${newResponse.id}`);
     } catch (error) {
-      logger.error('[SERVER] ========================================');
-      logger.error('[SERVER] ❌ ОШИБКА в /v1/chat/completions (общий catch)');
-      logger.error('[SERVER] Error name:', error.name);
-      logger.error('[SERVER] Error message:', error.message);
-      logger.error('[SERVER] ❌ OpenAI-compat error:', error);
-    
+      logger.error('[SERVER] ❌ OpenAI-compat: Ошибка сохранения в историю:', error);
+    }
+
+    logger.info('[SERVER] Отправка non-streaming ответа клиенту...');
+    logger.info('[SERVER] Response keys:', Object.keys(openaiResponse));
+    logger.info('[SERVER] ========================================');
+
+    return res.json(openaiResponse);
+
+  } catch (error) {
+    logger.error('[SERVER] ========================================');
+    logger.error('[SERVER] ❌ ОШИБКА в /v1/chat/completions (общий catch)');
+    logger.error('[SERVER] Error name:', error.name);
+    logger.error('[SERVER] Error message:', error.message);
+    logger.error('[SERVER] ❌ OpenAI-compat error:', error);
+
     let statusCode = 500;
     let errorMessage = 'Internal server error';
     let errorType = 'server_error';
     let errorDetails = null;
-    
+
     if (error.response) {
       logger.error('[SERVER] Ошибка API ответа');
       logger.error('[SERVER] Response status:', error.response.status);
       logger.error('[SERVER] Response data:', JSON.stringify(error.response.data, null, 2).substring(0, 500));
-      
+
       statusCode = error.response.status || 500;
       const apiError = error.response.data?.error;
       if (apiError && typeof apiError === 'object' && apiError.message) {
@@ -3848,7 +3848,7 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
       errorMessage = error.message;
       errorDetails = { stack: error.stack };
     }
-    
+
     // Сохраняем ошибку в историю
     try {
       logger.info('[SERVER] Попытка сохранить ошибку в историю...');
@@ -3858,7 +3858,7 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
       let errorProvider = 'unknown';
       let errorSystemPrompt = 'You are a helpful assistant.';
       let errorInputText = '';
-      
+
       // Если переменные были определены до ошибки, используем их
       if (typeof resolvedModel !== 'undefined') {
         errorModel = resolvedModel;
@@ -3872,7 +3872,7 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
       if (typeof inputText !== 'undefined') {
         errorInputText = inputText;
       }
-      
+
       const newResponse = {
         id: Date.now().toString(),
         timestamp: new Date().toISOString(),
@@ -3890,18 +3890,18 @@ app.post('/v1/chat/completions', openaiAuthMiddleware, async (req, res) => {
         autoSaved: true,
         errorDetails: errorDetails
       };
-      
+
       responseData.responses.push(newResponse);
       await writeResponses(responseData);
       logger.info(`[SERVER] 💾 OpenAI-compat: Ошибка сохранена в историю: ${newResponse.id}`);
     } catch (saveError) {
       logger.error('[SERVER] ❌ OpenAI-compat: Ошибка сохранения ошибки в историю:', saveError);
     }
-    
+
     logger.error('[SERVER] Отправка ответа с ошибкой клиенту');
     logger.error('[SERVER] Status code:', statusCode);
     logger.error('[SERVER] ========================================');
-    
+
     return res.status(statusCode).json({
       error: {
         message: errorMessage,
@@ -3917,19 +3917,19 @@ app.get('/v1/models', openaiAuthMiddleware, async (req, res) => {
   try {
     const models = await loadModels();
     const enabledModels = models.filter(m => m.enabled);
-    
+
     const openaiModels = enabledModels.map(m => ({
       id: m.name,
       object: 'model',
       created: m.added_at ? Math.floor(new Date(m.added_at).getTime() / 1000) : Math.floor(Date.now() / 1000),
       owned_by: m.provider || 'unknown'
     }));
-    
+
     return res.json({
       object: 'list',
       data: openaiModels
     });
-    
+
   } catch (error) {
     logger.error('❌ OpenAI-compat /v1/models error:', error);
     return res.status(500).json({
@@ -3957,7 +3957,7 @@ const PORT = process.env.PORT || config.port;
 const server = app.listen(PORT, async () => {
   logger.info(`Сервер запущен на порту ${PORT}`);
   logger.info(`Откройте http://localhost:${PORT} в вашем браузере`);
-  
+
   // Валидация моделей с user_type при старте
   await validateUserTypeModelsOnStartup();
 });
