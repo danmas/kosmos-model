@@ -1,10 +1,10 @@
 body {
-  font-family: Arial, sans-serif;
+  font-family: 'Inter', sans-serif;
   margin: 0;
   padding: 0;
-  background-color: #1a1a1a;
-  color: #e0e0e0;
-  font-size: 14px; /* Уменьшенный базовый размер шрифта */
+  background-color: var(--bg-main);
+  color: var(--text-primary);
+  font-size: 14px;
 }
 
 .container {
@@ -17,10 +17,12 @@ body {
 }
 
 .card {
-  background-color: #2d2d2d;
-  padding: 10px;
-  border-radius: 4px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  background-color: var(--bg-card);
+  backdrop-filter: var(--glass-blur);
+  padding: 15px;
+  border-radius: 12px;
+  border: 1px solid var(--border-main);
+  box-shadow: var(--panel-shadow);
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -28,7 +30,8 @@ body {
 
 h2 {
   margin: 5px 0 10px;
-  font-size: 18px; /* Уменьшенный размер заголовка */
+  font-size: 18px;
+  /* Уменьшенный размер заголовка */
 }
 
 /* Стили для навигационной панели */
@@ -36,9 +39,9 @@ h2 {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 5px;
-  padding-bottom: 5px;
-  border-bottom: 1px solid #404040;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-main);
 }
 
 .nav-links {
@@ -47,18 +50,19 @@ h2 {
 }
 
 .nav-link {
-  color: #4a9eff;
+  color: var(--accent-blue);
   text-decoration: none;
-  padding: 6px 12px;
-  border-radius: 4px;
+  padding: 8px 16px;
+  border-radius: 8px;
   font-size: 12px;
   transition: all 0.3s ease;
-  border: 1px solid transparent;
+  border: 1px solid var(--border-main);
+  background: var(--bg-header);
 }
 
 .nav-link:hover {
-  background-color: #404040;
-  border-color: #4a9eff;
+  background-color: var(--bg-card-hover);
+  border-color: var(--accent-blue);
   text-decoration: none;
 }
 
@@ -75,7 +79,8 @@ h2 {
   margin-bottom: 2px;
   font-weight: bold;
   color: #b8b8b8;
-  font-size: 12px; /* Уменьшенный размер текста меток */
+  font-size: 12px;
+  /* Уменьшенный размер текста меток */
 }
 
 .api-mode-controls {
@@ -92,12 +97,12 @@ h2 {
 .form-group textarea,
 .form-group select {
   width: 100%;
-  padding: 8px;
-  border: 1px solid #404040;
-  border-radius: 4px;
-  background-color: #363636;
-  color: #e0e0e0;
-  font-family: monospace;
+  padding: 10px;
+  border: 1px solid var(--border-main);
+  border-radius: 8px;
+  background-color: var(--bg-input);
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', monospace;
 }
 
 .form-group textarea {
@@ -114,14 +119,21 @@ h2 {
 }
 
 button {
-  background-color: #4d7c4d;
-  color: white;
-  padding: 5px 10px;
+  background-color: var(--accent-blue);
+  color: #000;
+  font-weight: 600;
+  padding: 8px 16px;
   border: none;
-  border-radius: 3px;
+  border-radius: 8px;
   cursor: pointer;
   font-size: 12px;
   margin-right: 5px;
+  transition: all 0.3s;
+}
+
+button:hover {
+  filter: brightness(1.2);
+  transform: translateY(-1px);
 }
 
 button:disabled {
@@ -385,7 +397,8 @@ button:disabled {
   min-height: 200px;
   max-width: 95vw;
   max-height: 95vh;
-  overflow: hidden; /* Prevents scrollbars when resizing */
+  overflow: hidden;
+  /* Prevents scrollbars when resizing */
 }
 
 .modal-content {
@@ -397,7 +410,8 @@ button:disabled {
 .history-modal-body {
   display: flex;
   flex-direction: column;
-  height: calc(100% - 80px); /* учитываем высоту header и footer */
+  height: calc(100% - 80px);
+  /* учитываем высоту header и footer */
   padding: 8px;
   overflow: hidden;
 }
@@ -538,7 +552,8 @@ pre {
   word-break: break-word;
 }
 
-#saveResponseButton, #viewHistoryButton {
+#saveResponseButton,
+#viewHistoryButton {
   background-color: #4d4d7c;
 }
 
@@ -590,11 +605,11 @@ pre {
 }
 
 /* Стили для markdown-контента */
-.markdown-preview h1, 
-.markdown-preview h2, 
-.markdown-preview h3, 
-.markdown-preview h4, 
-.markdown-preview h5, 
+.markdown-preview h1,
+.markdown-preview h2,
+.markdown-preview h3,
+.markdown-preview h4,
+.markdown-preview h5,
 .markdown-preview h6 {
   color: #4d7c4d;
   margin-top: 0.8em;
@@ -653,7 +668,7 @@ pre {
   padding: 0;
 }
 
-.markdown-preview ul, 
+.markdown-preview ul,
 .markdown-preview ol {
   padding-left: 1.5em;
   margin: 0.5em 0;
@@ -718,7 +733,7 @@ pre {
 
 /* Минимизация высоты для контейнера RAG-элементов */
 .form-group.rag-controls {
-  min-height: 0 !important; 
+  min-height: 0 !important;
   margin-bottom: 5px !important;
   padding: 0 !important;
   height: auto !important;

@@ -1,9 +1,13 @@
 <!DOCTYPE html>
 <html lang="ru">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Request History - V2</title>
+    <!-- Centralized Theming -->
+    <link rel="stylesheet" href="themes.css">
+    <script src="js/theme-manager.js"></script>
     <!-- Marked.js for Markdown -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <!-- Highlight.js for code highlighting -->
@@ -13,7 +17,9 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         /* Reset and base */
-        *, *::before, *::after {
+        *,
+        *::before,
+        *::after {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
@@ -21,54 +27,165 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background-color: #0f172a; /* bg-slate-900 */
-            color: #e2e8f0; /* text-slate-200 */
+            background-color: #0f172a;
+            /* bg-slate-900 */
+            color: #e2e8f0;
+            /* text-slate-200 */
             height: 100vh;
             overflow: hidden;
         }
 
         /* Tailwind-like utilities */
-        .font-mono { font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Monaco, Consolas, monospace; }
-        .font-bold { font-weight: 700; }
-        .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .cursor-pointer { cursor: pointer; }
-        .cursor-move { cursor: move; }
-        .select-none { user-select: none; }
-        .transition-colors { transition: background-color 0.15s, color 0.15s, border-color 0.15s; }
-        .transition-transform { transition: transform 0.15s; }
+        .font-mono {
+            font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Monaco, Consolas, monospace;
+        }
+
+        .font-bold {
+            font-weight: 700;
+        }
+
+        .truncate {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .cursor-pointer {
+            cursor: pointer;
+        }
+
+        .cursor-move {
+            cursor: move;
+        }
+
+        .select-none {
+            user-select: none;
+        }
+
+        .transition-colors {
+            transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+        }
+
+        .transition-transform {
+            transition: transform 0.15s;
+        }
 
         /* Color palette */
-        .bg-slate-900 { background-color: #0f172a; }
-        .bg-slate-800 { background-color: #1e293b; }
-        .bg-slate-800\/50 { background-color: rgba(30, 41, 59, 0.5); }
-        .bg-slate-700 { background-color: #334155; }
-        .bg-blue-900\/20 { background-color: rgba(30, 58, 138, 0.2); }
-        .bg-blue-600 { background-color: #2563eb; }
-        .bg-blue-500 { background-color: #3b82f6; }
-        .bg-green-500\/20 { background-color: rgba(34, 197, 94, 0.2); }
-        .bg-red-500\/20 { background-color: rgba(239, 68, 68, 0.2); }
-        .bg-amber-500\/20 { background-color: rgba(245, 158, 11, 0.2); }
-        .bg-purple-500\/20 { background-color: rgba(168, 85, 247, 0.2); }
-        .bg-cyan-500\/20 { background-color: rgba(6, 182, 212, 0.2); }
-        .bg-code { background-color: #0d1117; }
+        .bg-slate-900 {
+            background-color: #0f172a;
+        }
 
-        .text-white { color: #ffffff; }
-        .text-slate-200 { color: #e2e8f0; }
-        .text-slate-300 { color: #cbd5e1; }
-        .text-slate-400 { color: #94a3b8; }
-        .text-slate-500 { color: #64748b; }
-        .text-blue-400 { color: #60a5fa; }
-        .text-green-400 { color: #4ade80; }
-        .text-red-400 { color: #f87171; }
-        .text-amber-400 { color: #fbbf24; }
-        .text-purple-400 { color: #c084fc; }
-        .text-cyan-400 { color: #22d3ee; }
+        .bg-slate-800 {
+            background-color: #1e293b;
+        }
 
-        .border-slate-700 { border-color: #334155; }
-        .border-slate-600 { border-color: #475569; }
-        .border-blue-500 { border-color: #3b82f6; }
-        .border-green-500\/50 { border-color: rgba(34, 197, 94, 0.5); }
-        .border-red-500\/50 { border-color: rgba(239, 68, 68, 0.5); }
+        .bg-slate-800\/50 {
+            background-color: rgba(30, 41, 59, 0.5);
+        }
+
+        .bg-slate-700 {
+            background-color: #334155;
+        }
+
+        .bg-blue-900\/20 {
+            background-color: rgba(30, 58, 138, 0.2);
+        }
+
+        .bg-blue-600 {
+            background-color: #2563eb;
+        }
+
+        .bg-blue-500 {
+            background-color: #3b82f6;
+        }
+
+        .bg-green-500\/20 {
+            background-color: rgba(34, 197, 94, 0.2);
+        }
+
+        .bg-red-500\/20 {
+            background-color: rgba(239, 68, 68, 0.2);
+        }
+
+        .bg-amber-500\/20 {
+            background-color: rgba(245, 158, 11, 0.2);
+        }
+
+        .bg-purple-500\/20 {
+            background-color: rgba(168, 85, 247, 0.2);
+        }
+
+        .bg-cyan-500\/20 {
+            background-color: rgba(6, 182, 212, 0.2);
+        }
+
+        .bg-code {
+            background-color: #0d1117;
+        }
+
+        .text-white {
+            color: #ffffff;
+        }
+
+        .text-slate-200 {
+            color: #e2e8f0;
+        }
+
+        .text-slate-300 {
+            color: #cbd5e1;
+        }
+
+        .text-slate-400 {
+            color: #94a3b8;
+        }
+
+        .text-slate-500 {
+            color: #64748b;
+        }
+
+        .text-blue-400 {
+            color: #60a5fa;
+        }
+
+        .text-green-400 {
+            color: #4ade80;
+        }
+
+        .text-red-400 {
+            color: #f87171;
+        }
+
+        .text-amber-400 {
+            color: #fbbf24;
+        }
+
+        .text-purple-400 {
+            color: #c084fc;
+        }
+
+        .text-cyan-400 {
+            color: #22d3ee;
+        }
+
+        .border-slate-700 {
+            border-color: #334155;
+        }
+
+        .border-slate-600 {
+            border-color: #475569;
+        }
+
+        .border-blue-500 {
+            border-color: #3b82f6;
+        }
+
+        .border-green-500\/50 {
+            border-color: rgba(34, 197, 94, 0.5);
+        }
+
+        .border-red-500\/50 {
+            border-color: rgba(239, 68, 68, 0.5);
+        }
 
         /* Main layout */
         .app-container {
@@ -624,7 +741,8 @@
             margin-bottom: 4px;
         }
 
-        .form-input, .form-select {
+        .form-input,
+        .form-select {
             width: 100%;
             background-color: #0f172a;
             border: 1px solid #475569;
@@ -636,7 +754,8 @@
             transition: border-color 0.15s;
         }
 
-        .form-input:focus, .form-select:focus {
+        .form-input:focus,
+        .form-select:focus {
             border-color: #3b82f6;
         }
 
@@ -745,7 +864,9 @@
             line-height: 1.6;
         }
 
-        .text-modal-markdown h1, .text-modal-markdown h2, .text-modal-markdown h3 {
+        .text-modal-markdown h1,
+        .text-modal-markdown h2,
+        .text-modal-markdown h3 {
             color: #fff;
             margin-top: 1em;
             margin-bottom: 0.5em;
@@ -782,7 +903,9 @@
         }
 
         @keyframes spin {
-            to { transform: rotate(360deg); }
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         /* Stats Grid */
@@ -819,12 +942,35 @@
             font-size: 14px;
         }
 
-        .stats-card-icon.blue { background-color: rgba(59, 130, 246, 0.2); color: #60a5fa; }
-        .stats-card-icon.green { background-color: rgba(34, 197, 94, 0.2); color: #4ade80; }
-        .stats-card-icon.purple { background-color: rgba(168, 85, 247, 0.2); color: #c084fc; }
-        .stats-card-icon.amber { background-color: rgba(245, 158, 11, 0.2); color: #fbbf24; }
-        .stats-card-icon.cyan { background-color: rgba(6, 182, 212, 0.2); color: #22d3ee; }
-        .stats-card-icon.red { background-color: rgba(239, 68, 68, 0.2); color: #f87171; }
+        .stats-card-icon.blue {
+            background-color: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+        }
+
+        .stats-card-icon.green {
+            background-color: rgba(34, 197, 94, 0.2);
+            color: #4ade80;
+        }
+
+        .stats-card-icon.purple {
+            background-color: rgba(168, 85, 247, 0.2);
+            color: #c084fc;
+        }
+
+        .stats-card-icon.amber {
+            background-color: rgba(245, 158, 11, 0.2);
+            color: #fbbf24;
+        }
+
+        .stats-card-icon.cyan {
+            background-color: rgba(6, 182, 212, 0.2);
+            color: #22d3ee;
+        }
+
+        .stats-card-icon.red {
+            background-color: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+        }
 
         .stats-card-title {
             font-size: 12px;
@@ -929,6 +1075,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="app-container">
         <!-- Left Panel -->
@@ -1017,7 +1164,8 @@
 
     <!-- Filter Modal -->
     <div class="modal-overlay" id="filterModalOverlay"></div>
-    <div class="modal-container" id="filterModal" style="display: none; top: 100px; left: calc(50% - 200px); width: 400px; height: auto;">
+    <div class="modal-container" id="filterModal"
+        style="display: none; top: 100px; left: calc(50% - 200px); width: 400px; height: auto;">
         <div class="modal-header" id="filterModalHeader">
             <h3><i class="fas fa-filter"></i> Advanced Filters</h3>
             <div class="modal-header-buttons">
@@ -1072,7 +1220,8 @@
 
     <!-- Text View Modal -->
     <div class="modal-overlay" id="textModalOverlay"></div>
-    <div class="modal-container" id="textModal" style="display: none; top: 50px; left: 100px; width: 700px; height: 500px;">
+    <div class="modal-container" id="textModal"
+        style="display: none; top: 50px; left: 100px; width: 700px; height: 500px;">
         <div class="modal-header" id="textModalHeader">
             <h3 id="textModalTitle"><i class="fas fa-file-alt"></i> View</h3>
             <div class="text-modal-tabs">
@@ -1104,4 +1253,5 @@
 
     <script src="history-v2.js"></script>
 </body>
+
 </html>

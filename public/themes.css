@@ -1,0 +1,169 @@
+/* 🏗 KOSMOS-MODEL Theme Tokens (Professional Version) */
+
+:root {
+    /* Backgrounds */
+    --bg-main: #0b111b;
+    --bg-secondary: #0e1322;
+    --bg-card: #12182b;
+    --bg-header: #0e1322;
+    --bg-input: #000000;
+    --bg-term: #000000;
+    --bg-hover: rgba(255, 255, 255, 0.05);
+    --bg-overlay: rgba(0, 0, 0, 0.8);
+
+    /* Borders */
+    --border-main: #1f2840;
+    --border-light: #223055;
+    --border-focus: #60a5fa;
+
+    /* Text */
+    --text-main: #e6ecff;
+    --text-primary: #e6ecff;
+    /* Alias */
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --text-dim: #475569;
+
+    /* Brand / Accents */
+    --primary: #60a5fa;
+    --primary-dim: rgba(96, 165, 250, 0.1);
+    --accent-blue: #60a5fa;
+    /* Alias */
+    --accent-green: #22c55e;
+    --accent-amber: #f59e0b;
+    --accent-purple: #c084fc;
+    --accent-red: #ef4444;
+
+    /* Status Colors */
+    --success: #22c55e;
+    --warning: #f59e0b;
+    --error: #ef4444;
+    --info: #3b82f6;
+
+    /* Effects */
+    --glass-blur: blur(14px);
+    --panel-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    --tile-gradient: radial-gradient(circle at 50% 50%, #1e293b 0%, #0b111b 100%);
+}
+
+[data-theme="light"] {
+    --bg-main: #f0f2f5;
+    --bg-secondary: #ffffff;
+    --bg-card: #ffffff;
+    --bg-header: #ffffff;
+    --bg-input: #ffffff;
+    --bg-term: #1e1e1e;
+    --bg-hover: rgba(0, 0, 0, 0.05);
+    --bg-overlay: rgba(0, 0, 0, 0.2);
+
+    --border-main: #d1d5db;
+    --border-light: #e5e7eb;
+    --border-focus: #3b82f6;
+
+    --text-main: #1f2937;
+    --text-primary: #1f2937;
+    --text-secondary: #6b7280;
+    --text-muted: #9ca3af;
+    --text-dim: #64748b;
+
+    --primary: #3b82f6;
+    --primary-dim: rgba(59, 130, 246, 0.1);
+    --accent-blue: #3b82f6;
+
+    --tile-gradient: radial-gradient(circle at 50% 50%, #f8fafc 0%, #e2e8f0 100%);
+    --panel-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="cyberpunk"] {
+    --bg-main: #000b1e;
+    --bg-secondary: #051628;
+    --bg-card: #021a35;
+    --bg-input: #000000;
+    --bg-term: #0d0221;
+    --bg-overlay: rgba(0, 11, 30, 0.9);
+
+    --border-main: #00f0ff;
+    --border-light: #00a8aa;
+    --border-focus: #ff003c;
+    --border-accent: #00f0ff;
+
+    --text-main: #00f0ff;
+    --text-primary: #00f0ff;
+    --text-secondary: #00a8aa;
+    --text-muted: #005f60;
+
+    --primary: #ffee00;
+    --primary-dim: rgba(255, 238, 0, 0.1);
+    --accent-blue: #00f0ff;
+    --accent-amber: #ffee00;
+    --accent-purple: #ff003c;
+
+    --success: #00ff9f;
+    --error: #ff003c;
+
+    --tile-gradient: linear-gradient(135deg, #000b1e 0%, #051628 100%);
+    --panel-shadow: 0 0 25px rgba(0, 240, 255, 0.3);
+}
+
+[data-theme="cyber-hud"] {
+    --bg-main: #000508;
+    --bg-secondary: #000a0f;
+    --bg-card: #00111a;
+    --bg-input: #010101;
+    --bg-term: #000000;
+    --bg-overlay: rgba(0, 5, 8, 0.95);
+
+    --border-main: #002a3a;
+    --border-light: #00405a;
+    --border-focus: #00f2ff;
+    --border-accent: #00f2ff;
+
+    --text-main: #00f2ff;
+    --text-primary: #00f2ff;
+    --text-secondary: #00a3b3;
+    --text-muted: #005c66;
+
+    --primary: #00f2ff;
+    --primary-dim: rgba(0, 242, 255, 0.15);
+    --accent-blue: #00f2ff;
+
+    --success: #00ff88;
+    --warning: #ffcc00;
+    --error: #ff2244;
+
+    --tile-gradient: radial-gradient(circle at 50% 50%, #00111a 0%, #000508 100%);
+    --panel-shadow: 0 0 30px rgba(0, 242, 255, 0.1);
+}
+
+/* Global scrollbar theming */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-main);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border-main);
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--primary);
+}
+
+/* Base resets for form elements to ensure readability */
+select,
+option,
+input {
+    background-color: var(--bg-secondary);
+    color: var(--text-main);
+    border-color: var(--border-main);
+}
+
+option {
+    background-color: var(--bg-secondary);
+    color: var(--text-main);
+}
