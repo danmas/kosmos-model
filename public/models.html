@@ -479,6 +479,440 @@
                 grid-template-columns: 1fr 1fr;
             }
         }
+
+        /* Loading & Error */
+        .loading-indicator {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        .error-message {
+            background: rgba(220, 53, 69, 0.2);
+            color: #f44;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(220, 53, 69, 0.3);
+        }
+
+        /* Validation Button */
+        .validation-button {
+            background: linear-gradient(135deg, var(--accent-green) 0%, #20c997 100%);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-width: 100px;
+        }
+
+        .validation-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+        }
+
+        .validation-button.has-errors {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+            animation: pulse-error 2s infinite;
+        }
+
+        @keyframes pulse-error {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.85; }
+        }
+
+        .validation-button .validation-icon {
+            font-size: 1.2em;
+            margin-bottom: 2px;
+        }
+
+        .validation-button .validation-label {
+            font-size: 0.7em;
+            font-weight: 400;
+            opacity: 0.9;
+        }
+
+        .validation-button .validation-status {
+            font-size: 1.1em;
+            font-weight: 700;
+        }
+
+        /* Validation Modal */
+        .validation-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .validation-modal.show {
+            display: flex;
+        }
+
+        .validation-modal-content {
+            background: var(--bg-card);
+            border-radius: 12px;
+            max-width: 550px;
+            width: 90%;
+            max-height: 80vh;
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+            display: flex;
+            flex-direction: column;
+            border: 1px solid var(--border-main);
+        }
+
+        .validation-modal-header {
+            padding: 15px 20px;
+            background: linear-gradient(135deg, var(--accent-purple), #4c1d95);
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .validation-modal-header h3 {
+            margin: 0;
+            font-size: 1.1em;
+        }
+
+        .validation-modal-close {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.2em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .validation-modal-close:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .validation-modal-body {
+            padding: 15px;
+            overflow-y: auto;
+            flex: 1;
+            min-height: 0;
+            color: var(--text-main);
+        }
+
+        .validation-section {
+            margin-bottom: 15px;
+        }
+
+        .validation-section h4 {
+            margin: 0 0 10px 0;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.9em;
+        }
+
+        .validation-section.passed h4 {
+            background: rgba(40, 167, 69, 0.2);
+            color: var(--accent-green);
+        }
+
+        .validation-section.failed h4 {
+            background: rgba(220, 53, 69, 0.2);
+            color: #f44;
+        }
+
+        .validation-item {
+            padding: 10px 12px;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            background: rgba(255,255,255,0.05);
+            border-left: 3px solid var(--accent-green);
+        }
+
+        .validation-item.failed {
+            border-left-color: #dc3545;
+            background: rgba(220, 53, 69, 0.1);
+        }
+
+        .validation-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .validation-item-type {
+            font-weight: 600;
+            font-size: 0.9em;
+            color: var(--accent-amber);
+        }
+
+        .validation-item-time {
+            font-size: 0.8em;
+            color: var(--text-muted);
+        }
+
+        .validation-item-model {
+            font-size: 0.85em;
+            color: var(--text-main);
+            margin-top: 4px;
+        }
+
+        .validation-item-error {
+            margin-top: 6px;
+            padding: 6px 10px;
+            background: rgba(220, 53, 69, 0.15);
+            border-radius: 4px;
+            color: #f66;
+            font-size: 0.8em;
+        }
+
+        .validation-modal-footer {
+            padding: 12px 20px;
+            background: rgba(0,0,0,0.2);
+            border-top: 1px solid var(--border-main);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .validation-timestamp {
+            font-size: 0.8em;
+            color: var(--text-muted);
+        }
+
+        .validation-rerun-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85em;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .validation-rerun-btn:hover {
+            opacity: 0.9;
+        }
+
+        .validation-rerun-btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+
+        /* Test Result Modal */
+        .test-result-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .test-modal-content {
+            background: var(--bg-card);
+            color: var(--text-main);
+            padding: 20px;
+            border-radius: 12px;
+            max-width: 90%;
+            width: 700px;
+            max-height: 90%;
+            overflow: auto;
+            position: relative;
+            border: 1px solid var(--border-main);
+        }
+
+        .test-modal-content h2 {
+            margin-top: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--text-main);
+        }
+
+        .test-response {
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 15px 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+        }
+
+        .test-response.success {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--accent-green);
+            color: var(--text-main);
+        }
+
+        .test-response.error {
+            background: rgba(100,0,0,0.3);
+            border: 1px solid #f33;
+            color: #fcc;
+        }
+
+        .curl-command {
+            background: rgba(0,0,0,0.4);
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 15px 0;
+            border: 1px solid var(--border-main);
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        /* Add Model Modal */
+        .add-model-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .add-modal-content {
+            background: var(--bg-card);
+            color: var(--text-main);
+            padding: 25px;
+            border-radius: 12px;
+            max-width: 90%;
+            width: 500px;
+            max-height: 90%;
+            overflow: auto;
+            position: relative;
+            border: 1px solid var(--border-main);
+        }
+
+        .add-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .add-modal-header h2 {
+            margin: 0;
+            color: var(--text-main);
+        }
+
+        .close-button {
+            cursor: pointer;
+            font-size: 1.8em;
+            font-weight: bold;
+            color: var(--text-muted);
+        }
+
+        .close-button:hover {
+            color: var(--text-main);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: var(--text-muted);
+            font-size: 0.9em;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border-main);
+            background: var(--bg-input);
+            color: var(--text-main);
+            box-sizing: border-box;
+            font-size: 1em;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 12px;
+            border-radius: 6px;
+            border: none;
+            background: var(--primary);
+            color: white;
+            cursor: pointer;
+            font-size: 1.1em;
+            margin-top: 10px;
+        }
+
+        .submit-btn:hover {
+            opacity: 0.9;
+        }
+
+        /* Status box error state */
+        .status-box.error {
+            background: rgba(220, 53, 69, 0.1);
+            border: 1px solid rgba(220, 53, 69, 0.2);
+            color: #f66;
+        }
+
+        /* Stat card styling */
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-main);
+            border-radius: 10px;
+            padding: 12px;
+            text-align: center;
+            transition: transform 0.2s;
+        }
+
+        .stat-number {
+            font-size: 1.5rem;
+            font-weight: 800;
+            display: block;
+            color: var(--primary);
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
     </style>
 </head>
 
@@ -500,36 +934,15 @@
             </div>
         </section>
 
-        <section class="stats-grid">
-            <div class="stat-card stat-ok">
-                <span class="num" id="stat-valid">0 OK</span>
-                <span class="label">user_type</span>
-            </div>
-            <div class="stat-card stat-total">
-                <span class="num" id="totalModelsCount">0</span>
-                <span class="label">Total</span>
-            </div>
-            <div class="stat-card stat-direct">
-                <span class="num" id="stat-direct">0</span>
-                <span class="label">Direct / (Togethr, Z.AI, ...)</span>
-            </div>
-            <div class="stat-card stat-or">
-                <span class="num" id="stat-or">0</span>
-                <span class="label">OpenRouter</span>
-            </div>
-            <div class="stat-card stat-groq">
-                <span class="num" id="activeProvidersCount">0</span>
-                <span class="label">GROQ</span>
-            </div>
-            <div class="stat-card stat-fast">
-                <span class="num" id="stat-fast">0</span>
-                <span class="label">Fast ⚡</span>
-            </div>
-            <div class="stat-card stat-default">
-                <span class="num" id="stat-default">0</span>
-                <span class="label">Default ★</span>
-            </div>
+        <section class="stats-grid" id="statsSection">
+            <!-- Stats will be rendered dynamically -->
         </section>
+
+        <div id="loadingIndicator" class="loading-indicator">
+            <i class="fas fa-spinner fa-spin"></i> Loading models...
+        </div>
+
+        <div id="errorMessage" class="error-message" style="display: none;"></div>
 
         <div id="providers-container" class="providers-container">
             <!-- Dynamic Content -->
@@ -548,6 +961,25 @@
             </div>
             <div class="modal-footer">
                 <button class="btn-action btn-blue" onclick="closeModal()" style="padding: 10px 25px;">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Validation Modal -->
+    <div class="validation-modal" id="validationModal">
+        <div class="validation-modal-content">
+            <div class="validation-modal-header">
+                <h3><i class="fas fa-shield-alt"></i> Валидация user_type моделей</h3>
+                <button class="validation-modal-close" onclick="modelsPage.closeValidationModal()">&times;</button>
+            </div>
+            <div class="validation-modal-body" id="validationModalBody">
+                <!-- Content loaded dynamically -->
+            </div>
+            <div class="validation-modal-footer">
+                <span class="validation-timestamp" id="validationTimestamp"></span>
+                <button class="validation-rerun-btn" id="validationRerunBtn" onclick="modelsPage.rerunValidation()">
+                    <i class="fas fa-sync-alt"></i> Перезапустить
+                </button>
             </div>
         </div>
     </div>
