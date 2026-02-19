@@ -242,6 +242,9 @@ class AITestApp {
             <a href="/history-v2.html" class="nav-link" target="_blank">
               <i class="fas fa-history"></i> История запросов
             </a>
+            <select class="theme-selector" style="margin-left: auto; min-width: 160px; padding: 6px 10px; background: #2a3a4a; color: #fff; border: 1px solid #4a6a8a; border-radius: 4px; cursor: pointer;" title="Выбрать тему оформления">
+              <!-- Options will be populated by ThemeManager -->
+            </select>
           </div>
         </div>
         

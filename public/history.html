@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>История запросов AI - AI Analytics Interface</title>
+    <!-- Centralized Theming -->
+    <link rel="stylesheet" href="themes.css">
+    <script src="js/theme-manager.js"></script>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="compact-styles.css">
     <!-- Подключаем библиотеку Marked.js для обработки Markdown -->
@@ -76,6 +79,39 @@
             background: rgba(255, 255, 255, 0.3);
             text-decoration: none;
             color: white;
+        }
+
+        /* Theme Selector */
+        .theme-selector-wrapper {
+            position: absolute;
+            top: 8px;
+            right: 10px;
+        }
+
+        .theme-selector {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.3s;
+            min-width: 140px;
+        }
+
+        .theme-selector:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .theme-selector:focus {
+            outline: none;
+            background: rgba(255, 255, 255, 0.35);
+        }
+
+        .theme-selector option {
+            background: #2d2d2d;
+            color: #e0e0e0;
         }
 
         .controls-section {
@@ -738,6 +774,11 @@
             </a>
             <h1><i class="fas fa-history"></i> Просмотр логов AI</h1>
             <p>История запросов и ответов AI моделей</p>
+            <div class="theme-selector-wrapper">
+                <select class="theme-selector" title="Выбрать тему оформления">
+                    <!-- Options will be populated by ThemeManager -->
+                </select>
+            </div>
         </div>
 
         <div class="controls-section">
