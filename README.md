@@ -1,7 +1,9 @@
 # Kosmos Model Gateway
 
-Легковесный веб-интерфейс и API-шлюз для работы с LLM (Large Language Models). 
+Легковесный API-шлюз и веб-интерфейс для работы с LLM (Large Language Models). 
 Объединяет провайдеров (GROQ, OpenRouter, Z.AI, Together) в единый интерфейс с поддержкой RAG, управлением промптами и историей запросов.
+
+Lightweight API gateway web interface for working with LLMs (Large Language Models). It unifies providers (GROQ, OpenRouter, Z.AI, Together) into a single interface with RAG support, prompt management, and request history.
 
 ## Основные возможности
 
