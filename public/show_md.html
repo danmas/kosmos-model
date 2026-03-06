@@ -1,16 +1,19 @@
 <!DOCTYPE html>
 <html lang="ru">
+
 <head>
     <meta charset="UTF-g">
     <title>Markdown Viewer</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
 </head>
+
 <body>
     <div id="content"></div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             const urlParams = new URLSearchParams(window.location.search);
             const source = urlParams.get('source');
             const filename = urlParams.get('file');
@@ -45,4 +48,5 @@
         });
     </script>
 </body>
-</html> 
+
+</html>
