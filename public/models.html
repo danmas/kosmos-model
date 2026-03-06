@@ -553,8 +553,15 @@
         }
 
         @keyframes pulse-error {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.85; }
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.85;
+            }
         }
 
         .validation-button .validation-icon {
@@ -619,7 +626,7 @@
         }
 
         .validation-modal-close {
-            background: rgba(255,255,255,0.2);
+            background: rgba(255, 255, 255, 0.2);
             border: none;
             color: white;
             width: 30px;
@@ -633,7 +640,7 @@
         }
 
         .validation-modal-close:hover {
-            background: rgba(255,255,255,0.3);
+            background: rgba(255, 255, 255, 0.3);
         }
 
         .validation-modal-body {
@@ -669,7 +676,7 @@
             padding: 10px 12px;
             margin-bottom: 8px;
             border-radius: 6px;
-            background: rgba(255,255,255,0.05);
+            background: rgba(255, 255, 255, 0.05);
             border-left: 3px solid var(--accent-green);
         }
 
@@ -712,7 +719,7 @@
 
         .validation-modal-footer {
             padding: 12px 20px;
-            background: rgba(0,0,0,0.2);
+            background: rgba(0, 0, 0, 0.2);
             border-top: 1px solid var(--border-main);
             display: flex;
             justify-content: space-between;
@@ -754,7 +761,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.8);
+            background: rgba(0, 0, 0, 0.8);
             z-index: 10000;
             justify-content: center;
             align-items: center;
@@ -793,19 +800,19 @@
         }
 
         .test-response.success {
-            background: rgba(0,0,0,0.3);
+            background: rgba(0, 0, 0, 0.3);
             border: 1px solid var(--accent-green);
             color: var(--text-main);
         }
 
         .test-response.error {
-            background: rgba(100,0,0,0.3);
+            background: rgba(100, 0, 0, 0.3);
             border: 1px solid #f33;
             color: #fcc;
         }
 
         .curl-command {
-            background: rgba(0,0,0,0.4);
+            background: rgba(0, 0, 0, 0.4);
             padding: 15px;
             border-radius: 8px;
             overflow-x: auto;
@@ -940,6 +947,7 @@
             color: var(--text-muted);
         }
     </style>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
 </head>
 
 <body>
