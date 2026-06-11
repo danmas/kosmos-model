@@ -1,9 +1,11 @@
 # Руководство по интеграции AI Model Server
 
+**Актуализация:** 2026-02-16
+
+**⚠️ ВНИМАНИЕ:** Проект выполнен на устаревшей версии kosmos-model. Рекомендуется использовать [`README_agent_AI_MODEL_integration.md`](./README_agent_AI_MODEL_integration.md) (агенты) или [`README_task_AI_MODEL_integration.md`](./README_task_AI_MODEL_integration.md) (задачи) для актуальных инструкций.
+
 Данная инструкция описывает процесс внедрения взаимодействия с внешним сервером AI-моделей в веб-приложение на Node.js (архитектура: Express + WebSocket + Vanilla JS). 
 
-!ПРОЕКТ ВЫПОЛНЕН НА УСТАРЕВШЕЙ ВЕРСИИ KOSMOS-MODEL 
- 
 Руководство составлено на основе реализации в проекте **Kosmos Panel**.
 
 ---

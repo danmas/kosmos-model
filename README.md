@@ -138,3 +138,11 @@ for chunk in stream:
 
 Полное описание REST API доступно в файле [README_REST.md](README_REST.md) или в формате [swagger.yaml](swagger.yaml).
 
+📖 **База знаний проекта:** оглавление — [KB/README_INDEX.md](KB/README_INDEX.md).
+- [REST API полное описание](KB/README_REST_KOSMOS-MODEL.md)
+- [Синхронизация моделей](KB/README_refreshModels.md)
+- [Добавление нового провайдера](KB/README_ADD_NEW_PROVIDER.md)
+- [Интеграция в агент](KB/README_agent_AI_MODEL_integration.md)
+- [Интеграция в задачу](KB/README_task_AI_MODEL_integration.md)
+- [Интеграция в панель (устаревшая)](KB/README_panel_AI_MODEL_integration.md)
+
